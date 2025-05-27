@@ -18,7 +18,7 @@ CudaSti *create_table(Sid const shots_n, Qid const qubits_n) {
 
     CudaSti *table;
     cudaMalloc(&table, table_bytes_n);
-    cudaMemset(&table, 0, table_bytes_n);
+    cudaMemset(table, 0, table_bytes_n);
 
     constexpr CudaSti one = true;
     const CudaQid rows_n = 2 * qubits_n;
