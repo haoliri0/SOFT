@@ -1,5 +1,5 @@
-#ifndef STN_CUDA_CHECK_CUH
-#define STN_CUDA_CHECK_CUH
+#ifndef STN_CUDA_UTILS_EXCEPTION_CUH
+#define STN_CUDA_UTILS_EXCEPTION_CUH
 
 #include<exception>
 #include<cuda_runtime.h>
