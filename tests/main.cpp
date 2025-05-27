@@ -1,7 +1,9 @@
 #include "cstdio"
-#include "../source/StabilizerSimulator.hpp"
+#include "../source/simulator.hpp"
+
+using namespace StnCuda;
 
 int main() {
-    StabilizerSimulator simulator(2);
-    printf("qubits_n: %d\n", simulator.qubits_n());
+    const Simulator simulator(1, 2, 4);
+    printf("qubits_n: %ld\n", simulator.qubits_n);
 }
