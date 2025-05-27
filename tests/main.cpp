@@ -3,7 +3,42 @@
 
 using namespace StnCuda;
 
+void print_item(const bool item) {
+    if (item) printf("1");
+    else printf("0");
+}
+
+void print_table(const Sti *table, const Qid rows_n, const Qid cols_n) {
+    printf("table=\n");
+    for (int row_i = 0; row_i < rows_n; ++row_i) {
+        printf("  ");
+        for (int col_i = 0; col_i < cols_n; ++col_i) {
+            print_item(table[row_i * cols_n + col_i]);
+            printf(" ");
+        }
+        printf("\n");
+    }
+}
+
+void print_simulator(const Simulator &simulator) {
+    const Sid shots_n = simulator.shots_n;
+    const Qid qubits_n = simulator.qubits_n;
+    const Aid map_limit = simulator.map_limit;
+    printf("shots_n: %ld\n", shots_n);
+    printf("qubits_n: %ld\n", qubits_n);
+    printf("map_limit: %ld\n", map_limit);
+
+    const Qid rows_n = 2 * qubits_n;
+    const Qid cols_n = 2 * qubits_n + 1;
+    const auto table = new Sti[rows_n * cols_n];
+    for (int shot_i = 0; shot_i < shots_n; ++shot_i) {
+        cudaMemcpy(table, simulator.table, rows_n * cols_n * sizeof(bool), cudaMemcpyDeviceToHost);
+        print_table(table, rows_n, cols_n);
+    }
+    delete[] table;
+}
+
 int main() {
     const Simulator simulator(1, 2, 4);
-    printf("qubits_n: %ld\n", simulator.qubits_n);
+    print_simulator(simulator);
 }
