@@ -39,6 +39,10 @@ void print_simulator(const Simulator &simulator) {
 }
 
 int main() {
-    const Simulator simulator(1, 2, 4);
-    print_simulator(simulator);
+    try {
+        const Simulator simulator(1, 2, 4);
+        print_simulator(simulator);
+    } catch (const std::exception &e) {
+        printf("%s\n", e.what());
+    }
 }
