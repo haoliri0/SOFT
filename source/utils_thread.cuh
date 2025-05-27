@@ -1,5 +1,5 @@
-#ifndef STN_CUDA_UTILS_CUH
-#define STN_CUDA_UTILS_CUH
+#ifndef STN_CUDA_UTILS_THREAD_CUH
+#define STN_CUDA_UTILS_THREAD_CUH
 
 #include <cuda_runtime.h>
 
