@@ -37,7 +37,7 @@ template<typename Value, typename... Stripes>
 static __global__
 void kernel_stripes_set(Value value, Value *values, Stripes... stripes) {
     const size_t global_thread_i = get_global_thread_i();
-    if (!global_thread_i < stripes_threads_n(stripes...)) return;
+    if (global_thread_i >= stripes_threads_n(stripes...)) return;
     const size_t offset = stripes_offset(global_thread_i, stripes...);
     values[offset] = value;
 }
