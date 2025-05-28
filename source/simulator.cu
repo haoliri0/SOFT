@@ -1,6 +1,7 @@
 #include <cuda_runtime.h>
 #include "./simulator.hpp"
 #include "./utils_stripes.cuh"
+#include "./utils_exception.hpp"
 
 using namespace StnCuda;
 
@@ -8,7 +9,7 @@ using namespace StnCuda;
 static
 cudaStream_t create_stream() {
     cudaStream_t stream;
-    cudaStreamCreate(&stream);
+    cudaCheck(cudaStreamCreate(&stream));
     return stream;
 }
 
@@ -17,8 +18,8 @@ CudaSti *create_table(Sid const shots_n, Qid const qubits_n) {
     const Qid table_bytes_n = 2 * qubits_n * (2 * qubits_n + 1) * sizeof(CudaSti);
 
     CudaSti *table;
-    cudaMalloc(&table, table_bytes_n);
-    cudaMemset(table, 0, table_bytes_n);
+    cudaCheck(cudaMalloc(&table, table_bytes_n));
+    cudaCheck(cudaMemset(table, 0, table_bytes_n));
 
     constexpr CudaSti one = true;
     const CudaQid rows_n = 2 * qubits_n;
@@ -33,7 +34,7 @@ CudaAid *create_map_n(Sid const shots_n) {
     const Aid map_n_bytes_n = shots_n * sizeof(Aid);
 
     CudaAid *map_n;
-    cudaMalloc(&map_n, map_n_bytes_n);
+    cudaCheck(cudaMalloc(&map_n, map_n_bytes_n));
 
     constexpr CudaAid one = 1;
     cuda_stripes_set(one, map_n, Stripe{shots_n});
@@ -46,7 +47,7 @@ CudaAid *create_map_keys(Sid const shots_n, Aid const map_limit) {
     const Aid map_keys_bytes_n = shots_n * map_limit * sizeof(Aid);
 
     CudaAid *map_keys;
-    cudaMalloc(&map_keys, map_keys_bytes_n);
+    cudaCheck(cudaMalloc(&map_keys, map_keys_bytes_n));
 
     constexpr CudaAid zero = 0;
     cuda_stripes_set(zero, map_keys, Stripe{shots_n, map_limit});
@@ -59,7 +60,7 @@ CudaAmp *create_map_values(Sid const shots_n, Aid const map_limit) {
     const Aid map_values_bytes_n = shots_n * map_limit * sizeof(Amp);
 
     CudaAmp *map_values;
-    cudaMalloc(&map_values, map_values_bytes_n);
+    cudaCheck(cudaMalloc(&map_values, map_values_bytes_n));
 
     constexpr CudaAmp one = 1.0;
     cuda_stripes_set(one, map_values, Stripe{shots_n, map_limit});
