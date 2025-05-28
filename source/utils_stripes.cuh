@@ -1,5 +1,5 @@
-#ifndef STN_CUDA_STRIPES_CUH
-#define STN_CUDA_STRIPES_CUH
+#ifndef STN_CUDA_UTILS_STRIPES_CUH
+#define STN_CUDA_UTILS_STRIPES_CUH
 
 #include "./utils_thread.cuh"
 

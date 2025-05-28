@@ -1,6 +1,6 @@
 #include <cuda_runtime.h>
 #include "./simulator.hpp"
-#include "./stripes.cuh"
+#include "./utils_stripes.cuh"
 
 using namespace StnCuda;
 
@@ -76,7 +76,8 @@ Simulator::Simulator(Sid const shots_n, Qid const qubits_n, Aid const map_limit)
     table(create_table(shots_n, qubits_n)),
     map_n(create_map_n(shots_n)),
     map_keys(create_map_keys(shots_n, map_limit)),
-    map_values(create_map_values(shots_n, map_limit)) {}
+    map_values(create_map_values(shots_n, map_limit)) {
+}
 
 Simulator::~Simulator() {
     cudaFree(this->map_n);
