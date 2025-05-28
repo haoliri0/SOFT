@@ -9,5 +9,5 @@ include_directories("${CUDAToolkit_INCLUDE_DIRS}")
 
 add_library(stn_cuda "source/simulator.cu")
 
-add_executable(stn_cuda_tests "tests/main.cpp")
+add_executable(stn_cuda_tests "tests/main.cu")
 target_link_libraries(stn_cuda_tests PRIVATE stn_cuda)
