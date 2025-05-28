@@ -45,8 +45,8 @@ void kernel_stripes_set(Value value, Value *values, Stripes... stripes) {
 template<typename Value, typename... Stripes>
 static __host__
 void cuda_stripes_set(Value value, Value *values, Stripes... stripes) {
-    constexpr size_t block_threads_n = 1024;
     const size_t global_threads_n = stripes_threads_n(stripes...);
+    const size_t block_threads_n = std::min(global_threads_n, 1024ul);
     const size_t blocks_n = ceiling_divide(global_threads_n, block_threads_n);
     kernel_stripes_set<<<blocks_n, block_threads_n>>>(value, values, stripes...);
 }
