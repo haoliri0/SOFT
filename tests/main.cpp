@@ -38,11 +38,15 @@ void print_simulator(const Simulator &simulator) {
     delete[] table;
 }
 
-int main() {
+void test_simulator() {
     try {
         const Simulator simulator(1, 2, 4);
         print_simulator(simulator);
     } catch (const std::exception &e) {
         printf("%s\n", e.what());
     }
+}
+
+int main() {
+    test_simulator();
 }
