@@ -1,8 +1,8 @@
 #ifndef STN_CUDA_UTILS_STRIPES_CUH
 #define STN_CUDA_UTILS_STRIPES_CUH
 
-#include "./utils_thread.cuh"
-#include "./utils_exception.hpp"
+#include "./thread.cuh"
+#include "exception.hpp"
 
 struct Stripe {
     size_t repeat = 1;

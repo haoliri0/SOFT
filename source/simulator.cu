@@ -1,7 +1,7 @@
 #include <cuda_runtime.h>
 #include "./simulator.hpp"
-#include "./utils_stripes.cuh"
-#include "./utils_exception.hpp"
+#include "./utils/stripes.cuh"
+#include "./utils/exception.hpp"
 
 using namespace StnCuda;
 
