@@ -2,7 +2,6 @@
 #define STN_CUDA_UTILS_STRIPES_CUH
 
 #include "./thread.cuh"
-#include "exception.hpp"
 
 struct Stripe {
     size_t repeat = 1;
@@ -45,12 +44,11 @@ void kernel_stripes_set(Value value, Value *values, Stripes... stripes) {
 
 template<typename Value, typename... Stripes>
 static __host__
-void cuda_stripes_set(Value value, Value *values, Stripes... stripes) {
+void cuda_stripes_set(cudaStream_t stream, Value value, Value *values, Stripes... stripes) {
     const size_t global_threads_n = stripes_threads_n(stripes...);
     const size_t block_threads_n = std::min(global_threads_n, 1024ul);
     const size_t blocks_n = ceiling_divide(global_threads_n, block_threads_n);
-    kernel_stripes_set<<<blocks_n, block_threads_n>>>(value, values, stripes...);
-    cudaCheck();
+    kernel_stripes_set<<<blocks_n, block_threads_n, 0 ,stream>>>(value, values, stripes...);
 }
 
 #endif

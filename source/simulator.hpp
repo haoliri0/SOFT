@@ -11,29 +11,33 @@ namespace StnCuda {
 using Sid = uint64_t;
 using Qid = uint64_t;
 using Aid = uint64_t;
+using Kid = uint64_t;
 using Sti = bool;
 using Amp = std::complex<float>;
 
 using CudaSid = uint64_t;
 using CudaQid = uint64_t;
 using CudaAid = uint64_t;
+using CudaKid = uint64_t;
 using CudaSti = bool;
 using CudaAmp = cuda::std::complex<float>;
 
-class Simulator {
-public:
-    Sid const shots_n;
-    Sid const qubits_n;
-    Aid const map_limit;
-    cudaStream_t const stream;
-    CudaSti *const table; // shape=[shots_n, 2*qubits_n, 2*qubits_n+1], dtype=bool
-    CudaAid *const map_n; // shape=[shots_n], dtype=index
-    CudaAid *const map_keys; // shape=[shots_n, map_limit], dtype=index
-    CudaAmp *const map_values; // shape=[shots_n, map_limit], dtype=complex
+struct Simulator {
+    Sid shots_n;
+    Qid qubits_n;
+    Kid map_limit;
+    cudaStream_t stream = nullptr;
+    CudaSti *table = nullptr; // shape=[shots_n, 2*qubits_n, 2*qubits_n+1], dtype=bool
+    CudaKid *map_n = nullptr; // shape=[shots_n], dtype=index
+    CudaAid *map_keys = nullptr; // shape=[shots_n, map_limit], dtype=index
+    CudaAmp *map_values = nullptr; // shape=[shots_n, map_limit], dtype=complex
 
-    Simulator(Sid shots_n, Qid qubits_n, Aid map_limit);
+    cudaError_t create(Sid shots_n, Qid qubits_n, Aid map_limit) noexcept;
 
-    ~Simulator();
+    cudaError_t destroy() noexcept;
+
+
+    cudaError_t apply_x(int qubit) noexcept;
 
     // void apply_reset(int qubit);
     // void apply_y(int qubit);

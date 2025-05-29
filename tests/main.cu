@@ -3,6 +3,10 @@
 
 using namespace StnCuda;
 
+void printCudaError(const cudaError_t error) {
+    printf("%s\n%s", cudaGetErrorName(error), cudaGetErrorString(error));
+}
+
 void print_item(const bool item) {
     if (item) printf("1");
     else printf("0");
@@ -39,12 +43,21 @@ void print_simulator(const Simulator &simulator) {
 }
 
 void test_simulator() {
-    try {
-        const Simulator simulator(1, 2, 4);
+    Simulator simulator;
+    cudaError_t err;
+
+    do {
+        err = simulator.create(1, 2, 4);
+        if (err != cudaSuccess) break;
+
         print_simulator(simulator);
-    } catch (const std::exception &e) {
-        printf("%s\n", e.what());
-    }
+
+    } while (false);
+
+    if (err != cudaSuccess)
+        printCudaError(err);
+
+    simulator.destroy();
 }
 
 int main() {
