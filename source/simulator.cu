@@ -1,7 +1,6 @@
 #include <cuda_runtime.h>
 #include "./simulator.hpp"
-#include "./utils/stripes.cuh"
-#include "./utils/filling.cuh"
+#include "./utils/dimsop.cuh"
 
 using namespace StnCuda;
 
@@ -43,19 +42,19 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         constexpr CudaSti sti_one = true;
         const CudaQid rows_n = 2 * qubits_n;
         const CudaQid cols_n = 2 * qubits_n + 1;
-        cuda_stripes_fill(this->stream, sti_one, this->table, Stripe{shots_n}, Stripe{rows_n, cols_n + 1});
+        cuda_dims_fill(this->stream, this->table, sti_one, Dim{shots_n}, Dim{rows_n}, Dim{cols_n + 1, 0, 1});
 
         // initialize map_n
         constexpr CudaKid kid_one = 1;
-        cuda_fill(this->stream, kid_one, this->map_n, shots_n);
+        cuda_dims_fill(this->stream, this->map_n, kid_one, Dim{shots_n});
 
         // initialize map_keys
         constexpr CudaAid aid_zero = 0;
-        cuda_stripes_fill(this->stream, aid_zero, this->map_keys, Stripe{shots_n, map_limit});
+        cuda_dims_fill(this->stream, this->map_keys, aid_zero, Dim{shots_n}, Dim{map_limit, 0, 1});
 
         // initialize map_values
         constexpr CudaAmp amp_one = 1;
-        cuda_stripes_fill(this->stream, amp_one, this->map_values, Stripe{shots_n, map_limit});
+        cuda_dims_fill(this->stream, this->map_values, amp_one, Dim{shots_n}, Dim{map_limit, 0, 1});
 
         // wait for async operations to complete
         err = cudaStreamSynchronize(this->stream);
