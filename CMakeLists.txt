@@ -7,7 +7,9 @@ set(CMAKE_CUDA_STANDARD 20)
 find_package(CUDAToolkit REQUIRED)
 include_directories("${CUDAToolkit_INCLUDE_DIRS}")
 
-add_library(stn_cuda "source/simulator.cu")
+add_library(stn_cuda
+    "source/simulator.cu"
+    "source/gates.cu")
 
 add_executable(stn_cuda_tests "tests/main.cu")
 target_link_libraries(stn_cuda_tests PRIVATE stn_cuda)
