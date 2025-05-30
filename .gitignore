@@ -1,0 +1,5 @@
+# cmake
+/cmake-build*
+
+# ide clion
+/.idea
