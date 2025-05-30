@@ -8,17 +8,17 @@
 
 namespace StnCuda {
 
-using Sid = uint64_t;
-using Qid = uint64_t;
-using Aid = uint64_t;
-using Kid = uint64_t;
+using Sid = unsigned int;
+using Qid = unsigned int;
+using Kid = unsigned int;
+using Aid = unsigned int;
 using Sti = bool;
 using Amp = std::complex<float>;
 
-using CudaSid = uint64_t;
-using CudaQid = uint64_t;
-using CudaAid = uint64_t;
-using CudaKid = uint64_t;
+using CudaSid = unsigned int;
+using CudaQid = unsigned int;
+using CudaKid = unsigned int;
+using CudaAid = unsigned int;
 using CudaSti = bool;
 using CudaAmp = cuda::std::complex<float>;
 

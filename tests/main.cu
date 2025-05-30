@@ -28,9 +28,9 @@ void print_simulator(const Simulator &simulator) {
     const Sid shots_n = simulator.shots_n;
     const Qid qubits_n = simulator.qubits_n;
     const Aid map_limit = simulator.map_limit;
-    printf("shots_n: %ld\n", shots_n);
-    printf("qubits_n: %ld\n", qubits_n);
-    printf("map_limit: %ld\n", map_limit);
+    printf("shots_n: %u\n", shots_n);
+    printf("qubits_n: %u\n", qubits_n);
+    printf("map_limit: %u\n", map_limit);
 
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
