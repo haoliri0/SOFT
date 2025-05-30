@@ -43,7 +43,7 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         constexpr CudaSti sti_one = true;
         const CudaQid rows_n = 2 * qubits_n;
         const CudaQid cols_n = 2 * qubits_n + 1;
-        cuda_stripes_set(this->stream, sti_one, this->table, Stripe{shots_n}, Stripe{rows_n, cols_n + 1});
+        cuda_stripes_fill(this->stream, sti_one, this->table, Stripe{shots_n}, Stripe{rows_n, cols_n + 1});
 
         // initialize map_n
         constexpr CudaKid kid_one = 1;
@@ -51,11 +51,11 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
 
         // initialize map_keys
         constexpr CudaAid aid_zero = 0;
-        cuda_stripes_set(this->stream, aid_zero, this->map_keys, Stripe{shots_n, map_limit});
+        cuda_stripes_fill(this->stream, aid_zero, this->map_keys, Stripe{shots_n, map_limit});
 
         // initialize map_values
         constexpr CudaAmp amp_one = 1;
-        cuda_stripes_set(this->stream, amp_one, this->map_values, Stripe{shots_n, map_limit});
+        cuda_stripes_fill(this->stream, amp_one, this->map_values, Stripe{shots_n, map_limit});
 
         // wait for async operations to complete
         err = cudaStreamSynchronize(this->stream);

@@ -35,7 +35,7 @@ size_t stripes_offset(const size_t thread_i, const Stripe stripe, Stripes... str
 
 template<typename Value, typename... Stripes>
 static __global__
-void kernel_stripes_set(Value value, Value *values, Stripes... stripes) {
+void kernel_stripes_fill(Value value, Value *values, Stripes... stripes) {
     const size_t global_thread_i = get_global_thread_i();
     if (global_thread_i >= stripes_threads_n(stripes...)) return;
     const size_t offset = stripes_offset(global_thread_i, stripes...);
@@ -44,11 +44,11 @@ void kernel_stripes_set(Value value, Value *values, Stripes... stripes) {
 
 template<typename Value, typename... Stripes>
 static __host__
-void cuda_stripes_set(cudaStream_t stream, Value value, Value *values, Stripes... stripes) {
+void cuda_stripes_fill(cudaStream_t stream, Value value, Value *values, Stripes... stripes) {
     const size_t global_threads_n = stripes_threads_n(stripes...);
     const size_t block_threads_n = std::min(global_threads_n, 1024ul);
     const size_t blocks_n = ceiling_divide(global_threads_n, block_threads_n);
-    kernel_stripes_set<<<blocks_n, block_threads_n, 0 ,stream>>>(value, values, stripes...);
+    kernel_stripes_fill<<<blocks_n, block_threads_n, 0 ,stream>>>(value, values, stripes...);
 }
 
 #endif
