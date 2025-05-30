@@ -1,6 +1,7 @@
 #include <cuda_runtime.h>
 #include "./simulator.hpp"
 #include "./utils/stripes.cuh"
+#include "./utils/filling.cuh"
 
 using namespace StnCuda;
 
@@ -46,7 +47,7 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
 
         // initialize map_n
         constexpr CudaKid kid_one = 1;
-        cuda_stripes_set(this->stream, kid_one, this->map_n, Stripe{shots_n, 1});
+        cuda_fill(this->stream, kid_one, this->map_n, shots_n);
 
         // initialize map_keys
         constexpr CudaAid aid_zero = 0;
