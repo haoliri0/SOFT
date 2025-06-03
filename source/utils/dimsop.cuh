@@ -103,20 +103,16 @@ void cuda_dims_op2(
 }
 
 
-template<typename Value, void (*op)(Value &v0, Value &v1, Value &v2), typename... Dims>
-static __global__
-void kernel_dims_op3(
-    Value *values,
-    const unsigned int p0,
-    const unsigned int p1,
-    const unsigned int p2,
-    Dims... dims
-) {
-    const unsigned int global_thread_i = get_global_thread_i();
-    const unsigned int global_threads_n = compute_dims_threads_n(dims...);
-    if (global_thread_i >= global_threads_n) return;
-    const unsigned int offset = compute_dims_offset(global_thread_i, dims...);
-    op(values[offset + p0], values[offset + p1], values[offset + p2]);
+struct Op3Args {
+    unsigned int p0;
+    unsigned int p1;
+    unsigned int p2;
+};
+
+template<typename Value, void (*op)(Value &v0, Value &v1, Value &v2)>
+static __device__ __host__
+void apply_op3(Value *values, Op3Args args) {
+    op(values[args.p0], values[args.p1], values[args.p2]);
 }
 
 template<typename Value, void (*op)(Value &v0, Value &v1, Value &v2), typename... Dims>
@@ -129,11 +125,7 @@ void cuda_dims_op3(
     const unsigned int p2,
     Dims... dims
 ) {
-    const unsigned int global_threads_n = compute_dims_threads_n(dims...);
-    const unsigned int block_threads_n = std::min(global_threads_n, 1024u);
-    const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
-    kernel_dims_op3<Value, op, Dims...>
-        <<<blocks_n, block_threads_n, 0 ,stream>>>(values, p0, p1, p2, dims...);
+    cuda_dims_op<Value, Op3Args, apply_op3<Value, op>>(stream, values, Op3Args{p0, p1, p2}, dims...);
 }
 
 
