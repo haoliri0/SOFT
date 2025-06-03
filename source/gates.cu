@@ -4,28 +4,28 @@
 
 template<typename Value>
 static __device__ __host__
-void op_for_xz(Value &v0, Value &v1) {
-    v1 ^= v0;
+void op_for_xz(Value &xz, Value &p) {
+    p ^= xz;
 }
 
 template<typename Value>
 static __device__ __host__
-void op_for_y(Value &v0, Value &v1, Value &v2) {
-    v2 ^= v0 ^ v1;
+void op_for_y(Value &x, Value &z, Value &p) {
+    p ^= x ^ z;
 }
 
 template<typename Value>
 static __device__ __host__
-void op_for_h(Value &v0, Value &v1, Value &v2) {
-    v2 ^= v0 & v1;
-    cuda::std::swap(v0, v1);
+void op_for_h(Value &x, Value &z, Value &p) {
+    p ^= x & z;
+    cuda::std::swap(x, z);
 }
 
 template<typename Value>
 static __device__ __host__
-void op_for_s(Value &v0, Value &v1, Value &v2) {
-    v2 ^= v0 & v1;
-    v1 ^= v0;
+void op_for_s(Value &x, Value &z, Value &p) {
+    p ^= x & z;
+    z ^= x;
 }
 
 template<typename Value>
