@@ -58,19 +58,36 @@ unsigned int compute_dims_offset(const unsigned int thread_i, const Dim dim, Dim
 }
 
 
-template<typename Value, void (*op)(Value &v0, Value &v1), typename... Dims>
+template<typename Value, typename Args, void (*op)(Value *values, Args args), typename... Dims>
 static __global__
-void kernel_dims_op2(
-    Value *values,
-    const unsigned int p0,
-    const unsigned int p1,
-    Dims... dims
-) {
+void kernel_dims_op(Value *values, Args args, Dims... dims) {
     const unsigned int global_thread_i = get_global_thread_i();
     const unsigned int global_threads_n = compute_dims_threads_n(dims...);
     if (global_thread_i >= global_threads_n) return;
     const unsigned int offset = compute_dims_offset(global_thread_i, dims...);
-    op(values[offset + p0], values[offset + p1]);
+    op(values + offset, args);
+}
+
+template<typename Value, typename Args, void (*op)(Value *values, Args args), typename... Dims>
+static __host__
+void cuda_dims_op(cudaStream_t stream, Value *values, Args args, Dims... dims) {
+    const unsigned int global_threads_n = compute_dims_threads_n(dims...);
+    const unsigned int block_threads_n = std::min(global_threads_n, 1024u);
+    const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
+    kernel_dims_op<Value, Args, op, Dims...>
+        <<<blocks_n, block_threads_n, 0 ,stream>>>(values, args, dims...);
+}
+
+
+struct Op2Args {
+    unsigned int p0;
+    unsigned int p1;
+};
+
+template<typename Value, void (*op)(Value &v0, Value &v1)>
+static __device__ __host__
+void apply_op2(Value *values, Op2Args args) {
+    op(values[args.p0], values[args.p1]);
 }
 
 template<typename Value, void (*op)(Value &v0, Value &v1), typename... Dims>
@@ -82,11 +99,7 @@ void cuda_dims_op2(
     const unsigned int p1,
     Dims... dims
 ) {
-    const unsigned int global_threads_n = compute_dims_threads_n(dims...);
-    const unsigned int block_threads_n = std::min(global_threads_n, 1024u);
-    const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
-    kernel_dims_op2<Value, op, Dims...>
-        <<<blocks_n, block_threads_n, 0 ,stream>>>(values, p0, p1, dims...);
+    cuda_dims_op<Value, Op2Args, apply_op2<Value, op>>(stream, values, Op2Args{p0, p1}, dims...);
 }
 
 
