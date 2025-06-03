@@ -146,17 +146,4 @@ void cuda_dims_op3(
     cuda_dims_op<Value, Op3Args, op3<Value, op>>(stream, values, Op3Args{p0, p1, p2}, dims...);
 }
 
-
-template<typename Value>
-static __device__ __host__
-void op_xor(Value &v0, Value &v1) {
-    v1 ^= v0;
-}
-
-template<typename Value>
-static __device__ __host__
-void op_xor_xor(Value &v0, Value &v1, Value &v2) {
-    v2 ^= v0 ^ v1;
-}
-
 #endif

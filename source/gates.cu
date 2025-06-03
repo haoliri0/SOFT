@@ -2,8 +2,20 @@
 #include "simulator.hpp"
 #include "utils/dimsop.cuh"
 
-using namespace StnCuda;
+template<typename Value>
+static __device__ __host__
+void op_xor(Value &v0, Value &v1) {
+    v1 ^= v0;
+}
 
+template<typename Value>
+static __device__ __host__
+void op_xor_xor(Value &v0, Value &v1, Value &v2) {
+    v2 ^= v0 ^ v1;
+}
+
+
+using namespace StnCuda;
 
 cudaError_t Simulator::apply_x(const int qubit) const noexcept {
     const Qid qubits_n = this->qubits_n;
