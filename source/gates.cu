@@ -4,26 +4,26 @@
 
 template<typename Value>
 static __device__ __host__
-void op_xor(Value &v0, Value &v1) {
+void op_for_xz(Value &v0, Value &v1) {
     v1 ^= v0;
 }
 
 template<typename Value>
 static __device__ __host__
-void op_xor_xor(Value &v0, Value &v1, Value &v2) {
+void op_for_y(Value &v0, Value &v1, Value &v2) {
     v2 ^= v0 ^ v1;
 }
 
 template<typename Value>
 static __device__ __host__
-void op_and_swap_xor(Value &v0, Value &v1, Value &v2) {
+void op_for_h(Value &v0, Value &v1, Value &v2) {
     v2 ^= v0 & v1;
     cuda::std::swap(v0, v1);
 }
 
 template<typename Value>
 static __device__ __host__
-void op_s(Value &v0, Value &v1, Value &v2) {
+void op_for_s(Value &v0, Value &v1, Value &v2) {
     v2 ^= v0 & v1;
     v1 ^= v0;
 }
@@ -39,7 +39,7 @@ cudaError_t Simulator::apply_x(const int qubit) const noexcept {
     const Qid z_col = this->qubits_n + qubit;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op2<CudaSti, op_xor<CudaSti>>(
+    cuda_dims_op2<CudaSti, op_for_xz<CudaSti>>(
         this->stream, this->table,
         z_col, p_col,
         Dim{this->shots_n},
@@ -57,7 +57,7 @@ cudaError_t Simulator::apply_y(const int qubit) const noexcept {
     const Qid z_col = this->qubits_n + qubit;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op3<CudaSti, op_xor_xor<CudaSti>>(
+    cuda_dims_op3<CudaSti, op_for_y<CudaSti>>(
         this->stream, this->table,
         x_col, z_col, p_col,
         Dim{this->shots_n},
@@ -74,7 +74,7 @@ cudaError_t Simulator::apply_z(const int qubit) const noexcept {
     const Qid x_col = qubit;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op2<CudaSti, op_xor<CudaSti>>(
+    cuda_dims_op2<CudaSti, op_for_xz<CudaSti>>(
         this->stream, this->table,
         x_col, p_col,
         Dim{this->shots_n},
@@ -92,7 +92,7 @@ cudaError_t Simulator::apply_h(const int qubit) const noexcept {
     const Qid z_col = this->qubits_n + qubit;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op3<CudaSti, op_and_swap_xor<CudaSti>>(
+    cuda_dims_op3<CudaSti, op_for_h<CudaSti>>(
         this->stream, this->table,
         x_col, z_col, p_col,
         Dim{this->shots_n},
@@ -110,7 +110,7 @@ cudaError_t Simulator::apply_s(const int qubit) const noexcept {
     const Qid z_col = this->qubits_n + qubit;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op3<CudaSti, op_s<CudaSti>>(
+    cuda_dims_op3<CudaSti, op_for_s<CudaSti>>(
         this->stream, this->table,
         x_col, z_col, p_col,
         Dim{this->shots_n},
