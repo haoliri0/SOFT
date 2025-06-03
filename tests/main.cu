@@ -59,6 +59,9 @@ void test_simulator() {
         err = simulator.apply_z(0);
         if (err != cudaSuccess) break;
 
+        err = simulator.apply_h(0);
+        if (err != cudaSuccess) break;
+
         print_simulator(simulator);
 
     } while (false);
