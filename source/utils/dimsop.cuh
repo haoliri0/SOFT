@@ -79,6 +79,24 @@ void cuda_dims_op(cudaStream_t stream, Value *values, Args args, Dims... dims) {
 }
 
 
+template<typename Value>
+static __device__ __host__
+void op_fill(Value *values, Value value) {
+    *values = value;
+}
+
+template<typename Value, typename... Dims>
+static __host__
+void cuda_dims_fill(
+    cudaStream_t stream,
+    Value *values,
+    Value value,
+    Dims... dims
+) {
+    cuda_dims_op<Value, Value, op_fill<Value>>(stream, values, value, dims...);
+}
+
+
 struct Op2Args {
     unsigned int p0;
     unsigned int p1;
@@ -126,24 +144,6 @@ void cuda_dims_op3(
     Dims... dims
 ) {
     cuda_dims_op<Value, Op3Args, op3<Value, op>>(stream, values, Op3Args{p0, p1, p2}, dims...);
-}
-
-
-template<typename Value>
-static __device__ __host__
-void op_fill(Value *values, Value value) {
-    *values = value;
-}
-
-template<typename Value, typename... Dims>
-static __host__
-void cuda_dims_fill(
-    cudaStream_t stream,
-    Value *values,
-    Value value,
-    Dims... dims
-) {
-    cuda_dims_op<Value, Value, op_fill<Value>>(stream, values, value, dims...);
 }
 
 
