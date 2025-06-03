@@ -86,7 +86,7 @@ struct Op2Args {
 
 template<typename Value, void (*op)(Value &v0, Value &v1)>
 static __device__ __host__
-void apply_op2(Value *values, Op2Args args) {
+void op2(Value *values, Op2Args args) {
     op(values[args.p0], values[args.p1]);
 }
 
@@ -99,7 +99,7 @@ void cuda_dims_op2(
     const unsigned int p1,
     Dims... dims
 ) {
-    cuda_dims_op<Value, Op2Args, apply_op2<Value, op>>(stream, values, Op2Args{p0, p1}, dims...);
+    cuda_dims_op<Value, Op2Args, op2<Value, op>>(stream, values, Op2Args{p0, p1}, dims...);
 }
 
 
@@ -111,7 +111,7 @@ struct Op3Args {
 
 template<typename Value, void (*op)(Value &v0, Value &v1, Value &v2)>
 static __device__ __host__
-void apply_op3(Value *values, Op3Args args) {
+void op3(Value *values, Op3Args args) {
     op(values[args.p0], values[args.p1], values[args.p2]);
 }
 
@@ -125,7 +125,7 @@ void cuda_dims_op3(
     const unsigned int p2,
     Dims... dims
 ) {
-    cuda_dims_op<Value, Op3Args, apply_op3<Value, op>>(stream, values, Op3Args{p0, p1, p2}, dims...);
+    cuda_dims_op<Value, Op3Args, op3<Value, op>>(stream, values, Op3Args{p0, p1, p2}, dims...);
 }
 
 
