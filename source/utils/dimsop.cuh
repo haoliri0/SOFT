@@ -129,23 +129,21 @@ void cuda_dims_op3(
 }
 
 
-template<typename Value, typename... Dims>
-static __global__
-void kernel_dims_fill(Value *values, Value value, Dims... dims) {
-    const unsigned int global_thread_i = get_global_thread_i();
-    const unsigned int global_threads_n = compute_dims_threads_n(dims...);
-    if (global_thread_i >= global_threads_n) return;
-    const unsigned int offset = compute_dims_offset(global_thread_i, dims...);
-    values[offset] = value;
+template<typename Value>
+static __device__ __host__
+void op_fill(Value *values, Value value) {
+    *values = value;
 }
 
 template<typename Value, typename... Dims>
 static __host__
-void cuda_dims_fill(cudaStream_t stream, Value *values, Value value, Dims... dims) {
-    const unsigned int global_threads_n = compute_dims_threads_n(dims...);
-    const unsigned int block_threads_n = std::min(global_threads_n, 1024u);
-    const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
-    kernel_dims_fill<<<blocks_n, block_threads_n, 0, stream>>>(values, value, dims...);
+void cuda_dims_fill(
+    cudaStream_t stream,
+    Value *values,
+    Value value,
+    Dims... dims
+) {
+    cuda_dims_op<Value, Value, op_fill<Value>>(stream, values, value, dims...);
 }
 
 
