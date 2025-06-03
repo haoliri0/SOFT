@@ -47,8 +47,9 @@ struct Simulator {
 
     cudaError_t apply_s(int qubit) const noexcept;
 
+    cudaError_t apply_sdg(int qubit) const noexcept;
+
     // void apply_reset(int qubit);
-    // void apply_sdg(int qubit);
     // void apply_t(int qubit);
     // void apply_tdg(int qubit);
     // void apply_cnot(int qubit);
