@@ -31,10 +31,12 @@ cudaError_t Simulator::apply_y(const int qubit) const noexcept {
     const Qid src1_row = this->qubits_n + qubit;
     const Qid dst_row = this->qubits_n * 2;
 
-    cuda_dims_xor_xor(
+    cuda_dims_op3<CudaSti, op_xor_xor<CudaSti>>(
         this->stream, this->table,
         src0_row, src1_row, dst_row,
-        Dim{this->shots_n}, Dim{rows_n}, Dim{cols_n, 0, 1});
+        Dim{this->shots_n},
+        Dim{rows_n},
+        Dim{cols_n, 0, 1});
     return cudaSuccess;
 }
 
