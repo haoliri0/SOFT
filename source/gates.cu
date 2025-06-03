@@ -13,7 +13,12 @@ cudaError_t Simulator::apply_x(const int qubit) const noexcept {
     const Qid src_row = this->qubits_n + qubit;
     const Qid dst_row = this->qubits_n * 2;
 
-    cuda_dims_xor(this->stream, this->table, src_row, dst_row, Dim{this->shots_n}, Dim{rows_n}, Dim{cols_n, 0, 1});
+    cuda_dims_op2<CudaSti, op_xor<CudaSti>>(
+        this->stream, this->table,
+        src_row, dst_row,
+        Dim{this->shots_n},
+        Dim{rows_n},
+        Dim{cols_n, 0, 1});
     return cudaSuccess;
 }
 
@@ -41,6 +46,11 @@ cudaError_t Simulator::apply_z(const int qubit) const noexcept {
     const Qid src_row = qubit;
     const Qid dst_row = this->qubits_n * 2;
 
-    cuda_dims_xor(this->stream, this->table, src_row, dst_row, Dim{this->shots_n}, Dim{rows_n}, Dim{cols_n, 0, 1});
+    cuda_dims_op2<CudaSti, op_xor<CudaSti>>(
+        this->stream, this->table,
+        src_row, dst_row,
+        Dim{this->shots_n},
+        Dim{rows_n},
+        Dim{cols_n, 0, 1});
     return cudaSuccess;
 }

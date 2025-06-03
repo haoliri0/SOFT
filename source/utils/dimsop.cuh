@@ -144,29 +144,10 @@ void cuda_dims_fill(cudaStream_t stream, Value *values, Value value, Dims... dim
 }
 
 
-template<typename Value, typename... Dims>
-static __global__
-void kernel_dims_xor(Value *values, const unsigned int dst, Dims... dims) {
-    const unsigned int global_thread_i = get_global_thread_i();
-    const unsigned int global_threads_n = compute_dims_threads_n(dims...);
-    if (global_thread_i >= global_threads_n) return;
-    const unsigned int offset = compute_dims_offset(global_thread_i, dims...);
-    values[offset + dst] ^= values[offset];
-}
-
-template<typename Value, typename... Dims>
-static __host__
-void cuda_dims_xor(
-    cudaStream_t stream,
-    Value *values,
-    const unsigned int src,
-    const unsigned int dst,
-    Dims... dims
-) {
-    const unsigned int global_threads_n = compute_dims_threads_n(dims...);
-    const unsigned int block_threads_n = std::min(global_threads_n, 1024u);
-    const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
-    kernel_dims_xor<<<blocks_n, block_threads_n, 0 ,stream>>>(values + src, dst - src, dims...);
+template<typename Value>
+static __device__ __host__
+void op_xor(Value *v0, Value *v1) {
+    *v1 ^= *v0;
 }
 
 
