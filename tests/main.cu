@@ -68,8 +68,10 @@ void test_simulator() {
         err = simulator.apply_sdg(0);
         if (err != cudaSuccess) break;
 
-        print_simulator(simulator);
+        err = simulator.apply_cx(0, 1);
+        if (err != cudaSuccess) break;
 
+        print_simulator(simulator);
     } while (false);
 
     if (err != cudaSuccess)
