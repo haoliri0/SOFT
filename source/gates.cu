@@ -46,7 +46,7 @@ void op_for_cx(Value &cx, Value &cz, Value &tx, Value &tz, Value &p) {
 
 using namespace StnCuda;
 
-cudaError_t Simulator::apply_x(const int qubit) const noexcept {
+cudaError_t Simulator::apply_x(const Qid qubit) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
@@ -63,7 +63,7 @@ cudaError_t Simulator::apply_x(const int qubit) const noexcept {
     return cudaSuccess;
 }
 
-cudaError_t Simulator::apply_y(const int qubit) const noexcept {
+cudaError_t Simulator::apply_y(const Qid qubit) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
@@ -81,7 +81,7 @@ cudaError_t Simulator::apply_y(const int qubit) const noexcept {
     return cudaSuccess;
 }
 
-cudaError_t Simulator::apply_z(const int qubit) const noexcept {
+cudaError_t Simulator::apply_z(const Qid qubit) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
@@ -98,7 +98,7 @@ cudaError_t Simulator::apply_z(const int qubit) const noexcept {
     return cudaSuccess;
 }
 
-cudaError_t Simulator::apply_h(const int qubit) const noexcept {
+cudaError_t Simulator::apply_h(const Qid qubit) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
@@ -116,7 +116,7 @@ cudaError_t Simulator::apply_h(const int qubit) const noexcept {
     return cudaSuccess;
 }
 
-cudaError_t Simulator::apply_s(const int qubit) const noexcept {
+cudaError_t Simulator::apply_s(const Qid qubit) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
@@ -134,7 +134,7 @@ cudaError_t Simulator::apply_s(const int qubit) const noexcept {
     return cudaSuccess;
 }
 
-cudaError_t Simulator::apply_sdg(const int qubit) const noexcept {
+cudaError_t Simulator::apply_sdg(const Qid qubit) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;

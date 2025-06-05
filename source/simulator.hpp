@@ -37,17 +37,17 @@ struct Simulator {
     cudaError_t destroy() noexcept;
 
 
-    cudaError_t apply_x(int qubit) const noexcept;
+    cudaError_t apply_x(Qid qubit) const noexcept;
 
-    cudaError_t apply_y(int qubit) const noexcept;
+    cudaError_t apply_y(Qid qubit) const noexcept;
 
-    cudaError_t apply_z(int qubit) const noexcept;
+    cudaError_t apply_z(Qid qubit) const noexcept;
 
-    cudaError_t apply_h(int qubit) const noexcept;
+    cudaError_t apply_h(Qid qubit) const noexcept;
 
-    cudaError_t apply_s(int qubit) const noexcept;
+    cudaError_t apply_s(Qid qubit) const noexcept;
 
-    cudaError_t apply_sdg(int qubit) const noexcept;
+    cudaError_t apply_sdg(Qid qubit) const noexcept;
 
     cudaError_t apply_cx(Qid control, Qid target) const noexcept;
 
