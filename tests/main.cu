@@ -13,9 +13,9 @@ void print_item(const bool item) {
 }
 
 void print_table(const Sti *table, const Qid rows_n, const Qid cols_n) {
-    printf("table=\n");
+    printf("\ttable=\n");
     for (int row_i = 0; row_i < rows_n; ++row_i) {
-        printf("  ");
+        printf("\t\t");
         for (int col_i = 0; col_i < cols_n; ++col_i) {
             print_item(table[row_i * cols_n + col_i]);
             printf(" ");
@@ -28,14 +28,16 @@ void print_simulator(const Simulator &simulator) {
     const Sid shots_n = simulator.shots_n;
     const Qid qubits_n = simulator.qubits_n;
     const Aid map_limit = simulator.map_limit;
-    printf("shots_n: %u\n", shots_n);
-    printf("qubits_n: %u\n", qubits_n);
-    printf("map_limit: %u\n", map_limit);
+    printf("\ntotal:\n");
+    printf("\tshots_n=%u\n", shots_n);
+    printf("\tqubits_n=%u\n", qubits_n);
+    printf("\tmap_limit=%u\n", map_limit);
 
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
     const auto table = new Sti[rows_n * cols_n];
-    for (int shot_i = 0; shot_i < shots_n; ++shot_i) {
+    for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
+        printf("\nshot_i=%u\n", shot_i);
         cudaMemcpy(table, simulator.table, rows_n * cols_n * sizeof(bool), cudaMemcpyDeviceToHost);
         print_table(table, rows_n, cols_n);
     }
@@ -47,7 +49,7 @@ void test_simulator() {
     cudaError_t err;
 
     do {
-        err = simulator.create(1, 2, 4);
+        err = simulator.create(2, 2, 4);
         if (err != cudaSuccess) break;
 
         err = simulator.apply_x(0);
