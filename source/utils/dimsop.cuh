@@ -146,4 +146,34 @@ void cuda_dims_op3(
     cuda_dims_op<Value, Op3Args, op3<Value, op>>(stream, values, Op3Args{p0, p1, p2}, dims...);
 }
 
+
+struct Op5Args {
+    unsigned int p0;
+    unsigned int p1;
+    unsigned int p2;
+    unsigned int p3;
+    unsigned int p4;
+};
+
+template<typename Value, void (*op)(Value &v0, Value &v1, Value &v2, Value &v3, Value &v4)>
+static __device__ __host__
+void op5(Value *values, Op5Args args) {
+    op(values[args.p0], values[args.p1], values[args.p2], values[args.p3], values[args.p4]);
+}
+
+template<typename Value, void (*op)(Value &v0, Value &v1, Value &v2, Value &v3, Value &v4), typename... Dims>
+static __host__
+void cuda_dims_op5(
+    cudaStream_t stream,
+    Value *values,
+    const unsigned int p0,
+    const unsigned int p1,
+    const unsigned int p2,
+    const unsigned int p3,
+    const unsigned int p4,
+    Dims... dims
+) {
+    cuda_dims_op<Value, Op5Args, op5<Value, op>>(stream, values, Op5Args{p0, p1, p2, p3, p4}, dims...);
+}
+
 #endif
