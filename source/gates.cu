@@ -46,12 +46,12 @@ void op_for_cx(Value &cx, Value &cz, Value &tx, Value &tz, Value &p) {
 
 using namespace StnCuda;
 
-cudaError_t Simulator::apply_x(const Qid qubit) const noexcept {
+cudaError_t Simulator::apply_x(const Qid target) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
 
-    const Qid z_col = this->qubits_n + qubit;
+    const Qid z_col = this->qubits_n + target;
     const Qid p_col = this->qubits_n * 2;
 
     cuda_dims_op2<CudaSti, op_for_xz<CudaSti>>(
@@ -63,13 +63,13 @@ cudaError_t Simulator::apply_x(const Qid qubit) const noexcept {
     return cudaSuccess;
 }
 
-cudaError_t Simulator::apply_y(const Qid qubit) const noexcept {
+cudaError_t Simulator::apply_y(const Qid target) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
 
-    const Qid x_col = qubit;
-    const Qid z_col = this->qubits_n + qubit;
+    const Qid x_col = target;
+    const Qid z_col = this->qubits_n + target;
     const Qid p_col = this->qubits_n * 2;
 
     cuda_dims_op3<CudaSti, op_for_y<CudaSti>>(
@@ -81,12 +81,12 @@ cudaError_t Simulator::apply_y(const Qid qubit) const noexcept {
     return cudaSuccess;
 }
 
-cudaError_t Simulator::apply_z(const Qid qubit) const noexcept {
+cudaError_t Simulator::apply_z(const Qid target) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
 
-    const Qid x_col = qubit;
+    const Qid x_col = target;
     const Qid p_col = this->qubits_n * 2;
 
     cuda_dims_op2<CudaSti, op_for_xz<CudaSti>>(
@@ -98,13 +98,13 @@ cudaError_t Simulator::apply_z(const Qid qubit) const noexcept {
     return cudaSuccess;
 }
 
-cudaError_t Simulator::apply_h(const Qid qubit) const noexcept {
+cudaError_t Simulator::apply_h(const Qid target) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
 
-    const Qid x_col = qubit;
-    const Qid z_col = this->qubits_n + qubit;
+    const Qid x_col = target;
+    const Qid z_col = this->qubits_n + target;
     const Qid p_col = this->qubits_n * 2;
 
     cuda_dims_op3<CudaSti, op_for_h<CudaSti>>(
@@ -116,13 +116,13 @@ cudaError_t Simulator::apply_h(const Qid qubit) const noexcept {
     return cudaSuccess;
 }
 
-cudaError_t Simulator::apply_s(const Qid qubit) const noexcept {
+cudaError_t Simulator::apply_s(const Qid target) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
 
-    const Qid x_col = qubit;
-    const Qid z_col = this->qubits_n + qubit;
+    const Qid x_col = target;
+    const Qid z_col = this->qubits_n + target;
     const Qid p_col = this->qubits_n * 2;
 
     cuda_dims_op3<CudaSti, op_for_s<CudaSti>>(
@@ -134,13 +134,13 @@ cudaError_t Simulator::apply_s(const Qid qubit) const noexcept {
     return cudaSuccess;
 }
 
-cudaError_t Simulator::apply_sdg(const Qid qubit) const noexcept {
+cudaError_t Simulator::apply_sdg(const Qid target) const noexcept {
     const Qid qubits_n = this->qubits_n;
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
 
-    const Qid x_col = qubit;
-    const Qid z_col = this->qubits_n + qubit;
+    const Qid x_col = target;
+    const Qid z_col = this->qubits_n + target;
     const Qid p_col = this->qubits_n * 2;
 
     cuda_dims_op3<CudaSti, op_for_sdg<CudaSti>>(
