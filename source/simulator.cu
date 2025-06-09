@@ -5,6 +5,9 @@
 using namespace StnCuda;
 
 cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const map_limit) noexcept {
+    const CudaQid rows_n = 2 * qubits_n;
+    const CudaQid cols_n = 2 * qubits_n + 1;
+
     this->shots_n = shots_n;
     this->qubits_n = qubits_n;
     this->map_limit = map_limit;
@@ -16,22 +19,22 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         if (err != cudaSuccess) break;
 
         // allocate table
-        const size_t table_bytes_n = 2 * qubits_n * (2 * qubits_n + 1) * sizeof(CudaBit);
+        const size_t table_bytes_n = shots_n * rows_n * cols_n * sizeof(CudaBit);
         err = cudaMallocAsync(&this->table, table_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
         // allocate mpa_n
-        const size_t map_n_bytes_n = shots_n * sizeof(Kid);
+        const size_t map_n_bytes_n = shots_n * sizeof(CudaKid);
         err = cudaMallocAsync(&this->map_n, map_n_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
         // allocate map_keys
-        const size_t map_keys_bytes_n = shots_n * map_limit * sizeof(Aid);
+        const size_t map_keys_bytes_n = shots_n * map_limit * sizeof(CudaAid);
         err = cudaMallocAsync(&this->map_keys, map_keys_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
         // allocate map_values
-        const size_t map_values_bytes_n = shots_n * map_limit * sizeof(Amp);
+        const size_t map_values_bytes_n = shots_n * map_limit * sizeof(CudaAmp);
         err = cudaMallocAsync(&this->map_values, map_values_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
@@ -40,8 +43,6 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         if (err != cudaSuccess) break;
 
         constexpr CudaBit sti_one = true;
-        const CudaQid rows_n = 2 * qubits_n;
-        const CudaQid cols_n = 2 * qubits_n + 1;
         cuda_dims_fill(this->stream, this->table, sti_one, Dim{shots_n}, Dim{rows_n}, Dim{cols_n + 1, 0, 1});
 
         // initialize map_n
