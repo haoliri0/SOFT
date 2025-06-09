@@ -12,7 +12,7 @@ void print_item(const bool item) {
     else printf("0");
 }
 
-void print_table(const Sti *table, const Qid rows_n, const Qid cols_n) {
+void print_table(const Bit *table, const Qid rows_n, const Qid cols_n) {
     printf("\ttable=\n");
     for (int row_i = 0; row_i < rows_n; ++row_i) {
         printf("\t\t");
@@ -35,7 +35,7 @@ void print_simulator(const Simulator &simulator) {
 
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
-    const auto table = new Sti[rows_n * cols_n];
+    const auto table = new Bit[rows_n * cols_n];
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
         printf("\nshot_i=%u\n", shot_i);
         cudaMemcpy(table, simulator.table, rows_n * cols_n * sizeof(bool), cudaMemcpyDeviceToHost);

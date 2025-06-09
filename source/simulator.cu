@@ -16,7 +16,7 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         if (err != cudaSuccess) break;
 
         // allocate table
-        const size_t table_bytes_n = 2 * qubits_n * (2 * qubits_n + 1) * sizeof(CudaSti);
+        const size_t table_bytes_n = 2 * qubits_n * (2 * qubits_n + 1) * sizeof(CudaBit);
         err = cudaMallocAsync(&this->table, table_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
@@ -39,7 +39,7 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         err = cudaMemsetAsync(this->table, 0, table_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
-        constexpr CudaSti sti_one = true;
+        constexpr CudaBit sti_one = true;
         const CudaQid rows_n = 2 * qubits_n;
         const CudaQid cols_n = 2 * qubits_n + 1;
         cuda_dims_fill(this->stream, this->table, sti_one, Dim{shots_n}, Dim{rows_n}, Dim{cols_n + 1, 0, 1});

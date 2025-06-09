@@ -12,14 +12,14 @@ using Sid = unsigned int;
 using Qid = unsigned int;
 using Kid = unsigned int;
 using Aid = unsigned int;
-using Sti = bool;
+using Bit = bool;
 using Amp = std::complex<float>;
 
 using CudaSid = unsigned int;
 using CudaQid = unsigned int;
 using CudaKid = unsigned int;
 using CudaAid = unsigned int;
-using CudaSti = bool;
+using CudaBit = bool;
 using CudaAmp = cuda::std::complex<float>;
 
 struct Simulator {
@@ -27,7 +27,7 @@ struct Simulator {
     Qid qubits_n;
     Kid map_limit;
     cudaStream_t stream = nullptr;
-    CudaSti *table = nullptr; // shape=[shots_n, 2*qubits_n, 2*qubits_n+1], dtype=bool
+    CudaBit *table = nullptr; // shape=[shots_n, 2*qubits_n, 2*qubits_n+1], dtype=bool
     CudaKid *map_n = nullptr; // shape=[shots_n], dtype=index
     CudaAid *map_keys = nullptr; // shape=[shots_n, map_limit], dtype=index
     CudaAmp *map_values = nullptr; // shape=[shots_n, map_limit], dtype=complex

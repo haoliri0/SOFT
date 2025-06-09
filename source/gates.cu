@@ -19,7 +19,7 @@ cudaError_t Simulator::apply_x(const Qid target) const noexcept {
     const Qid z_col = this->qubits_n + target;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op2<CudaSti, op_for_xz<CudaSti>>(
+    cuda_dims_op2<CudaBit, op_for_xz<CudaBit>>(
         this->stream, this->table,
         z_col, p_col,
         Dim{this->shots_n},
@@ -36,7 +36,7 @@ cudaError_t Simulator::apply_z(const Qid target) const noexcept {
     const Qid x_col = target;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op2<CudaSti, op_for_xz<CudaSti>>(
+    cuda_dims_op2<CudaBit, op_for_xz<CudaBit>>(
         this->stream, this->table,
         x_col, p_col,
         Dim{this->shots_n},
@@ -61,7 +61,7 @@ cudaError_t Simulator::apply_y(const Qid target) const noexcept {
     const Qid z_col = this->qubits_n + target;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op3<CudaSti, op_for_y<CudaSti>>(
+    cuda_dims_op3<CudaBit, op_for_y<CudaBit>>(
         this->stream, this->table,
         x_col, z_col, p_col,
         Dim{this->shots_n},
@@ -87,7 +87,7 @@ cudaError_t Simulator::apply_h(const Qid target) const noexcept {
     const Qid z_col = this->qubits_n + target;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op3<CudaSti, op_for_h<CudaSti>>(
+    cuda_dims_op3<CudaBit, op_for_h<CudaBit>>(
         this->stream, this->table,
         x_col, z_col, p_col,
         Dim{this->shots_n},
@@ -113,7 +113,7 @@ cudaError_t Simulator::apply_s(const Qid target) const noexcept {
     const Qid z_col = this->qubits_n + target;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op3<CudaSti, op_for_s<CudaSti>>(
+    cuda_dims_op3<CudaBit, op_for_s<CudaBit>>(
         this->stream, this->table,
         x_col, z_col, p_col,
         Dim{this->shots_n},
@@ -139,7 +139,7 @@ cudaError_t Simulator::apply_sdg(const Qid target) const noexcept {
     const Qid z_col = this->qubits_n + target;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op3<CudaSti, op_for_sdg<CudaSti>>(
+    cuda_dims_op3<CudaBit, op_for_sdg<CudaBit>>(
         this->stream, this->table,
         x_col, z_col, p_col,
         Dim{this->shots_n},
@@ -168,7 +168,7 @@ cudaError_t Simulator::apply_cx(const Qid control, const Qid target) const noexc
     const Qid tz_col = this->qubits_n + control;
     const Qid p_col = this->qubits_n * 2;
 
-    cuda_dims_op5<CudaSti, op_for_cx<CudaSti>>(
+    cuda_dims_op5<CudaBit, op_for_cx<CudaBit>>(
         this->stream, this->table,
         cx_col, cz_col, tx_col, tz_col, p_col,
         Dim{this->shots_n},
