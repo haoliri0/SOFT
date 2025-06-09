@@ -9,6 +9,7 @@ include_directories("${CUDAToolkit_INCLUDE_DIRS}")
 
 add_library(stn_cuda
     "source/simulator.cu"
+    "source/decompose.cu"
     "source/gates.cu")
 
 add_executable(stn_cuda_tests "tests/main.cu")
