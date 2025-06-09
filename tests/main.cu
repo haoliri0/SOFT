@@ -1,4 +1,5 @@
 #include "cstdio"
+#include "../source/decompose.hpp"
 #include "../source/simulator.hpp"
 
 using namespace StnCuda;
@@ -24,6 +25,23 @@ void print_table(const Bit *table, const Qid rows_n, const Qid cols_n) {
     }
 }
 
+void print_stde_bits(const Bit *stde_bits, const Qid qubits_n) {
+    printf("\tstabilizer bits:\n");
+    printf("\t\t");
+    for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
+        print_item(stde_bits[qubit_i]);
+        printf(" ");
+    }
+    printf("\n");
+    printf("\tdestabilizer bits:\n");
+    printf("\t\t");
+    for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
+        print_item(stde_bits[qubits_n + qubit_i]);
+        printf(" ");
+    }
+    printf("\n");
+}
+
 void print_simulator(const Simulator &simulator) {
     const Sid shots_n = simulator.shots_n;
     const Qid qubits_n = simulator.qubits_n;
@@ -36,15 +54,29 @@ void print_simulator(const Simulator &simulator) {
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
     const auto table = new Bit[rows_n * cols_n];
+    const auto stde_bits = new Bit[rows_n];
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
         printf("\nshot_i=%u\n", shot_i);
-        cudaMemcpy(table, simulator.table, rows_n * cols_n * sizeof(bool), cudaMemcpyDeviceToHost);
+        cudaMemcpy(
+            table,
+            simulator.table + (shot_i * rows_n * cols_n),
+            rows_n * cols_n * sizeof(Bit),
+            cudaMemcpyDeviceToHost);
+        cudaMemcpy(
+            stde_bits,
+            simulator.stde_bits + (shot_i * rows_n),
+            rows_n * sizeof(Bit),
+            cudaMemcpyDeviceToHost);
         print_table(table, rows_n, cols_n);
+        print_stde_bits(stde_bits, qubits_n);
     }
     delete[] table;
+    delete[] stde_bits;
 }
 
 void test_simulator() {
+    printf("\n\n### test_simulator ###\n");
+
     Simulator simulator;
     cudaError_t err;
 
@@ -82,6 +114,36 @@ void test_simulator() {
     simulator.destroy();
 }
 
+void test_decompose() {
+    printf("\n\n### test_decompose ###\n");
+
+    Simulator simulator;
+    cudaError_t err;
+
+    do {
+        err = simulator.create(2, 2, 4);
+        if (err != cudaSuccess) break;
+
+        constexpr Qid target = 0;
+        decompose_gate_z(
+            simulator.shots_n,
+            simulator.qubits_n,
+            simulator.table,
+            simulator.stde_bits,
+            target);
+
+        cudaDeviceSynchronize();
+
+        print_simulator(simulator);
+    } while (false);
+
+    if (err != cudaSuccess)
+        printCudaError(err);
+
+    simulator.destroy();
+}
+
 int main() {
     test_simulator();
+    test_decompose();
 }
