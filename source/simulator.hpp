@@ -2,7 +2,6 @@
 #define STN_CUDA_SIMULATOR_HPP
 
 #include<complex>
-#include<cuda.h>
 #include<cuda_runtime.h>
 #include<cuda/std/complex>
 
