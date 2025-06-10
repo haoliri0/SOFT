@@ -101,9 +101,11 @@ void compute_multiply_pauli_string(
         const CudaBit gate0_z = gate0_bits[qubits_n + i];
         const CudaBit gate1_x = gate1_bits[i];
         const CudaBit gate1_z = gate1_bits[qubits_n + i];
+        CudaBit *const gate_x = gate_bits + (i);
+        CudaBit *const gate_z = gate_bits + (qubits_n + i);
         compute_multiply_pauli_phase(gate0_x, gate0_z, gate1_x, gate1_z, phase);
-        gate_bits[i] = gate0_x ^ gate1_x;
-        gate_bits[i] = gate0_z ^ gate1_z;
+        *gate_x = gate0_x ^ gate1_x;
+        *gate_z = gate0_z ^ gate1_z;
     }
 }
 
