@@ -1,27 +1,10 @@
 #ifndef STN_CUDA_SIMULATOR_HPP
 #define STN_CUDA_SIMULATOR_HPP
 
-#include<complex>
 #include<cuda_runtime.h>
-#include<cuda/std/complex>
+#include "./datatype.cuh"
 
 namespace StnCuda {
-
-using Sid = unsigned int;
-using Qid = unsigned int;
-using Kid = unsigned int;
-using Aid = unsigned int;
-using Bit = bool;
-using Phs = unsigned char;
-using Amp = std::complex<float>;
-
-using CudaSid = unsigned int;
-using CudaQid = unsigned int;
-using CudaKid = unsigned int;
-using CudaAid = unsigned int;
-using CudaBit = bool;
-using CudaPhs = unsigned char;
-using CudaAmp = cuda::std::complex<float>;
 
 struct Simulator {
     Sid shots_n;
