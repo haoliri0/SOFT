@@ -80,34 +80,20 @@ void print_table2(const Bit *table, const Qid qubits_n) {
 
 static
 void print_decomp_bits(const Bit *decomp_bits, const Qid qubits_n) {
-    printf("\tdestabilizer bits:\n");
+    printf("\tdecomposed bits:\n");
     printf("\t\t");
-    for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
-        print_bit(decomp_bits[qubit_i]);
-        printf(" ");
-    }
-    printf("\n");
-    printf("\tstabilizer bits:\n");
-    printf("\t\t");
-    for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
-        print_bit(decomp_bits[qubits_n + qubit_i]);
+    for (int i = 0; i < 2 * qubits_n; ++i) {
+        print_bit(decomp_bits[i]);
         printf(" ");
     }
     printf("\n");
 }
 
 static
-void print_decomp_pauli(const Qid qubits_n, const Bit *decomp_pauli) {
+void print_decomp_pauli_row(const Qid qubits_n, const Bit *decomp_pauli, const Phs decomp_phase) {
     printf("\tdecomposed pauli row:\n");
     printf("\t\t");
     print_pauli_row(qubits_n, decomp_pauli);
-    printf("\n");
-}
-
-static
-void print_decomp_phase(const Phs decomp_phase) {
-    printf("\tdecomposed phase:\n");
-    printf("\t\t");
     print_phase4(decomp_phase);
     printf("\n");
 }
@@ -152,8 +138,7 @@ void print_simulator(const Simulator &simulator) {
             cudaMemcpyDeviceToHost);
         print_table2(table, qubits_n);
         print_decomp_bits(decomp_bits, qubits_n);
-        print_decomp_pauli(qubits_n, decomp_pauli);
-        print_decomp_phase(decomp_phase);
+        print_decomp_pauli_row(qubits_n, decomp_pauli, decomp_phase);
     }
     delete[] table;
     delete[] decomp_bits;
