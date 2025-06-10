@@ -91,10 +91,10 @@ void compute_multiply_pauli_phase(
 static __device__
 void compute_multiply_pauli_string(
     const CudaQid qubits_n,
-    const CudaBit *gate0_bits, // 2 * qubits_n
-    const CudaBit *gate1_bits, // 2 * qubits_n
-    CudaBit *const gate_bits, // 2 * qubits_n
-    CudaPhs *const phase // 2 bits
+    const CudaBit *gate0_bits, // [2 * qubits_n]
+    const CudaBit *gate1_bits, // [2 * qubits_n]
+    CudaBit *const gate_bits, // [2 * qubits_n]
+    CudaPhs *const phase // []
 ) {
     for (int i = 0; i < qubits_n; i++) {
         const CudaBit gate0_x = gate0_bits[i];
@@ -112,10 +112,10 @@ void compute_multiply_pauli_string(
 static __device__
 void shot_compute_decomposed_phase(
     const Qid qubits_n,
-    const CudaBit *table, // rows_n * cols_n
-    const CudaBit *dest_bits, //  rows_n
-    CudaBit *const decomp_pauli, // rows_n
-    CudaPhs *const decomp_phase // 1
+    const CudaBit *table, // [rows_n, cols_n]
+    const CudaBit *dest_bits, //  [rows_n]
+    CudaBit *const decomp_pauli, // [rows_n]
+    CudaPhs *const decomp_phase // []
 ) {
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
@@ -133,10 +133,10 @@ static __global__
 void kernel_compute_decomposed_phase(
     const Qid shots_n,
     const Qid qubits_n,
-    const CudaBit *table, // shots_n * rows_n * cols_n
-    const CudaBit *dest_bits, // shots_n * rows_n
-    CudaBit *const decomp_pauli, // shots_n * rows_n
-    CudaPhs *const decomp_phase // shots_n
+    const CudaBit *table, // [shots_n, rows_n, cols_n]
+    const CudaBit *dest_bits, // [shots_n, rows_n]
+    CudaBit *const decomp_pauli, // [shots_n, rows_n]
+    CudaPhs *const decomp_phase // [shots_n]
 ) {
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
