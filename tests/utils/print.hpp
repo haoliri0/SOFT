@@ -73,6 +73,7 @@ void print_table2(const Bit *table, const Qid qubits_n) {
         printf("\t\t");
         const Bit *row = table + (row_i * cols_n);
         print_pauli_row(qubits_n, row);
+        print_phase2(row[qubits_n * 2]);
         printf("\n");
     }
 }
