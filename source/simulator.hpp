@@ -31,9 +31,9 @@ struct Simulator {
     CudaAid *map_keys = nullptr; // shape=[shots_n, map_limit], dtype=index
     CudaAmp *map_values = nullptr; // shape=[shots_n, map_limit], dtype=complex
 
-    // work memory for decomposition: stabilizer, destabilizer bits
+    // work memory for decomposition: destabilizer, stabilizer bits
     // shape=[shots_n, 2*qubits_n], dtype=bool
-    CudaBit *stde_bits = nullptr;
+    CudaBit *dest_bits = nullptr;
 
 
     cudaError_t create(Sid shots_n, Qid qubits_n, Aid map_limit) noexcept;

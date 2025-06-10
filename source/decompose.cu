@@ -5,11 +5,11 @@
 using namespace StnCuda;
 
 static __global__
-void kernel_compute_gate_z_stde_bits(
+void kernel_compute_gate_z_dest_bits(
     const Qid shots_n,
     const Qid qubits_n,
     const CudaBit *table,
-    CudaBit *const stde_bits,
+    CudaBit *const dest_bits,
     const Qid target
 ) {
     const Qid rows_n = 2 * qubits_n;
@@ -30,21 +30,24 @@ void kernel_compute_gate_z_stde_bits(
     const CudaBit isY = x && z;
     const CudaBit isAntiComm = isX || isY;
 
-    CudaBit *stde_bit = stde_bits + (shot_i * rows_n + row_i);
-    *stde_bit = isAntiComm;
+    // 注意，这里计算结果是反的
+    // stabilizer 算出的结果放到 destabilizer bit
+    // destabilizer 算出的结果放到 stabilizer bit
+    CudaBit *bit = dest_bits + (shot_i * rows_n + (row_i + qubits_n) % rows_n);
+    *bit = isAntiComm;
 }
 
 void decompose_gate_z(
     const Qid shots_n,
     const Qid qubits_n,
     const CudaBit *table,
-    CudaBit *const stde_bits,
+    CudaBit *const dest_bits,
     const Qid target
 ) {
     const Qid rows_n = 2 * qubits_n;
     const unsigned int block_threads_n = 1024u;
     const unsigned int global_threads_n = shots_n * rows_n;
     const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
-    kernel_compute_gate_z_stde_bits<<<blocks_n, block_threads_n>>>
-        (shots_n, qubits_n, table, stde_bits, target);
+    kernel_compute_gate_z_dest_bits<<<blocks_n, block_threads_n>>>
+        (shots_n, qubits_n, table, dest_bits, target);
 }

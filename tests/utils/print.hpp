@@ -30,18 +30,18 @@ void print_table(const Bit *table, const Qid rows_n, const Qid cols_n) {
 }
 
 static
-void print_stde_bits(const Bit *stde_bits, const Qid qubits_n) {
-    printf("\tstabilizer bits:\n");
-    printf("\t\t");
-    for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
-        print_bit(stde_bits[qubit_i]);
-        printf(" ");
-    }
-    printf("\n");
+void print_dest_bits(const Bit *dest_bits, const Qid qubits_n) {
     printf("\tdestabilizer bits:\n");
     printf("\t\t");
     for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
-        print_bit(stde_bits[qubits_n + qubit_i]);
+        print_bit(dest_bits[qubit_i]);
+        printf(" ");
+    }
+    printf("\n");
+    printf("\tstabilizer bits:\n");
+    printf("\t\t");
+    for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
+        print_bit(dest_bits[qubits_n + qubit_i]);
         printf(" ");
     }
     printf("\n");
@@ -60,7 +60,7 @@ void print_simulator(const Simulator &simulator) {
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
     const auto table = new Bit[rows_n * cols_n];
-    const auto stde_bits = new Bit[rows_n];
+    const auto dest_bits = new Bit[rows_n];
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
         printf("\nshot_i=%u\n", shot_i);
         cudaMemcpy(
@@ -69,15 +69,15 @@ void print_simulator(const Simulator &simulator) {
             rows_n * cols_n * sizeof(Bit),
             cudaMemcpyDeviceToHost);
         cudaMemcpy(
-            stde_bits,
-            simulator.stde_bits + (shot_i * rows_n),
+            dest_bits,
+            simulator.dest_bits + (shot_i * rows_n),
             rows_n * sizeof(Bit),
             cudaMemcpyDeviceToHost);
         print_table(table, rows_n, cols_n);
-        print_stde_bits(stde_bits, qubits_n);
+        print_dest_bits(dest_bits, qubits_n);
     }
     delete[] table;
-    delete[] stde_bits;
+    delete[] dest_bits;
 }
 
 #endif

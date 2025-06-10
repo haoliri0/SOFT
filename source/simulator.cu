@@ -74,9 +74,9 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         err = cudaMallocAsync(&this->map_values, map_values_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
-        // allocate stde_bits
-        const size_t stde_bits_bytes_n = shots_n * rows_n * sizeof(CudaBit);
-        err = cudaMallocAsync(&this->stde_bits, stde_bits_bytes_n, this->stream);
+        // allocate dest_bits
+        const size_t dest_bits_bytes_n = shots_n * rows_n * sizeof(CudaBit);
+        err = cudaMallocAsync(&this->dest_bits, dest_bits_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
         // initialize table
@@ -97,8 +97,8 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         constexpr CudaAmp amp_one = 1;
         cuda_dims_fill(this->stream, this->map_values, amp_one, Dim{shots_n}, Dim{map_limit, 0, 1});
 
-        // initialize stde_bits
-        err = cudaMemsetAsync(this->stde_bits, 0, stde_bits_bytes_n, this->stream);
+        // initialize dest_bits
+        err = cudaMemsetAsync(this->dest_bits, 0, dest_bits_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
         // wait for async operations to complete

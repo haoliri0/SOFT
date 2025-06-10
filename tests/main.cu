@@ -60,7 +60,7 @@ void test_decompose() {
             simulator.shots_n,
             simulator.qubits_n,
             simulator.table,
-            simulator.stde_bits,
+            simulator.dest_bits,
             target);
 
         cudaDeviceSynchronize();
