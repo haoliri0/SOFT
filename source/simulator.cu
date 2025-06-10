@@ -4,6 +4,42 @@
 
 using namespace StnCuda;
 
+static __global__
+void kernel_initialize_table(
+    CudaBit *const table,
+    const CudaSid shots_n,
+    const CudaQid qubits_n
+) {
+    const Qid rows_n = 2 * qubits_n;
+    const Qid cols_n = 2 * qubits_n + 1;
+
+    const unsigned int global_threads_n = shots_n * rows_n;
+    const unsigned int global_thread_i = get_global_thread_i();
+    if (global_thread_i >= global_threads_n) return;
+
+    const unsigned int shot_i = global_thread_i / rows_n;
+    const unsigned int row_i = global_thread_i % rows_n;
+    CudaBit *row = table + (shot_i * rows_n * cols_n + row_i * cols_n);
+
+    row[row_i] = true;
+}
+
+static
+cudaError_t cuda_initialize_table(
+    cudaStream_t stream,
+    CudaBit *const table,
+    const CudaSid shots_n,
+    const CudaQid qubits_n
+) {
+    const Qid rows_n = 2 * qubits_n;
+    constexpr unsigned int block_threads_n = 1024u;
+    const unsigned int global_threads_n = shots_n * rows_n;
+    const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
+    kernel_initialize_table<<<blocks_n,block_threads_n,0,stream>>>
+        (table, shots_n, qubits_n);
+    return cudaSuccess;
+}
+
 cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const map_limit) noexcept {
     const CudaQid rows_n = 2 * qubits_n;
     const CudaQid cols_n = 2 * qubits_n + 1;
@@ -47,8 +83,7 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         err = cudaMemsetAsync(this->table, 0, table_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
-        constexpr CudaBit sti_one = true;
-        cuda_dims_fill(this->stream, this->table, sti_one, Dim{shots_n}, Dim{rows_n}, Dim{cols_n + 1, 0, 1});
+        cuda_initialize_table(this->stream, this->table, this->shots_n, this->qubits_n);
 
         // initialize map_n
         constexpr CudaKid kid_one = 1;
