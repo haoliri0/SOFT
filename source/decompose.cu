@@ -124,6 +124,7 @@ void shot_compute_decomposed_phase(
         if (dest_bits[row_i]) {
             const CudaBit *row = table + row_i * cols_n;
             compute_multiply_pauli_string(qubits_n, decomp_pauli, row, decomp_pauli, decomp_phase);
+            *decomp_phase += static_cast<CudaPhs>(row[qubits_n * 2]) * 2; // add row phase
         }
     }
 }
