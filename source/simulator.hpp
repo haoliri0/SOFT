@@ -42,7 +42,7 @@ struct Simulator {
     CudaBit *decomp_pauli = nullptr;
 
     // work memory for decomposition: phase
-    // shape=[shots_n], dtype= 2 bits (on 1 byte)
+    // shape=[shots_n], dtype=byte (only use 2 bits)
     CudaPhs *decomp_phase = nullptr;
 
 
