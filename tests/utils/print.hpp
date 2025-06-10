@@ -11,7 +11,7 @@ void print_cuda_error(const cudaError_t error) {
 }
 
 static
-void print_bit(const bool bit) {
+void print_bit(const Bit bit) {
     if (bit) printf("1");
     else printf("0");
 }
