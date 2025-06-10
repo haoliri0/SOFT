@@ -6,7 +6,7 @@
 using namespace StnCuda;
 
 static
-void printCudaError(const cudaError_t error) {
+void print_cuda_error(const cudaError_t error) {
     printf("%s\n%s", cudaGetErrorName(error), cudaGetErrorString(error));
 }
 

@@ -40,7 +40,7 @@ void test_simulator() {
     } while (false);
 
     if (err != cudaSuccess)
-        printCudaError(err);
+        print_cuda_error(err);
 
     simulator.destroy();
 }
@@ -69,7 +69,7 @@ void test_decompose() {
     } while (false);
 
     if (err != cudaSuccess)
-        printCudaError(err);
+        print_cuda_error(err);
 
     simulator.destroy();
 }
