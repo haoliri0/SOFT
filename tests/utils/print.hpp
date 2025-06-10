@@ -17,12 +17,39 @@ void print_bit(const Bit bit) {
 }
 
 static
+void print_pauli(const Bit x, const Bit z) {
+    if (!x && !z) printf("I");
+    if (x && !z) printf("X");
+    if (!x && z) printf("Z");
+    if (x && z) printf("Y");
+}
+
+static
 void print_table(const Bit *table, const Qid rows_n, const Qid cols_n) {
     printf("\ttable=\n");
     for (int row_i = 0; row_i < rows_n; ++row_i) {
         printf("\t\t");
         for (int col_i = 0; col_i < cols_n; ++col_i) {
             print_bit(table[row_i * cols_n + col_i]);
+            printf(" ");
+        }
+        printf("\n");
+    }
+}
+
+static
+void print_table2(const Bit *table, const Qid qubits_n) {
+    const Qid rows_n = 2 * qubits_n;
+    const Qid cols_n = 2 * qubits_n + 1;
+
+    printf("\ttable=\n");
+    for (int row_i = 0; row_i < rows_n; ++row_i) {
+        printf("\t\t");
+        const Bit *row = table + (row_i * cols_n);
+        for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
+            const Bit x = row[qubit_i];
+            const Bit z = row[qubits_n + qubit_i];
+            print_pauli(x, z);
             printf(" ");
         }
         printf("\n");
@@ -73,7 +100,7 @@ void print_simulator(const Simulator &simulator) {
             simulator.dest_bits + (shot_i * rows_n),
             rows_n * sizeof(Bit),
             cudaMemcpyDeviceToHost);
-        print_table(table, rows_n, cols_n);
+        print_table2(table, qubits_n);
         print_dest_bits(dest_bits, qubits_n);
     }
     delete[] table;
