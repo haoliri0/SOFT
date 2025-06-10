@@ -41,19 +41,6 @@ void print_pauli(const Bit x, const Bit z) {
 }
 
 static
-void print_table(const Bit *table, const Qid rows_n, const Qid cols_n) {
-    printf("\ttable=\n");
-    for (int row_i = 0; row_i < rows_n; ++row_i) {
-        printf("\t\t");
-        for (int col_i = 0; col_i < cols_n; ++col_i) {
-            print_bit(table[row_i * cols_n + col_i]);
-            printf(" ");
-        }
-        printf("\n");
-    }
-}
-
-static
 void print_pauli_row(const Qid qubits_n, const Bit *row) {
     for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
         const Bit x = row[qubit_i];
@@ -64,11 +51,11 @@ void print_pauli_row(const Qid qubits_n, const Bit *row) {
 }
 
 static
-void print_table2(const Bit *table, const Qid qubits_n) {
+void print_table(const Bit *table, const Qid qubits_n) {
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
 
-    printf("\ttable=\n");
+    printf("\ttable:\n");
     for (int row_i = 0; row_i < rows_n; ++row_i) {
         printf("\t\t");
         const Bit *row = table + (row_i * cols_n);
@@ -136,7 +123,7 @@ void print_simulator(const Simulator &simulator) {
             simulator.decomp_phase + shot_i,
             sizeof(Phs),
             cudaMemcpyDeviceToHost);
-        print_table2(table, qubits_n);
+        print_table(table, qubits_n);
         print_decomp_bits(decomp_bits, qubits_n);
         print_decomp_pauli_row(qubits_n, decomp_pauli, decomp_phase);
     }
