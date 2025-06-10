@@ -14,12 +14,12 @@ using Bit = bool;
 using Phs = unsigned char;
 using Amp = std::complex<float>;
 
-using CudaSid = unsigned int;
-using CudaQid = unsigned int;
-using CudaKid = unsigned int;
-using CudaAid = unsigned int;
-using CudaBit = bool;
-using CudaPhs = unsigned char;
+using CudaSid = Sid;
+using CudaQid = Qid;
+using CudaKid = Kid;
+using CudaAid = Aid;
+using CudaBit = Bit;
+using CudaPhs = Phs;
 using CudaAmp = cuda::std::complex<float>;
 
 }
