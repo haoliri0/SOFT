@@ -17,6 +17,13 @@ void print_bit(const Bit bit) {
 }
 
 static
+void print_phase2(const Phs phase) {
+    const Phs phase2 = phase % 2;
+    if (phase2 == 0) printf("+1");
+    if (phase2 == 1) printf("-1");
+}
+
+static
 void print_phase4(const Phs phase) {
     const Phs phase4 = phase % 4;
     if (phase4 == 0) printf("+1");
