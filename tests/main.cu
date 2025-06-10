@@ -8,8 +8,8 @@ void printCudaError(const cudaError_t error) {
     printf("%s\n%s", cudaGetErrorName(error), cudaGetErrorString(error));
 }
 
-void print_item(const bool item) {
-    if (item) printf("1");
+void print_bit(const bool bit) {
+    if (bit) printf("1");
     else printf("0");
 }
 
@@ -18,7 +18,7 @@ void print_table(const Bit *table, const Qid rows_n, const Qid cols_n) {
     for (int row_i = 0; row_i < rows_n; ++row_i) {
         printf("\t\t");
         for (int col_i = 0; col_i < cols_n; ++col_i) {
-            print_item(table[row_i * cols_n + col_i]);
+            print_bit(table[row_i * cols_n + col_i]);
             printf(" ");
         }
         printf("\n");
@@ -29,14 +29,14 @@ void print_stde_bits(const Bit *stde_bits, const Qid qubits_n) {
     printf("\tstabilizer bits:\n");
     printf("\t\t");
     for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
-        print_item(stde_bits[qubit_i]);
+        print_bit(stde_bits[qubit_i]);
         printf(" ");
     }
     printf("\n");
     printf("\tdestabilizer bits:\n");
     printf("\t\t");
     for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
-        print_item(stde_bits[qubits_n + qubit_i]);
+        print_bit(stde_bits[qubits_n + qubit_i]);
         printf(" ");
     }
     printf("\n");
