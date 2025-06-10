@@ -5,11 +5,11 @@
 using namespace StnCuda;
 
 static __global__
-void kernel_compute_gate_z_dest_bits(
+void kernel_compute_gate_z_decomp_bits(
     const Qid shots_n,
     const Qid qubits_n,
     const CudaBit *table,
-    CudaBit *const dest_bits,
+    CudaBit *const decomp_bits,
     const Qid target
 ) {
     const Qid rows_n = 2 * qubits_n;
@@ -33,7 +33,7 @@ void kernel_compute_gate_z_dest_bits(
     // 注意，这里计算结果是反的
     // stabilizer 算出的结果放到 destabilizer bit
     // destabilizer 算出的结果放到 stabilizer bit
-    CudaBit *bit = dest_bits + (shot_i * rows_n + (row_i + qubits_n) % rows_n);
+    CudaBit *bit = decomp_bits + (shot_i * rows_n + (row_i + qubits_n) % rows_n);
     *bit = isAntiComm;
 }
 
@@ -41,15 +41,15 @@ void decompose_gate_z(
     const Qid shots_n,
     const Qid qubits_n,
     const CudaBit *table,
-    CudaBit *const dest_bits,
+    CudaBit *const decomp_bits,
     const Qid target
 ) {
     const Qid rows_n = 2 * qubits_n;
     const unsigned int block_threads_n = default_block_threads_n;
     const unsigned int global_threads_n = shots_n * rows_n;
     const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
-    kernel_compute_gate_z_dest_bits<<<blocks_n, block_threads_n>>>
-        (shots_n, qubits_n, table, dest_bits, target);
+    kernel_compute_gate_z_decomp_bits<<<blocks_n, block_threads_n>>>
+        (shots_n, qubits_n, table, decomp_bits, target);
 }
 
 
@@ -113,7 +113,7 @@ static __device__
 void shot_compute_decomposed_phase(
     const Qid qubits_n,
     const CudaBit *table, // [rows_n, cols_n]
-    const CudaBit *dest_bits, //  [rows_n]
+    const CudaBit *decomp_bits, //  [rows_n]
     CudaBit *const decomp_pauli, // [rows_n]
     CudaPhs *const decomp_phase // []
 ) {
@@ -121,7 +121,7 @@ void shot_compute_decomposed_phase(
     const Qid cols_n = 2 * qubits_n + 1;
 
     for (Qid row_i = 0; row_i < rows_n; row_i++) {
-        if (dest_bits[row_i]) {
+        if (decomp_bits[row_i]) {
             const CudaBit *row = table + row_i * cols_n;
             compute_multiply_pauli_string(qubits_n, decomp_pauli, row, decomp_pauli, decomp_phase);
             *decomp_phase += static_cast<CudaPhs>(row[qubits_n * 2]) * 2; // add row phase
@@ -134,7 +134,7 @@ void kernel_compute_decomposed_phase(
     const Qid shots_n,
     const Qid qubits_n,
     const CudaBit *table, // [shots_n, rows_n, cols_n]
-    const CudaBit *dest_bits, // [shots_n, rows_n]
+    const CudaBit *decomp_bits, // [shots_n, rows_n]
     CudaBit *const decomp_pauli, // [shots_n, rows_n]
     CudaPhs *const decomp_phase // [shots_n]
 ) {
@@ -147,19 +147,19 @@ void kernel_compute_decomposed_phase(
 
     const unsigned int shot_i = global_thread_i;
     const CudaBit *shot_table = table + (shot_i * rows_n * cols_n);
-    const CudaBit *shot_dest_bits = dest_bits + (shot_i * rows_n);
+    const CudaBit *shot_decomp_bits = decomp_bits + (shot_i * rows_n);
     CudaBit *const shot_decomp_pauli = decomp_pauli + (shot_i * rows_n);
     CudaPhs *const shot_decomp_phase = decomp_phase + (shot_i);
 
     shot_compute_decomposed_phase(
-        qubits_n, shot_table, shot_dest_bits, shot_decomp_pauli, shot_decomp_phase);
+        qubits_n, shot_table, shot_decomp_bits, shot_decomp_pauli, shot_decomp_phase);
 }
 
 cudaError_t cuda_compute_decomposed_phase(
     const Qid shots_n,
     const Qid qubits_n,
     const CudaBit *table,
-    const CudaBit *dest_bits,
+    const CudaBit *decomp_bits,
     CudaBit *const decomp_pauli,
     CudaPhs *const decomp_phase,
     cudaStream_t stream
@@ -182,7 +182,7 @@ cudaError_t cuda_compute_decomposed_phase(
     const unsigned int block_threads_n = default_block_threads_n;
     const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
     kernel_compute_decomposed_phase<<<blocks_n,block_threads_n,0,stream>>>
-        (shots_n, qubits_n, table, dest_bits, decomp_pauli, decomp_phase);
+        (shots_n, qubits_n, table, decomp_bits, decomp_pauli, decomp_phase);
 
     return cudaSuccess;
 }

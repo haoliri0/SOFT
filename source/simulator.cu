@@ -74,12 +74,12 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         err = cudaMallocAsync(&this->map_values, map_values_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
-        // allocate dest_bits
-        const size_t dest_bits_bytes_n = shots_n * rows_n * sizeof(CudaBit);
-        err = cudaMallocAsync(&this->dest_bits, dest_bits_bytes_n, this->stream);
+        // allocate decomp_bits
+        const size_t decomp_bits_bytes_n = shots_n * rows_n * sizeof(CudaBit);
+        err = cudaMallocAsync(&this->decomp_bits, decomp_bits_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
-        // allocate dest_pauli
+        // allocate decomp_pauli
         const size_t decomp_pauli_bytes_n = shots_n * rows_n * sizeof(CudaBit);
         err = cudaMallocAsync(&this->decomp_pauli, decomp_pauli_bytes_n, this->stream);
         if (err != cudaSuccess) break;
@@ -107,8 +107,8 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         constexpr CudaAmp amp_one = 1;
         cuda_dims_fill(this->stream, this->map_values, amp_one, Dim{shots_n}, Dim{map_limit, 0, 1});
 
-        // initialize dest_bits
-        err = cudaMemsetAsync(this->dest_bits, 0, dest_bits_bytes_n, this->stream);
+        // initialize decomp_bits
+        err = cudaMemsetAsync(this->decomp_bits, 0, decomp_bits_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
         // initialize decomp_pauli

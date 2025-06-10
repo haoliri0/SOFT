@@ -35,7 +35,7 @@ struct Simulator {
 
     // work memory for decomposition: destabilizer, stabilizer bits
     // shape=[shots_n, 2*qubits_n], dtype=bool
-    CudaBit *dest_bits = nullptr;
+    CudaBit *decomp_bits = nullptr;
 
     // work memory for decomposition: pauli operators
     // shape=[shots_n, 2*qubits_n], dtype=bit

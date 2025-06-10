@@ -79,18 +79,18 @@ void print_table2(const Bit *table, const Qid qubits_n) {
 }
 
 static
-void print_dest_bits(const Bit *dest_bits, const Qid qubits_n) {
+void print_decomp_bits(const Bit *decomp_bits, const Qid qubits_n) {
     printf("\tdestabilizer bits:\n");
     printf("\t\t");
     for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
-        print_bit(dest_bits[qubit_i]);
+        print_bit(decomp_bits[qubit_i]);
         printf(" ");
     }
     printf("\n");
     printf("\tstabilizer bits:\n");
     printf("\t\t");
     for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
-        print_bit(dest_bits[qubits_n + qubit_i]);
+        print_bit(decomp_bits[qubits_n + qubit_i]);
         printf(" ");
     }
     printf("\n");
@@ -125,7 +125,7 @@ void print_simulator(const Simulator &simulator) {
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
     const auto table = new Bit[rows_n * cols_n];
-    const auto dest_bits = new Bit[rows_n];
+    const auto decomp_bits = new Bit[rows_n];
     const auto decomp_pauli = new Bit[rows_n];
     auto decomp_phase = Phs();
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
@@ -136,8 +136,8 @@ void print_simulator(const Simulator &simulator) {
             rows_n * cols_n * sizeof(Bit),
             cudaMemcpyDeviceToHost);
         cudaMemcpy(
-            dest_bits,
-            simulator.dest_bits + (shot_i * rows_n),
+            decomp_bits,
+            simulator.decomp_bits + (shot_i * rows_n),
             rows_n * sizeof(Bit),
             cudaMemcpyDeviceToHost);
         cudaMemcpy(
@@ -151,12 +151,12 @@ void print_simulator(const Simulator &simulator) {
             sizeof(Phs),
             cudaMemcpyDeviceToHost);
         print_table2(table, qubits_n);
-        print_dest_bits(dest_bits, qubits_n);
+        print_decomp_bits(decomp_bits, qubits_n);
         print_decomp_pauli(qubits_n, decomp_pauli);
         print_decomp_phase(decomp_phase);
     }
     delete[] table;
-    delete[] dest_bits;
+    delete[] decomp_bits;
     delete[] decomp_pauli;
 }
 

@@ -60,14 +60,14 @@ void test_decompose() {
             simulator.shots_n,
             simulator.qubits_n,
             simulator.table,
-            simulator.dest_bits,
+            simulator.decomp_bits,
             target);
 
         err = cuda_compute_decomposed_phase(
             simulator.shots_n,
             simulator.qubits_n,
             simulator.table,
-            simulator.dest_bits,
+            simulator.decomp_bits,
             simulator.decomp_pauli,
             simulator.decomp_phase,
             simulator.stream);
