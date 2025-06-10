@@ -12,7 +12,7 @@ using Qid = unsigned int;
 using Kid = unsigned int;
 using Aid = unsigned int;
 using Bit = bool;
-using Phs = char;
+using Phs = unsigned char;
 using Amp = std::complex<float>;
 
 using CudaSid = unsigned int;
@@ -20,7 +20,7 @@ using CudaQid = unsigned int;
 using CudaKid = unsigned int;
 using CudaAid = unsigned int;
 using CudaBit = bool;
-using CudaPhs = char;
+using CudaPhs = unsigned char;
 using CudaAmp = cuda::std::complex<float>;
 
 struct Simulator {
