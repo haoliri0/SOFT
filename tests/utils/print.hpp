@@ -38,6 +38,16 @@ void print_table(const Bit *table, const Qid rows_n, const Qid cols_n) {
 }
 
 static
+void print_pauli_row(const Qid qubits_n, const Bit *row) {
+    for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
+        const Bit x = row[qubit_i];
+        const Bit z = row[qubits_n + qubit_i];
+        print_pauli(x, z);
+        printf(" ");
+    }
+}
+
+static
 void print_table2(const Bit *table, const Qid qubits_n) {
     const Qid rows_n = 2 * qubits_n;
     const Qid cols_n = 2 * qubits_n + 1;
@@ -46,12 +56,7 @@ void print_table2(const Bit *table, const Qid qubits_n) {
     for (int row_i = 0; row_i < rows_n; ++row_i) {
         printf("\t\t");
         const Bit *row = table + (row_i * cols_n);
-        for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
-            const Bit x = row[qubit_i];
-            const Bit z = row[qubits_n + qubit_i];
-            print_pauli(x, z);
-            printf(" ");
-        }
+        print_pauli_row(qubits_n, row);
         printf("\n");
     }
 }
