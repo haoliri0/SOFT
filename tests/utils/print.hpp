@@ -17,6 +17,15 @@ void print_bit(const Bit bit) {
 }
 
 static
+void print_phase(const Phs phase) {
+    const Phs phase4 = phase % 4;
+    if (phase4 == 0) printf("1");
+    if (phase4 == 1) printf("i");
+    if (phase4 == 2) printf("-1");
+    if (phase4 == 3) printf("-i");
+}
+
+static
 void print_pauli(const Bit x, const Bit z) {
     if (!x && !z) printf("I");
     if (x && !z) printf("X");
@@ -80,6 +89,22 @@ void print_dest_bits(const Bit *dest_bits, const Qid qubits_n) {
 }
 
 static
+void print_decomp_pauli(const Qid qubits_n, const Bit *decomp_pauli) {
+    printf("\tdecomposed pauli row:\n");
+    printf("\t\t");
+    print_pauli_row(qubits_n, decomp_pauli);
+    printf("\n");
+}
+
+static
+void print_decomp_phase(const Phs decomp_phase) {
+    printf("\tdecomposed phase:\n");
+    printf("\t\t");
+    print_phase(decomp_phase);
+    printf("\n");
+}
+
+static
 void print_simulator(const Simulator &simulator) {
     const Sid shots_n = simulator.shots_n;
     const Qid qubits_n = simulator.qubits_n;
@@ -93,6 +118,8 @@ void print_simulator(const Simulator &simulator) {
     const Qid cols_n = 2 * qubits_n + 1;
     const auto table = new Bit[rows_n * cols_n];
     const auto dest_bits = new Bit[rows_n];
+    const auto decomp_pauli = new Bit[rows_n];
+    auto decomp_phase = Phs();
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
         printf("\nshot_i=%u\n", shot_i);
         cudaMemcpy(
@@ -105,11 +132,24 @@ void print_simulator(const Simulator &simulator) {
             simulator.dest_bits + (shot_i * rows_n),
             rows_n * sizeof(Bit),
             cudaMemcpyDeviceToHost);
+        cudaMemcpy(
+            decomp_pauli,
+            simulator.decomp_pauli + (shot_i * rows_n),
+            rows_n * sizeof(Bit),
+            cudaMemcpyDeviceToHost);
+        cudaMemcpy(
+            &decomp_phase,
+            simulator.decomp_phase + shot_i,
+            sizeof(Phs),
+            cudaMemcpyDeviceToHost);
         print_table2(table, qubits_n);
         print_dest_bits(dest_bits, qubits_n);
+        print_decomp_pauli(qubits_n, decomp_pauli);
+        print_decomp_phase(decomp_phase);
     }
     delete[] table;
     delete[] dest_bits;
+    delete[] decomp_pauli;
 }
 
 #endif
