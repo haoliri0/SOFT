@@ -5,7 +5,7 @@
 
 using namespace StnCuda;
 
-void decompose_gate_z(
+void compute_decomposed_bits(
     Qid shots_n,
     Qid qubits_n,
     const CudaBit *table,

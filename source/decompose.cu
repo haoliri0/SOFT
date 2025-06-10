@@ -5,7 +5,7 @@
 using namespace StnCuda;
 
 static __global__
-void kernel_compute_gate_z_decomp_bits(
+void kernel_compute_decomposed_bits(
     const Qid shots_n,
     const Qid qubits_n,
     const CudaBit *table,
@@ -37,7 +37,7 @@ void kernel_compute_gate_z_decomp_bits(
     *bit = isAntiComm;
 }
 
-void decompose_gate_z(
+void compute_decomposed_bits(
     const Qid shots_n,
     const Qid qubits_n,
     const CudaBit *table,
@@ -48,7 +48,7 @@ void decompose_gate_z(
     const unsigned int block_threads_n = default_block_threads_n;
     const unsigned int global_threads_n = shots_n * rows_n;
     const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
-    kernel_compute_gate_z_decomp_bits<<<blocks_n, block_threads_n>>>
+    kernel_compute_decomposed_bits<<<blocks_n, block_threads_n>>>
         (shots_n, qubits_n, table, decomp_bits, target);
 }
 

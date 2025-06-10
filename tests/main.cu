@@ -56,7 +56,7 @@ void test_decompose() {
         if (err != cudaSuccess) break;
 
         constexpr Qid target = 0;
-        decompose_gate_z(
+        compute_decomposed_bits(
             simulator.shots_n,
             simulator.qubits_n,
             simulator.table,
