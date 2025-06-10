@@ -72,7 +72,7 @@ template<typename Value, typename Args, void (*op)(Value *values, Args args), ty
 static __host__
 void cuda_dims_op(cudaStream_t stream, Value *values, Args args, Dims... dims) {
     const unsigned int global_threads_n = compute_dims_threads_n(dims...);
-    const unsigned int block_threads_n = std::min(global_threads_n, 1024u);
+    const unsigned int block_threads_n = default_block_threads_n;
     const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
     kernel_dims_op<Value, Args, op, Dims...>
         <<<blocks_n, block_threads_n, 0 ,stream>>>(values, args, dims...);

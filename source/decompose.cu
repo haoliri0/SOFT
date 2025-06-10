@@ -45,7 +45,7 @@ void decompose_gate_z(
     const Qid target
 ) {
     const Qid rows_n = 2 * qubits_n;
-    const unsigned int block_threads_n = 1024u;
+    const unsigned int block_threads_n = default_block_threads_n;
     const unsigned int global_threads_n = shots_n * rows_n;
     const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
     kernel_compute_gate_z_dest_bits<<<blocks_n, block_threads_n>>>

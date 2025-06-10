@@ -32,8 +32,8 @@ cudaError_t cuda_initialize_table(
     const CudaQid qubits_n
 ) {
     const Qid rows_n = 2 * qubits_n;
-    constexpr unsigned int block_threads_n = 1024u;
     const unsigned int global_threads_n = shots_n * rows_n;
+    const unsigned int block_threads_n = default_block_threads_n;
     const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
     kernel_initialize_table<<<blocks_n,block_threads_n,0,stream>>>
         (table, shots_n, qubits_n);

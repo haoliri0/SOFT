@@ -39,4 +39,7 @@ Integer ceiling_divide(Integer x, Integer y) {
     return (x + y - 1) / y;
 }
 
+constexpr
+unsigned int default_block_threads_n = 1024;
+
 #endif
