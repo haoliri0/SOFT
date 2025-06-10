@@ -79,6 +79,16 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         err = cudaMallocAsync(&this->dest_bits, dest_bits_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
+        // allocate dest_pauli
+        const size_t decomp_pauli_bytes_n = shots_n * rows_n * sizeof(CudaBit);
+        err = cudaMallocAsync(&this->decomp_pauli, decomp_pauli_bytes_n, this->stream);
+        if (err != cudaSuccess) break;
+
+        // allocate decomp_phase
+        const size_t decomp_phase_bytes_n = shots_n * sizeof(CudaPhs);
+        err = cudaMallocAsync(&this->decomp_phase, decomp_phase_bytes_n, this->stream);
+        if (err != cudaSuccess) break;
+
         // initialize table
         err = cudaMemsetAsync(this->table, 0, table_bytes_n, this->stream);
         if (err != cudaSuccess) break;
@@ -99,6 +109,14 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
 
         // initialize dest_bits
         err = cudaMemsetAsync(this->dest_bits, 0, dest_bits_bytes_n, this->stream);
+        if (err != cudaSuccess) break;
+
+        // initialize decomp_pauli
+        err = cudaMemsetAsync(this->decomp_pauli, 0, decomp_pauli_bytes_n, this->stream);
+        if (err != cudaSuccess) break;
+
+        // initialize decomp_phase
+        err = cudaMemsetAsync(this->decomp_phase, 0, decomp_phase_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 
         // wait for async operations to complete

@@ -12,6 +12,7 @@ using Qid = unsigned int;
 using Kid = unsigned int;
 using Aid = unsigned int;
 using Bit = bool;
+using Phs = char;
 using Amp = std::complex<float>;
 
 using CudaSid = unsigned int;
@@ -19,6 +20,7 @@ using CudaQid = unsigned int;
 using CudaKid = unsigned int;
 using CudaAid = unsigned int;
 using CudaBit = bool;
+using CudaPhs = char;
 using CudaAmp = cuda::std::complex<float>;
 
 struct Simulator {
@@ -34,6 +36,14 @@ struct Simulator {
     // work memory for decomposition: destabilizer, stabilizer bits
     // shape=[shots_n, 2*qubits_n], dtype=bool
     CudaBit *dest_bits = nullptr;
+
+    // work memory for decomposition: pauli operators
+    // shape=[shots_n, 2*qubits_n], dtype=bit
+    CudaBit *decomp_pauli = nullptr;
+
+    // work memory for decomposition: phase
+    // shape=[shots_n], dtype= 2 bits (on 1 byte)
+    CudaPhs *decomp_phase = nullptr;
 
 
     cudaError_t create(Sid shots_n, Qid qubits_n, Aid map_limit) noexcept;
