@@ -47,15 +47,9 @@ void test_decompose() {
             simulator.shots_state_ptr,
             target);
 
-        err = cuda_compute_decomposed_phase(
-            simulator.shots_n,
-            simulator.qubits_n,
-            simulator.table,
-            simulator.decomp_bits,
-            simulator.decomp_pauli,
-            simulator.decomp_phase,
-            simulator.stream);
-        if (err != cudaSuccess) break;
+        cuda_compute_decomposed_phase(
+            simulator.stream,
+            simulator.shots_state_ptr);
 
         cudaDeviceSynchronize();
 

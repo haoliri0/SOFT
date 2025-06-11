@@ -15,8 +15,8 @@ struct PauliRowPtr {
     }
 
     __device__ __host__
-    CudaBit *get_ptr(const Qid qubit_i) const {
-        const size_t offset = qubit_i * sizeof(CudaBit);
+    CudaBit *get_ptr(const Qid col_i) const {
+        const size_t offset = col_i * sizeof(CudaBit);
         return reinterpret_cast<CudaBit*>(ptr + offset);
     }
 

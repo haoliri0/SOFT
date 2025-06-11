@@ -58,13 +58,14 @@ void cuda_compute_decomposed_bits(
         (stream, {shots_state_ptr, target}, dimsof(shots_n, rows_n));
 }
 
+
 static __device__
 void compute_multiply_pauli_phase(
     const CudaBit gate0_x,
     const CudaBit gate0_z,
     const CudaBit gate1_x,
     const CudaBit gate1_z,
-    CudaPhs *const phase
+    CudaPhs &phase
 ) {
     const CudaPhs pauli_phase[] = {
         0, // 00 00, I I = I
@@ -90,104 +91,80 @@ void compute_multiply_pauli_phase(
     const int gate1_x_int = gate1_x ? 1 : 0;
     const int gate1_z_int = gate1_z ? 1 : 0;
     const int index = 0 | gate0_x_int << 3 | gate0_z_int << 2 | gate1_x_int << 1 | gate1_z_int << 0;
-    *phase += pauli_phase[index];
+    phase += pauli_phase[index];
 }
 
 static __device__
 void compute_multiply_pauli_string(
-    const CudaQid qubits_n,
-    const CudaBit *gate0_bits, // [2 * qubits_n]
-    const CudaBit *gate1_bits, // [2 * qubits_n]
-    CudaBit *const gate_bits, // [2 * qubits_n]
-    CudaPhs *const phase // []
+    const PauliRowPtr pauli_row_ptr0,
+    const PauliRowPtr pauli_row_ptr1,
+    PauliRowPtr const pauli_row_ptr,
+    CudaPhs &phase
 ) {
-    for (int i = 0; i < qubits_n; i++) {
-        const CudaBit gate0_x = gate0_bits[i];
-        const CudaBit gate0_z = gate0_bits[qubits_n + i];
-        const CudaBit gate1_x = gate1_bits[i];
-        const CudaBit gate1_z = gate1_bits[qubits_n + i];
-        CudaBit *const gate_x = gate_bits + (i);
-        CudaBit *const gate_z = gate_bits + (qubits_n + i);
+    const Qid qubits_n = pauli_row_ptr.qubits_n;
+    for (int qubit_i = 0; qubit_i < qubits_n; qubit_i++) {
+        const CudaBit gate0_x = *pauli_row_ptr0.get_x_ptr(qubit_i);
+        const CudaBit gate0_z = *pauli_row_ptr0.get_z_ptr(qubit_i);
+        const CudaBit gate1_x = *pauli_row_ptr1.get_x_ptr(qubit_i);
+        const CudaBit gate1_z = *pauli_row_ptr1.get_z_ptr(qubit_i);
+        CudaBit &gate_x = *pauli_row_ptr.get_x_ptr(qubit_i);
+        CudaBit &gate_z = *pauli_row_ptr.get_z_ptr(qubit_i);
         compute_multiply_pauli_phase(gate0_x, gate0_z, gate1_x, gate1_z, phase);
-        *gate_x = gate0_x ^ gate1_x;
-        *gate_z = gate0_z ^ gate1_z;
+        gate_x = gate0_x ^ gate1_x;
+        gate_z = gate0_z ^ gate1_z;
     }
 }
 
-static __device__
-void shot_compute_decomposed_phase(
-    const Qid qubits_n,
-    const CudaBit *table, // [rows_n, cols_n]
-    const CudaBit *decomp_bits, //  [rows_n]
-    CudaBit *const decomp_pauli, // [rows_n]
-    CudaPhs *const decomp_phase // []
-) {
-    const Qid rows_n = 2 * qubits_n;
-    const Qid cols_n = 2 * qubits_n + 1;
+struct ComputeDecomposedPhaseArgs {
+    ShotsStatePtr shots_state_ptr;
+};
 
-    for (Qid row_i = 0; row_i < rows_n; row_i++) {
-        if (decomp_bits[row_i]) {
-            const CudaBit *row = table + row_i * cols_n;
-            compute_multiply_pauli_string(qubits_n, decomp_pauli, row, decomp_pauli, decomp_phase);
-            *decomp_phase += static_cast<CudaPhs>(row[qubits_n * 2]) * 2; // add row phase
+static __device__
+void op_compute_decomposed_phase(const ComputeDecomposedPhaseArgs args, const DimsIdx<1> dims_idx) {
+    const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
+    Qid const qubits_n = shots_state_ptr.qubits_n;
+    Qid const rows_n = 2 * qubits_n;
+    Qid const cols_n = 2 * qubits_n;
+
+    Sid const shot_i = dims_idx.get<0>();
+    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_state_ptr(shot_i);
+
+    const TablePtr table_ptr = shot_state_ptr.get_table_ptr();
+    const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
+    const Bit *decomp_bits_ptr = decomp_ptr.get_bits_ptr();
+    const PauliRowPtr decomp_pauli_row = decomp_ptr.get_pauli_ptr();
+    Phs &decomp_phase = *decomp_ptr.get_phase_ptr();
+
+    // clear decomp pauli row
+    for (Qid col_i = 0; col_i < cols_n; ++col_i)
+        *decomp_pauli_row.get_ptr(col_i) = false;
+    // clear decomp phase
+    decomp_phase = 0;
+
+    for (Qid row_i = 0; row_i < rows_n; ++row_i) {
+        if (decomp_bits_ptr[row_i]) {
+            const TableRowPtr table_row_ptr = table_ptr.get_row_ptr(row_i);
+            const PauliRowPtr table_pauli_row_ptr = table_row_ptr.get_pauli_ptr();
+
+            // add multiply pauli phase
+            compute_multiply_pauli_string(
+                decomp_pauli_row,
+                table_pauli_row_ptr,
+                decomp_pauli_row,
+                decomp_phase);
+
+            // add table row phase
+            const Bit table_row_sign = *table_row_ptr.get_sign_ptr();
+            decomp_phase += static_cast<CudaPhs>(table_row_sign) * 2;
         }
     }
 }
 
-static __global__
-void kernel_compute_decomposed_phase(
-    const Qid shots_n,
-    const Qid qubits_n,
-    const CudaBit *table, // [shots_n, rows_n, cols_n]
-    const CudaBit *decomp_bits, // [shots_n, rows_n]
-    CudaBit *const decomp_pauli, // [shots_n, rows_n]
-    CudaPhs *const decomp_phase // [shots_n]
+void cuda_compute_decomposed_phase(
+    cudaStream_t const stream,
+    ShotsStatePtr const shots_state_ptr
 ) {
-    const Qid rows_n = 2 * qubits_n;
-    const Qid cols_n = 2 * qubits_n + 1;
-
-    const unsigned int global_threads_n = shots_n;
-    const unsigned int global_thread_i = get_global_thread_i();
-    if (global_thread_i >= global_threads_n) return;
-
-    const unsigned int shot_i = global_thread_i;
-    const CudaBit *shot_table = table + (shot_i * rows_n * cols_n);
-    const CudaBit *shot_decomp_bits = decomp_bits + (shot_i * rows_n);
-    CudaBit *const shot_decomp_pauli = decomp_pauli + (shot_i * rows_n);
-    CudaPhs *const shot_decomp_phase = decomp_phase + (shot_i);
-
-    shot_compute_decomposed_phase(
-        qubits_n, shot_table, shot_decomp_bits, shot_decomp_pauli, shot_decomp_phase);
-}
-
-cudaError_t cuda_compute_decomposed_phase(
-    const Qid shots_n,
-    const Qid qubits_n,
-    const CudaBit *table,
-    const CudaBit *decomp_bits,
-    CudaBit *const decomp_pauli,
-    CudaPhs *const decomp_phase,
-    cudaStream_t stream
-) {
-    const Qid rows_n = 2 * qubits_n;
-
-    cudaError_t err = cudaSuccess;
-
-    // initialize decomp_pauli
-    const size_t decomp_pauli_bytes_n = shots_n * rows_n * sizeof(CudaBit);
-    err = cudaMemsetAsync(decomp_pauli, 0, decomp_pauli_bytes_n, stream);
-    if (err != cudaSuccess) return err;
-
-    // initialize decomp_phase
-    const size_t decomp_phase_bytes_n = shots_n * sizeof(CudaPhs);
-    err = cudaMemsetAsync(decomp_phase, 0, decomp_phase_bytes_n, stream);
-    if (err != cudaSuccess) return err;
-
-    const unsigned int global_threads_n = shots_n;
-    const unsigned int block_threads_n = default_block_threads_n;
-    const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
-    kernel_compute_decomposed_phase<<<blocks_n,block_threads_n,0,stream>>>
-        (shots_n, qubits_n, table, decomp_bits, decomp_pauli, decomp_phase);
-
-    return cudaSuccess;
+    const Sid shots_n = shots_state_ptr.shots_n;
+    cuda_dims_op<ComputeDecomposedPhaseArgs, 1, op_compute_decomposed_phase>
+        (stream, {shots_state_ptr}, dimsof(shots_n));
 }
