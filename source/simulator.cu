@@ -1,35 +1,25 @@
 #include <cuda_runtime.h>
 #include "./simulator.hpp"
-#include "./utils/dimsop.cuh"
+#include "./dataops.cuh"
 
 using namespace StnCuda;
 
+struct InitTableArgs {};
+
 static __device__
-void op_init_table(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
-    const Sid shot_i = dims_idx.get<0>();
-    const Qid row_i = dims_idx.get<1>();
-
-    Bit *ptr = shots_state_ptr
-        .get_shot_state_ptr(shot_i)
-        .get_table_ptr()
-        .get_row_ptr(row_i)
-        .get_pauli_ptr()
-        .get_ptr(row_i);
-
+void op_init_table(const CudaQid row_i, const TableRowPtr table_row_ptr, InitTableArgs) {
+    Qid const col_i = row_i;
+    Bit *const ptr = table_row_ptr.get_pauli_ptr().get_ptr(col_i);
     *ptr = true;
 }
 
-static
+static __host__
 void cuda_init_table(
     cudaStream_t const stream,
     ShotsStatePtr const shots_state_ptr
 ) {
-    const CudaSid shots_n = shots_state_ptr.shots_n;
-    const CudaQid qubits_n = shots_state_ptr.qubits_n;
-    const CudaQid rows_n = 2 * qubits_n;
-
-    cuda_dims_op<ShotsStatePtr, 2, op_init_table>
-        (stream, shots_state_ptr, dimsof(shots_n, rows_n));
+    cuda_shots_table_rows_op<InitTableArgs, op_init_table>
+        (stream, shots_state_ptr, InitTableArgs{});
 }
 
 cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const map_limit) noexcept {
