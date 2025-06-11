@@ -1,7 +1,5 @@
 #include "cstdio"
-#include "../source/decompose.hpp"
-#include "../source/simulator.hpp"
-#include "./utils/print.hpp"
+#include "./print.hpp"
 
 using namespace StnCuda;
 

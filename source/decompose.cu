@@ -1,6 +1,6 @@
 #include "./decompose.hpp"
 #include "./simulator.hpp"
-#include "./utils/thread.cuh"
+#include "./threads.cuh"
 
 using namespace StnCuda;
 

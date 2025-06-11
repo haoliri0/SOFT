@@ -1,6 +1,6 @@
 #include <cuda_runtime.h>
 #include "simulator.hpp"
-#include "./utils/dimsop.cuh"
+#include "dimsop.cuh"
 
 using namespace StnCuda;
 

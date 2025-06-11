@@ -1,7 +1,7 @@
-#ifndef STN_CUDA_UTILS_DIMSOP_CUH
-#define STN_CUDA_UTILS_DIMSOP_CUH
+#ifndef STN_CUDA_DIMSOP_CUH
+#define STN_CUDA_DIMSOP_CUH
 
-#include "./thread.cuh"
+#include "./threads.cuh"
 
 template<typename Item, unsigned int _n>
 struct Array {
