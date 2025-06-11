@@ -29,7 +29,7 @@ void cuda_initialize_shots_table(
     const CudaQid rows_n = 2 * qubits_n;
 
     cuda_dims_op<ShotsStatePtr, 2, initialize_table_op>
-        (stream, shots_state_ptr, shots_n, rows_n);
+        (stream, shots_state_ptr, Dims<2>::of(shots_n, rows_n));
 }
 
 cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const map_limit) noexcept {
