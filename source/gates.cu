@@ -1,18 +1,24 @@
 #include <cuda_runtime.h>
-
-#include "dataops.cuh"
 #include "simulator.hpp"
+#include "./utils/dimsop.cuh"
 
 using namespace StnCuda;
 
 
 struct ApplyGate1Args {
+    ShotsStatePtr ptr;
     Qid target;
 };
 
 template<void (*op)(Bit &s, Bit &x, Bit &z)>
 static __device__
-void op_apply_gate1(const CudaQid, const TableRowPtr ptr, const ApplyGate1Args args) {
+void op_apply_gate1(const ApplyGate1Args args, const DimsIdx<2> dims_idx) {
+    Sid const shot_i = dims_idx.get<0>();
+    Qid const row_i = dims_idx.get<1>();
+    TableRowPtr const ptr = args.ptr
+        .get_shot_state_ptr(shot_i)
+        .get_table_ptr()
+        .get_row_ptr(row_i);
     op(*ptr.get_sign_ptr(),
         *ptr.get_pauli_ptr().get_x_ptr(args.target),
         *ptr.get_pauli_ptr().get_z_ptr(args.target));
@@ -25,19 +31,28 @@ void cuda_apply_gate1_op(
     ShotsStatePtr const shots_state_ptr,
     Qid const target
 ) {
-    cuda_shots_table_rows_op<ApplyGate1Args, op_apply_gate1<op>>
-        (stream, shots_state_ptr, {target});
+    const Sid shots_n = shots_state_ptr.shots_n;
+    const Qid rows_n = TablePtr::get_rows_n(shots_state_ptr.qubits_n);
+    cuda_dims_op<ApplyGate1Args, 2, op_apply_gate1<op>>
+        (stream, {shots_state_ptr, target}, dimsof(shots_n, rows_n));
 }
 
 
 struct ApplyGate2Args {
+    ShotsStatePtr ptr;
     Qid control;
     Qid target;
 };
 
 template<void (*op)(Bit &s, Bit &cx, Bit &cz, Bit &tx, Bit &tz)>
 static __device__
-void op_apply_gate2(const CudaQid, const TableRowPtr ptr, const ApplyGate2Args args) {
+void op_apply_gate2(const ApplyGate2Args args, const DimsIdx<2> dims_idx) {
+    Sid const shot_i = dims_idx.get<0>();
+    Qid const row_i = dims_idx.get<1>();
+    TableRowPtr const ptr = args.ptr
+        .get_shot_state_ptr(shot_i)
+        .get_table_ptr()
+        .get_row_ptr(row_i);
     op(*ptr.get_sign_ptr(),
         *ptr.get_pauli_ptr().get_x_ptr(args.control),
         *ptr.get_pauli_ptr().get_z_ptr(args.control),
@@ -53,8 +68,10 @@ void cuda_apply_gate2_op(
     Qid const control,
     Qid const target
 ) {
-    cuda_shots_table_rows_op<ApplyGate2Args, op_apply_gate2<op>>
-        (stream, shots_state_ptr, {control, target});
+    const Sid shots_n = shots_state_ptr.shots_n;
+    const Qid rows_n = TablePtr::get_rows_n(shots_state_ptr.qubits_n);
+    cuda_dims_op<ApplyGate2Args, 2, op_apply_gate2<op>>
+        (stream, {shots_state_ptr, control, target}, dimsof(shots_n, rows_n));
 }
 
 
