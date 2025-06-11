@@ -13,15 +13,6 @@ void op_init_table(const CudaQid row_i, const TableRowPtr table_row_ptr, InitTab
     *ptr = true;
 }
 
-static __host__
-void cuda_init_table(
-    cudaStream_t const stream,
-    ShotsStatePtr const shots_state_ptr
-) {
-    cuda_shots_table_rows_op<InitTableArgs, op_init_table>
-        (stream, shots_state_ptr, InitTableArgs{});
-}
-
 cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const map_limit) noexcept {
     cudaError_t err = cudaSuccess;
     do {
@@ -39,7 +30,9 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         // initialize state
         err = cudaMemsetAsync(this->shots_state_ptr.ptr, 0, state_bytes_n, this->stream);
         if (err != cudaSuccess) break;
-        cuda_init_table(this->stream, this->shots_state_ptr);
+
+        cuda_shots_table_rows_op<InitTableArgs, op_init_table>
+            (this->stream, this->shots_state_ptr, InitTableArgs{});
 
         // wait for async operations to complete
         err = cudaStreamSynchronize(this->stream);
