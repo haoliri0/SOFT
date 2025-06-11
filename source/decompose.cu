@@ -61,13 +61,13 @@ void cuda_compute_decomposed_bits(
 
 static __device__
 void compute_multiply_pauli_phase(
-    const CudaBit gate0_x,
-    const CudaBit gate0_z,
-    const CudaBit gate1_x,
-    const CudaBit gate1_z,
-    CudaPhs &phase
+    const Bit gate0_x,
+    const Bit gate0_z,
+    const Bit gate1_x,
+    const Bit gate1_z,
+    Phs &phase
 ) {
-    const CudaPhs pauli_phase[] = {
+    const Phs pauli_phase[] = {
         0, // 00 00, I I = I
         0, // 00 01, I Z = Z
         0, // 00 10, I X = X
@@ -99,16 +99,16 @@ void compute_multiply_pauli_string(
     const PauliRowPtr pauli_row_ptr0,
     const PauliRowPtr pauli_row_ptr1,
     PauliRowPtr const pauli_row_ptr,
-    CudaPhs &phase
+    Phs &phase
 ) {
     const Qid qubits_n = pauli_row_ptr.qubits_n;
     for (int qubit_i = 0; qubit_i < qubits_n; qubit_i++) {
-        const CudaBit gate0_x = *pauli_row_ptr0.get_x_ptr(qubit_i);
-        const CudaBit gate0_z = *pauli_row_ptr0.get_z_ptr(qubit_i);
-        const CudaBit gate1_x = *pauli_row_ptr1.get_x_ptr(qubit_i);
-        const CudaBit gate1_z = *pauli_row_ptr1.get_z_ptr(qubit_i);
-        CudaBit &gate_x = *pauli_row_ptr.get_x_ptr(qubit_i);
-        CudaBit &gate_z = *pauli_row_ptr.get_z_ptr(qubit_i);
+        const Bit gate0_x = *pauli_row_ptr0.get_x_ptr(qubit_i);
+        const Bit gate0_z = *pauli_row_ptr0.get_z_ptr(qubit_i);
+        const Bit gate1_x = *pauli_row_ptr1.get_x_ptr(qubit_i);
+        const Bit gate1_z = *pauli_row_ptr1.get_z_ptr(qubit_i);
+        Bit &gate_x = *pauli_row_ptr.get_x_ptr(qubit_i);
+        Bit &gate_z = *pauli_row_ptr.get_z_ptr(qubit_i);
         compute_multiply_pauli_phase(gate0_x, gate0_z, gate1_x, gate1_z, phase);
         gate_x = gate0_x ^ gate1_x;
         gate_z = gate0_z ^ gate1_z;
@@ -155,7 +155,7 @@ void op_compute_decomposed_phase(const ComputeDecomposedPhaseArgs args, const Di
 
             // add table row phase
             const Bit table_row_sign = *table_row_ptr.get_sign_ptr();
-            decomp_phase += static_cast<CudaPhs>(table_row_sign) * 2;
+            decomp_phase += static_cast<Phs>(table_row_sign) * 2;
         }
     }
 }

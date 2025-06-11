@@ -11,25 +11,25 @@ struct PauliRowPtr {
 
     static __device__ __host__
     size_t compute_bytes_n(const Qid qubits_n) {
-        return 2 * qubits_n * sizeof(CudaBit);
+        return 2 * qubits_n * sizeof(Bit);
     }
 
     __device__ __host__
-    CudaBit *get_ptr(const Qid col_i) const {
-        const size_t offset = col_i * sizeof(CudaBit);
-        return reinterpret_cast<CudaBit*>(ptr + offset);
+    Bit *get_ptr(const Qid col_i) const {
+        const size_t offset = col_i * sizeof(Bit);
+        return reinterpret_cast<Bit*>(ptr + offset);
     }
 
     __device__ __host__
-    CudaBit *get_x_ptr(const Qid qubit_i) const {
-        const size_t offset = qubit_i * sizeof(CudaBit);
-        return reinterpret_cast<CudaBit*>(ptr + offset);
+    Bit *get_x_ptr(const Qid qubit_i) const {
+        const size_t offset = qubit_i * sizeof(Bit);
+        return reinterpret_cast<Bit*>(ptr + offset);
     }
 
     __device__ __host__
-    CudaBit *get_z_ptr(const Qid qubit_i) const {
-        const size_t offset = (qubits_n + qubit_i) * sizeof(CudaBit);
-        return reinterpret_cast<CudaBit*>(ptr + offset);
+    Bit *get_z_ptr(const Qid qubit_i) const {
+        const size_t offset = (qubits_n + qubit_i) * sizeof(Bit);
+        return reinterpret_cast<Bit*>(ptr + offset);
     }
 };
 
@@ -44,7 +44,7 @@ struct TableRowPtr {
 
     static __device__ __host__
     size_t _compute_sign_bytes_n() {
-        return sizeof(CudaBit);
+        return sizeof(Bit);
     }
 
     static __device__ __host__
@@ -60,9 +60,9 @@ struct TableRowPtr {
     }
 
     __device__ __host__
-    CudaBit *get_sign_ptr() const {
+    Bit *get_sign_ptr() const {
         const size_t offset = _compute_pauli_bytes_n(qubits_n);
-        return reinterpret_cast<CudaBit*>(ptr + offset);
+        return reinterpret_cast<Bit*>(ptr + offset);
     }
 };
 
@@ -82,7 +82,7 @@ struct TablePtr {
 
     static __device__ __host__
     size_t compute_bytes_n(const Qid qubits_n) {
-        const CudaQid rows_n = get_rows_n(qubits_n);
+        const Qid rows_n = get_rows_n(qubits_n);
         return rows_n * _compute_row_bytes_n(qubits_n);
     }
 
@@ -99,26 +99,26 @@ struct TablePtr {
 };
 
 struct DecompPtr {
-    CudaQid qubits_n;
+    Qid qubits_n;
     char *ptr;
 
     static __device__ __host__
-    size_t _compute_bits_bytes_n(const CudaQid qubits_n) {
-        return 2 * qubits_n * sizeof(CudaBit);
+    size_t _compute_bits_bytes_n(const Qid qubits_n) {
+        return 2 * qubits_n * sizeof(Bit);
     }
 
     static __device__ __host__
-    size_t _compute_pauli_bytes_n(const CudaQid qubits_n) {
+    size_t _compute_pauli_bytes_n(const Qid qubits_n) {
         return PauliRowPtr::compute_bytes_n(qubits_n);
     }
 
     static __device__ __host__
     size_t _compute_phase_bytes_n() {
-        return sizeof(CudaPhs);
+        return sizeof(Phs);
     }
 
     static __device__ __host__
-    size_t compute_bytes_n(const CudaQid qubits_n) {
+    size_t compute_bytes_n(const Qid qubits_n) {
         return
             _compute_bits_bytes_n(qubits_n) +
             _compute_pauli_bytes_n(qubits_n) +
@@ -126,8 +126,8 @@ struct DecompPtr {
     }
 
     __device__ __host__
-    CudaBit *get_bits_ptr() const {
-        return reinterpret_cast<CudaBit*>(ptr);
+    Bit *get_bits_ptr() const {
+        return reinterpret_cast<Bit*>(ptr);
     }
 
     __device__ __host__
@@ -137,30 +137,30 @@ struct DecompPtr {
     }
 
     __device__ __host__
-    CudaPhs *get_phase_ptr() const {
+    Phs *get_phase_ptr() const {
         const size_t offset =
             _compute_bits_bytes_n(qubits_n) +
             _compute_pauli_bytes_n(qubits_n);
-        return reinterpret_cast<CudaPhs*>(ptr + offset);
+        return reinterpret_cast<Phs*>(ptr + offset);
     }
 };
 
 struct ShotStatePtr {
-    CudaQid qubits_n;
+    Qid qubits_n;
     char *ptr;
 
     static __device__ __host__
-    size_t _compute_table_bytes_n(const CudaQid qubits_n) {
+    size_t _compute_table_bytes_n(const Qid qubits_n) {
         return TablePtr::compute_bytes_n(qubits_n);
     }
 
     static __device__ __host__
-    size_t _compute_decomp_bytes_n(const CudaQid qubits_n) {
+    size_t _compute_decomp_bytes_n(const Qid qubits_n) {
         return DecompPtr::compute_bytes_n(qubits_n);
     }
 
     static __device__ __host__
-    size_t compute_bytes_n(const CudaQid qubits_n) {
+    size_t compute_bytes_n(const Qid qubits_n) {
         return
             _compute_table_bytes_n(qubits_n) +
             _compute_decomp_bytes_n(qubits_n);
@@ -179,17 +179,17 @@ struct ShotStatePtr {
 };
 
 struct ShotsStatePtr {
-    CudaSid shots_n;
-    CudaQid qubits_n;
+    Sid shots_n;
+    Qid qubits_n;
     char *ptr;
 
     static __device__ __host__
-    size_t _compute_shot_bytes_n(const CudaQid qubits_n) {
+    size_t _compute_shot_bytes_n(const Qid qubits_n) {
         return ShotStatePtr::compute_bytes_n(qubits_n);
     }
 
     static __device__ __host__
-    size_t compute_bytes_n(const CudaSid shots_n, const CudaQid qubits_n) {
+    size_t compute_bytes_n(const Sid shots_n, const Qid qubits_n) {
         return shots_n * _compute_shot_bytes_n(qubits_n);
     }
 
