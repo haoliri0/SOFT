@@ -15,26 +15,13 @@ void test_simulator() {
         err = simulator.create(2, 2, 4);
         if (err != cudaSuccess) break;
 
-        err = simulator.apply_x(0);
-        if (err != cudaSuccess) break;
-
-        err = simulator.apply_y(0);
-        if (err != cudaSuccess) break;
-
-        err = simulator.apply_z(0);
-        if (err != cudaSuccess) break;
-
-        err = simulator.apply_h(0);
-        if (err != cudaSuccess) break;
-
-        err = simulator.apply_s(0);
-        if (err != cudaSuccess) break;
-
-        err = simulator.apply_sdg(0);
-        if (err != cudaSuccess) break;
-
-        err = simulator.apply_cx(0, 1);
-        if (err != cudaSuccess) break;
+        simulator.apply_x(0);
+        simulator.apply_y(0);
+        simulator.apply_z(0);
+        simulator.apply_h(0);
+        simulator.apply_s(0);
+        simulator.apply_sdg(0);
+        simulator.apply_cx(0, 1);
 
         print_simulator(simulator);
     } while (false);
