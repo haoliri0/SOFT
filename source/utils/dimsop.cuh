@@ -3,34 +3,48 @@
 
 #include "./thread.cuh"
 
-template<unsigned int dims_n>
-struct DimsIdx {
-    unsigned int idx;
-    DimsIdx<dims_n - 1> sub_dims_idx;
+template<typename Item, unsigned int _n>
+struct Array {
+    Item item;
+    Array<Item, _n - 1> tail;
 
-    static
-    __device__ __host__
+    static __device__ __host__
     unsigned int n() {
-        return dims_n;
+        return _n;
     }
 
-    template<unsigned int di>
+    template<unsigned int _i>
     __device__ __host__
-    unsigned int get() const {
-        if constexpr (di == 0)
-            return idx;
+    Item get() const {
+        if constexpr (_i == 0)
+            return item;
         else
-            return sub_dims_idx.template get<di - 1>();
+            return tail.template get<_i - 1>();
+    }
+
+    template<typename... Items>
+    static __device__ __host__
+    Array of(Item _item, Items... _items) {
+        return {_item, Array<Item, _n - 1>::of(_items...)};
     }
 };
 
-template<>
-struct DimsIdx<0> {
-    static
+template<typename Item>
+struct Array<Item, 0u> {
+    static __device__ __host__
     unsigned int n() {
         return 0;
     }
+
+    static __device__ __host__
+    Array of() {
+        return {};
+    }
 };
+
+
+template<unsigned int dims_n>
+using DimsIdx = Array<unsigned int, dims_n>;
 
 
 static __device__ __host__
