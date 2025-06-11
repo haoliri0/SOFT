@@ -3,30 +3,13 @@
 
 #include<cuda_runtime.h>
 #include "./datatype.cuh"
+#include "./datastruct.cuh"
 
 namespace StnCuda {
 
 struct Simulator {
-    Sid shots_n;
-    Qid qubits_n;
-    Kid map_limit;
     cudaStream_t stream = nullptr;
-    CudaBit *table = nullptr; // shape=[shots_n, 2*qubits_n, 2*qubits_n+1], dtype=bool
-    CudaKid *map_n = nullptr; // shape=[shots_n], dtype=index
-    CudaAid *map_keys = nullptr; // shape=[shots_n, map_limit], dtype=index
-    CudaAmp *map_values = nullptr; // shape=[shots_n, map_limit], dtype=complex
-
-    // work memory for decomposition: destabilizer, stabilizer bits
-    // shape=[shots_n, 2*qubits_n], dtype=bool
-    CudaBit *decomp_bits = nullptr;
-
-    // work memory for decomposition: pauli operators
-    // shape=[shots_n, 2*qubits_n], dtype=bit
-    CudaBit *decomp_pauli = nullptr;
-
-    // work memory for decomposition: phase
-    // shape=[shots_n], dtype=byte (only use 2 bits)
-    CudaPhs *decomp_phase = nullptr;
+    ShotsStatePtr shots_state_ptr = {0, 0, nullptr};
 
 
     cudaError_t create(Sid shots_n, Qid qubits_n, Aid map_limit) noexcept;
