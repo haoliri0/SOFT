@@ -16,7 +16,7 @@ struct TableRowsOpArgs {
 
 template<typename Args, void (*op)(CudaQid row_i, TableRowPtr ptr, Args args)>
 static __device__
-void shots_table_rows_op(
+void op_shots_table_rows(
     TableRowsOpArgs<Args> const args,
     DimsIdx<2> const dims_idx
 ) {
@@ -38,7 +38,7 @@ void cuda_shots_table_rows_op(
 ) {
     const Sid shots_n = shots_state_ptr.shots_n;
     const Qid rows_n = TablePtr::get_rows_n(shots_state_ptr.qubits_n);
-    cuda_dims_op<TableRowsOpArgs<Args>, 2, shots_table_rows_op<Args, op>>
+    cuda_dims_op<TableRowsOpArgs<Args>, 2, op_shots_table_rows<Args, op>>
         (stream, {shots_state_ptr, args}, dimsof(shots_n, rows_n));
 }
 
