@@ -42,12 +42,24 @@ struct Array<Item, 0u> {
     }
 };
 
+template<typename Item, typename... Items>
+static __device__ __host__
+Array<Item, sizeof...(Items)> arrayof(Items... items) {
+    return Array<Item, sizeof...(Items)>::of(items...);
+}
+
 
 template<unsigned int dims_n>
 using Dims = Array<unsigned int, dims_n>;
 
 template<unsigned int dims_n>
 using DimsIdx = Array<unsigned int, dims_n>;
+
+template<typename... Items>
+static __device__ __host__
+Dims<sizeof...(Items)> dimsof(Items... items) {
+    return Dims<sizeof...(Items)>::of(items...);
+}
 
 
 static __device__ __host__
