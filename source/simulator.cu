@@ -5,7 +5,7 @@
 using namespace StnCuda;
 
 static __device__
-void initialize_table_op(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
+void op_init_table(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
     const Sid shot_i = dims_idx.get<0>();
     const Qid row_i = dims_idx.get<1>();
 
@@ -20,7 +20,7 @@ void initialize_table_op(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> d
 }
 
 static
-void cuda_initialize_shots_table(
+void cuda_init_table(
     cudaStream_t const stream,
     ShotsStatePtr const shots_state_ptr
 ) {
@@ -28,7 +28,7 @@ void cuda_initialize_shots_table(
     const CudaQid qubits_n = shots_state_ptr.qubits_n;
     const CudaQid rows_n = 2 * qubits_n;
 
-    cuda_dims_op<ShotsStatePtr, 2, initialize_table_op>
+    cuda_dims_op<ShotsStatePtr, 2, op_init_table>
         (stream, shots_state_ptr, dimsof(shots_n, rows_n));
 }
 
@@ -49,7 +49,7 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Aid const m
         // initialize state
         err = cudaMemsetAsync(this->shots_state_ptr.ptr, 0, state_bytes_n, this->stream);
         if (err != cudaSuccess) break;
-        cuda_initialize_shots_table(this->stream, this->shots_state_ptr);
+        cuda_init_table(this->stream, this->shots_state_ptr);
 
         // wait for async operations to complete
         err = cudaStreamSynchronize(this->stream);
