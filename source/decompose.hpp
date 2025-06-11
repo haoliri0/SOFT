@@ -5,11 +5,9 @@
 
 using namespace StnCuda;
 
-void compute_decomposed_bits(
-    Qid shots_n,
-    Qid qubits_n,
-    const CudaBit *table,
-    CudaBit *decomp_bits,
+void cuda_compute_decomposed_bits(
+    cudaStream_t stream,
+    ShotsStatePtr shots_state_ptr,
     Qid target
 );
 

@@ -1,5 +1,6 @@
 #include "cstdio"
 #include "./print.hpp"
+#include "../source/decompose.hpp"
 
 using namespace StnCuda;
 
@@ -41,11 +42,9 @@ void test_decompose() {
         if (err != cudaSuccess) break;
 
         constexpr Qid target = 0;
-        compute_decomposed_bits(
-            simulator.shots_n,
-            simulator.qubits_n,
-            simulator.table,
-            simulator.decomp_bits,
+        cuda_compute_decomposed_bits(
+            simulator.stream,
+            simulator.shots_state_ptr,
             target);
 
         err = cuda_compute_decomposed_phase(
