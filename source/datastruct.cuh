@@ -71,7 +71,7 @@ struct TablePtr {
     char *ptr;
 
     static __device__ __host__
-    Qid _rows_n(const Qid qubits_n) {
+    Qid get_rows_n(const Qid qubits_n) {
         return 2 * qubits_n;
     }
 
@@ -82,13 +82,13 @@ struct TablePtr {
 
     static __device__ __host__
     size_t compute_bytes_n(const Qid qubits_n) {
-        const CudaQid rows_n = _rows_n(qubits_n);
+        const CudaQid rows_n = get_rows_n(qubits_n);
         return rows_n * _compute_row_bytes_n(qubits_n);
     }
 
     __device__ __host__
-    Qid rows_n() const {
-        return _rows_n(qubits_n);
+    Qid get_rows_n() const {
+        return get_rows_n(qubits_n);
     }
 
     __device__ __host__

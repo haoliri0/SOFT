@@ -68,7 +68,7 @@ void print_table_row(const TableRowPtr ptr) {
 static
 void print_table(const TablePtr ptr) {
     printf("\t\ttable:\n");
-    for (int row_i = 0; row_i < ptr.rows_n(); ++row_i) {
+    for (int row_i = 0; row_i < ptr.get_rows_n(); ++row_i) {
         printf("\t\t\t");
         print_table_row(ptr.get_row_ptr(row_i));
         printf("\n");
