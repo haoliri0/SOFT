@@ -17,19 +17,19 @@ struct PauliRowPtr {
     __device__ __host__
     CudaBit *get_ptr(const Qid qubit_i) const {
         const size_t offset = qubit_i * sizeof(CudaBit);
-        return reinterpret_cast<CudaBit *>(ptr + offset);
+        return reinterpret_cast<CudaBit*>(ptr + offset);
     }
 
     __device__ __host__
     CudaBit *get_x_ptr(const Qid qubit_i) const {
         const size_t offset = qubit_i * sizeof(CudaBit);
-        return reinterpret_cast<CudaBit *>(ptr + offset);
+        return reinterpret_cast<CudaBit*>(ptr + offset);
     }
 
     __device__ __host__
     CudaBit *get_z_ptr(const Qid qubit_i) const {
         const size_t offset = (qubits_n + qubit_i) * sizeof(CudaBit);
-        return reinterpret_cast<CudaBit *>(ptr + offset);
+        return reinterpret_cast<CudaBit*>(ptr + offset);
     }
 };
 
@@ -62,7 +62,7 @@ struct TableRowPtr {
     __device__ __host__
     CudaBit *get_sign_ptr() const {
         const size_t offset = _compute_pauli_bytes_n(qubits_n);
-        return reinterpret_cast<CudaBit *>(ptr + offset);
+        return reinterpret_cast<CudaBit*>(ptr + offset);
     }
 };
 
@@ -71,14 +71,24 @@ struct TablePtr {
     char *ptr;
 
     static __device__ __host__
+    Qid _rows_n(const Qid qubits_n) {
+        return 2 * qubits_n;
+    }
+
+    static __device__ __host__
     size_t _compute_row_bytes_n(const Qid qubits_n) {
         return TableRowPtr::compute_bytes_n(qubits_n);
     }
 
     static __device__ __host__
     size_t compute_bytes_n(const Qid qubits_n) {
-        const CudaQid rows_n = 2 * qubits_n;
+        const CudaQid rows_n = _rows_n(qubits_n);
         return rows_n * _compute_row_bytes_n(qubits_n);
+    }
+
+    __device__ __host__
+    Qid rows_n() const {
+        return _rows_n(qubits_n);
     }
 
     __device__ __host__
@@ -117,7 +127,7 @@ struct DecompPtr {
 
     __device__ __host__
     CudaBit *get_bits_ptr() const {
-        return reinterpret_cast<CudaBit *>(ptr);
+        return reinterpret_cast<CudaBit*>(ptr);
     }
 
     __device__ __host__
@@ -131,7 +141,7 @@ struct DecompPtr {
         const size_t offset =
             _compute_bits_bytes_n(qubits_n) +
             _compute_pauli_bytes_n(qubits_n);
-        return reinterpret_cast<CudaPhs *>(ptr + offset);
+        return reinterpret_cast<CudaPhs*>(ptr + offset);
     }
 };
 
