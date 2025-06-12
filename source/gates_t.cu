@@ -28,6 +28,7 @@ Bit compute_sign(Aid key, const Bit *stab_bits, const Qid qubits_n) {
     return sign;
 }
 
+template<bool dagger>
 static __device__
 void op_update_amps_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
     const Sid shot_i = dims_idx.get<0>();
@@ -61,7 +62,7 @@ void op_update_amps_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
 
     const Bit sign_bit = compute_sign(src_aid, stab_bits, qubits_n);
     const Amp sign_amp = sign_bit ? 1 : -1;
-    const Amp coef = {0, -sinf(M_PI / 8)};
+    const Amp coef = {0, -sinf(M_PI / 8) * (dagger ? -1 : 1)};
 
     dst_aid = src_aid ^ bits_to_int(destab_bits, qubits_n);
     dst_amp = src_amp * coef * sign_amp;
@@ -93,6 +94,7 @@ void op_update_amps_half0(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
     src_amp *= coef;
 }
 
+template<bool dagger>
 static __host__
 void cuda_update_amps_half1(
     cudaStream_t const stream,
@@ -100,7 +102,7 @@ void cuda_update_amps_half1(
 ) {
     const Sid shots_n = shots_state_ptr.shots_n;
     const Kid amps_m = shots_state_ptr.amps_m;
-    cuda_dims_op<ShotsStatePtr, 2, op_update_amps_half1>
+    cuda_dims_op<ShotsStatePtr, 2, op_update_amps_half1<dagger>>
         (stream, shots_state_ptr, dimsof(shots_n, amps_m / 2));
 }
 
@@ -167,17 +169,31 @@ void cuda_merge_amps_halves(
 }
 
 
-void Simulator::apply_t(const Qid target) const noexcept {
-    // T = cos(pi/8) I - i sin(pi/8) Z
+template<bool dagger>
+static __host__
+void cuda_apply_t(
+    cudaStream_t const stream,
+    ShotsStatePtr const shots_state_ptr,
+    Qid const target
+) {
+    // T = cos(pi/8) I ∓ i sin(pi/8) Z
 
     // 先计算 Z 部分
     cuda_compute_decomposed_bits(stream, shots_state_ptr, target);
     cuda_compute_decomposed_phase(stream, shots_state_ptr);
-    cuda_update_amps_half1(stream, shots_state_ptr);
+    cuda_update_amps_half1<dagger>(stream, shots_state_ptr);
 
     // 再计算 I 部分
     cuda_update_amps_half0(stream, shots_state_ptr);
 
     // 将两部分合并
     cuda_merge_amps_halves(stream, shots_state_ptr);
+}
+
+void Simulator::apply_t(const Qid target) const noexcept {
+    cuda_apply_t<false>(stream, shots_state_ptr, target);
+}
+
+void Simulator::apply_tdg(const Qid target) const noexcept {
+    cuda_apply_t<true>(stream, shots_state_ptr, target);
 }

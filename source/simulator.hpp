@@ -34,8 +34,9 @@ struct Simulator {
 
     void apply_t(Qid target) const noexcept;
 
+    void apply_tdg(Qid target) const noexcept;
+
     // void apply_reset(int qubit);
-    // void apply_tdg(int qubit);
 };
 
 }
