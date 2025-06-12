@@ -4,16 +4,13 @@
 
 using namespace StnCuda;
 
-struct InitTableArgs {
-    ShotsStatePtr ptr;
-};
 
 static __device__
-void op_init_table(const InitTableArgs args, const DimsIdx<2> dims_idx) {
+void op_init_table(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
     Qid const row_i = dims_idx.get<1>();
     Qid const col_i = row_i;
-    Bit *const ptr = args.ptr
+    Bit *const ptr = shots_state_ptr
         .get_shot_state_ptr(shot_i)
         .get_table_ptr()
         .get_row_ptr(row_i)
@@ -26,8 +23,8 @@ static __host__
 void cuda_init_table(cudaStream_t const stream, const ShotsStatePtr shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
     const Qid rows_n = TablePtr::get_rows_n(shots_state_ptr.qubits_n);
-    cuda_dims_op<InitTableArgs, 2, op_init_table>
-        (stream, {shots_state_ptr}, dimsof(shots_n, rows_n));
+    cuda_dims_op<ShotsStatePtr, 2, op_init_table>
+        (stream, shots_state_ptr, dimsof(shots_n, rows_n));
 }
 
 cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Kid const amps_m) noexcept {
