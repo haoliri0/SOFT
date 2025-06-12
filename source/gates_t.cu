@@ -5,6 +5,7 @@
 
 using namespace StnCuda;
 
+constexpr Flt epsilon = 1e-7;
 
 template<bool dagger>
 static __device__
@@ -131,6 +132,9 @@ void op_merge_entries_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<
         const Bst src_bst = *entries_ptr.get_half1_bst_ptr(src_entry_i);
         const Amp src_amp = *entries_ptr.get_half1_amp_ptr(src_entry_i);
 
+        //  忽略接近 0 的条目
+        if (cuda::std::abs(src_amp) < epsilon) continue;
+
         // 在 half0 找 bst 对应的条目
         Eid dst_entry_i = 0;
         for (; dst_entry_i < entries_n; ++dst_entry_i) {
@@ -154,6 +158,41 @@ void op_merge_entries_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<
 
     // 如果有新的 entry 就修改 entries_n
     if (entries_add_n > 0) entries_n += entries_add_n;
+
+    // 清理接近 0 的条目
+    Eid entries_del_n = 0;
+    for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
+        const Bst src_bst = *entries_ptr.get_bst_ptr(entry_i);
+        const Amp src_amp = *entries_ptr.get_amp_ptr(entry_i);
+
+        if (cuda::std::abs(src_amp) < epsilon) {
+            entries_del_n += 1;
+            continue;
+        }
+
+        if (entries_del_n == 0)
+            continue;
+
+        Bst &dst_bst = *entries_ptr.get_bst_ptr(entry_i - entries_del_n);
+        Amp &dst_amp = *entries_ptr.get_amp_ptr(entry_i - entries_del_n);
+        dst_bst = src_bst;
+        dst_amp = src_amp;
+    }
+
+    // 如果有被清理的 entry 就修改 entries_n
+    if (entries_del_n > 0) entries_n -= entries_del_n;
+
+    // 重新归一化
+    Flt prob = 0;
+    for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
+        const Amp amp = *entries_ptr.get_amp_ptr(entry_i);
+        prob += cuda::std::norm(amp);
+    }
+    const Flt scale = 1 / sqrt(prob);
+    for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
+        Amp &amp = *entries_ptr.get_amp_ptr(entry_i);
+        amp *= scale;
+    }
 }
 
 static __host__
