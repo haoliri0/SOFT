@@ -110,13 +110,15 @@ void print_decomp(const DecompPtr ptr) {
 static
 void print_amps(const AmpsMapPtr ptr) {
     printf("\t\tamplitudes:\n");
-    const Kid amps_n = *ptr.get_entries_n_ptr();
+    const Kid amps_n = *ptr.get_num_ptr();
+    printf("\t\t\t(amps_n = %u)\n", amps_n);
     for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const auto [key, value] = *ptr.get_entry_ptr(amp_i);
+        const Aid aid = *(ptr.get_aids_ptr() + amp_i);
+        const Amp amp = *(ptr.get_amps_ptr() + amp_i);
         printf("\t\t\t");
-        print_int_bits(key, ptr.qubits_n);
+        print_int_bits(aid, ptr.qubits_n);
         printf(": ");
-        print_amplitude(value);
+        print_amplitude(amp);
         printf("\n");
     }
     printf("\n");
