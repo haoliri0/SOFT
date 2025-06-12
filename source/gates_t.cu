@@ -38,7 +38,7 @@ void op_update_amps_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_map_ptr();
 
     const Kid amps_m = amps_map_ptr.amps_m;
-    Kid &amps_n = *amps_map_ptr.get_entries_n_ptr();
+    Kid &amps_n = *amps_map_ptr.get_num_ptr();
     if (amps_n == 0)
         return; // 这个 shot 已经失败，不进行计算
     if (amps_n > amps_m / 2) {
@@ -53,15 +53,18 @@ void op_update_amps_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
     const Bit *destab_bits = decomp_bits;
     const Bit *stab_bits = decomp_bits + qubits_n;
 
-    const AmpEntry src = *amps_map_ptr.get_half0_entry_ptr(amp_i);
-    AmpEntry &dst = *amps_map_ptr.get_half1_entry_ptr(amp_i);
+    // 将后半部分当作工作空间存放计算结果
+    const Kid src_aid = *(amps_map_ptr.get_aids_ptr() + amp_i);
+    const Amp src_amp = *(amps_map_ptr.get_amps_ptr() + amp_i);
+    Kid &dst_aid = *(amps_map_ptr.get_aids_ptr() + amps_m / 2 + amp_i);
+    Amp &dst_amp = *(amps_map_ptr.get_amps_ptr() + amps_m / 2 + amp_i);
 
-    const Bit sign_bit = compute_sign(src.key, stab_bits, qubits_n);
+    const Bit sign_bit = compute_sign(src_aid, stab_bits, qubits_n);
     const Amp sign_amp = sign_bit ? 1 : -1;
     const Amp coef = {0, -sinf(M_PI / 8)};
 
-    dst.key = src.key ^ bits_to_int(destab_bits, qubits_n);
-    dst.value = src.value * coef * sign_amp;
+    dst_aid = src_aid ^ bits_to_int(destab_bits, qubits_n);
+    dst_amp = src_amp * coef * sign_amp;
 }
 
 static __device__
@@ -73,7 +76,7 @@ void op_update_amps_half0(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_map_ptr();
 
     const Kid amps_m = amps_map_ptr.amps_m;
-    Kid &amps_n = *amps_map_ptr.get_entries_n_ptr();
+    Kid &amps_n = *amps_map_ptr.get_num_ptr();
     if (amps_n == 0)
         return; // 这个 shot 已经失败，不进行计算
     if (amps_n > amps_m / 2) {
@@ -83,9 +86,11 @@ void op_update_amps_half0(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
     if (amp_i > amps_n)
         return; // index 超过了 amp 数，不用计算
 
-    AmpEntry &src = *amps_map_ptr.get_half0_entry_ptr(amp_i);
+    // 直接原地修改前半部分
+    Amp &src_amp = *(amps_map_ptr.get_amps_ptr() + amp_i);
+
     const Amp coef = sinf(M_PI / 8);
-    src.value *= coef;
+    src_amp *= coef;
 }
 
 static __host__
@@ -117,30 +122,38 @@ void op_merge_amps_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> 
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_state_ptr(shot_i);
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_map_ptr();
 
-    Kid &entries_n = *amps_map_ptr.get_entries_n_ptr();
-    if (entries_n == 0) return; // 这个 shot 已经失败，不进行计算
+    const Kid amps_m = amps_map_ptr.amps_m;
+    Kid &amps_n = *amps_map_ptr.get_num_ptr();
+    if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
 
     Kid entries_add_n = 0;
-    for (Kid ai1 = 0; ai1 < entries_n; ++ai1) {
-        const AmpEntry entry1 = *amps_map_ptr.get_half1_entry_ptr(ai1);
-        Kid ai0 = 0;
-        for (; ai0 < entries_n; ++ai0) {
-            AmpEntry &entry0 = *amps_map_ptr.get_half0_entry_ptr(ai0);
-            if (entry0.key == entry1.key) {
-                entry0.value += entry1.value;
+    for (Kid src_amp_i = 0; src_amp_i < amps_n; ++src_amp_i) {
+        const Kid src_aid = *(amps_map_ptr.get_aids_ptr() + amps_m / 2 + src_amp_i);
+        const Amp src_amp = *(amps_map_ptr.get_amps_ptr() + amps_m / 2 + src_amp_i);
+
+        // 在 half0 找 aid 对应的条目
+        Kid dst_amp_i = 0;
+        for (; dst_amp_i < amps_n; ++dst_amp_i) {
+            const Kid dst_aid = *(amps_map_ptr.get_aids_ptr() + dst_amp_i);
+            Amp &dst_amp = *(amps_map_ptr.get_amps_ptr() + dst_amp_i);
+            if (dst_aid == src_aid) {
+                dst_amp += src_amp;
                 break;
             }
         }
-        if (ai0 == entries_n) {
-            // 在 half0 找不到对应的 key 就加到 half0 的后面
-            AmpEntry &entry_add = *amps_map_ptr.get_entry_ptr(entries_n + entries_add_n);
-            entry_add = entry1;
+
+        // 在 half0 找不到 aid 对应的条目，就加到的后面
+        if (dst_amp_i == amps_n) {
+            Kid &dst_aid = *(amps_map_ptr.get_aids_ptr() + amps_n + entries_add_n);
+            Amp &dst_amp = *(amps_map_ptr.get_amps_ptr() + amps_n + entries_add_n);
+            dst_aid = src_aid;
+            dst_amp = src_amp;
             entries_add_n += 1;
         }
     }
 
     // 如果有新的 entry 就修改 entries_n
-    if (entries_add_n > 0) entries_n += entries_add_n;
+    if (entries_add_n > 0) amps_n += entries_add_n;
 }
 
 static __host__
