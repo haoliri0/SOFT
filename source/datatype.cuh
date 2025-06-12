@@ -12,7 +12,8 @@ using Kid = unsigned int;
 using Aid = unsigned int;
 using Bit = bool;
 using Phs = unsigned char;
-using Amp = cuda::std::complex<float>;
+using Flt = float;
+using Amp = cuda::std::complex<Flt>;
 
 }
 
