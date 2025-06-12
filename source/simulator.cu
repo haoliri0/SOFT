@@ -31,16 +31,15 @@ void cuda_init_table(cudaStream_t const stream, const ShotsStatePtr shots_state_
 static __device__
 void op_init_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
-    Kid &entries_n = *shots_state_ptr
+    const AmpsMapPtr amps_map_ptr = shots_state_ptr
         .get_shot_state_ptr(shot_i)
-        .get_amps_map_ptr()
-        .get_entries_n_ptr();
-    AmpEntry &entry0 = *shots_state_ptr
-        .get_shot_state_ptr(shot_i)
-        .get_amps_map_ptr()
-        .get_entry_ptr(0);
-    entries_n = 1;
-    entry0.value = 1;
+        .get_amps_map_ptr();
+    Aid &aid0 = *amps_map_ptr.get_aids_ptr();
+    Amp &amp0 = *amps_map_ptr.get_amps_ptr();
+    Kid &amps_n = *amps_map_ptr.get_num_ptr();
+    aid0 = 0;
+    amp0 = 1;
+    amps_n = 1;
 }
 
 static __host__
