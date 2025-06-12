@@ -28,6 +28,7 @@ Bit compute_sign(Aid key, const Bit *stab_bits, const Qid qubits_n) {
     return sign;
 }
 
+
 template<bool dagger>
 static __device__
 void op_update_amps_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
@@ -68,6 +69,19 @@ void op_update_amps_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
     dst_amp = src_amp * coef * sign_amp;
 }
 
+template<bool dagger>
+static __host__
+void cuda_update_amps_half1(
+    cudaStream_t const stream,
+    ShotsStatePtr const shots_state_ptr
+) {
+    const Sid shots_n = shots_state_ptr.shots_n;
+    const Kid amps_m = shots_state_ptr.amps_m;
+    cuda_dims_op<ShotsStatePtr, 2, op_update_amps_half1<dagger>>
+        (stream, shots_state_ptr, dimsof(shots_n, amps_m / 2));
+}
+
+
 static __device__
 void op_update_amps_half0(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
     const Sid shot_i = dims_idx.get<0>();
@@ -92,18 +106,6 @@ void op_update_amps_half0(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
 
     const Amp coef = cosf(M_PI / 8);
     src_amp *= coef;
-}
-
-template<bool dagger>
-static __host__
-void cuda_update_amps_half1(
-    cudaStream_t const stream,
-    ShotsStatePtr const shots_state_ptr
-) {
-    const Sid shots_n = shots_state_ptr.shots_n;
-    const Kid amps_m = shots_state_ptr.amps_m;
-    cuda_dims_op<ShotsStatePtr, 2, op_update_amps_half1<dagger>>
-        (stream, shots_state_ptr, dimsof(shots_n, amps_m / 2));
 }
 
 static __host__
