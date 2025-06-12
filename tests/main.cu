@@ -85,7 +85,7 @@ void test_decompose() {
 }
 
 /** 测试 T 门 */
-void test_gate_t() {
+void test_gates_t() {
     printf("\n\n### test_circuit ###\n");
 
     Simulator simulator;
@@ -97,6 +97,7 @@ void test_gate_t() {
 
         simulator.apply_h(0);
         simulator.apply_t(0);
+        simulator.apply_tdg(0);
 
         print_simulator(simulator);
     } while (false);
@@ -112,5 +113,5 @@ int main() {
     test_simulator();
     test_gates();
     test_decompose();
-    test_gate_t();
+    test_gates_t();
 }
