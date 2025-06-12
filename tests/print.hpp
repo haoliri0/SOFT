@@ -54,8 +54,9 @@ static
 void print_amplitude(const Amp amp) {
     const auto real = amp.real();
     const auto imag = amp.imag();
-    const char *sign = imag >= 0 ? "+" : "-";
-    printf("%f %s %f i", real, sign, imag);
+    const char *real_sign = real >= 0 ? "+" : "-";
+    const char *imag_sign = imag >= 0 ? "+" : "-";
+    printf("%s %f %s %f i", real_sign, abs(real), imag_sign, abs(imag));
 }
 
 static
