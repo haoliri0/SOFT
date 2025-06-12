@@ -89,7 +89,7 @@ void op_update_amps_half0(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
     // 直接原地修改前半部分
     Amp &src_amp = *(amps_map_ptr.get_amps_ptr() + amp_i);
 
-    const Amp coef = sinf(M_PI / 8);
+    const Amp coef = cosf(M_PI / 8);
     src_amp *= coef;
 }
 
