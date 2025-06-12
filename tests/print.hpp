@@ -124,12 +124,48 @@ void print_amps(const AmpsMapPtr ptr) {
     printf("\n");
 }
 
+static
+void print_amps_halves(const AmpsMapPtr ptr) {
+    printf("\t\tamplitudes:\n");
+    const Kid amps_m = ptr.amps_m;
+    const Kid amps_n = *ptr.get_num_ptr();
+    printf("\t\t\t(amps_n = %u)\n", amps_n);
+    if (amps_n > amps_m / 2) {
+        printf("\t\t\tToo Large!");
+        return;
+    }
+
+    for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
+        const Aid aid = *(ptr.get_aids_ptr() + amp_i);
+        const Amp amp = *(ptr.get_amps_ptr() + amp_i);
+        printf("\t\t\t");
+        print_int_bits(aid, ptr.qubits_n);
+        printf(": ");
+        print_amplitude(amp);
+        printf("\n");
+    }
+
+    printf("\t\t\t----------------\n");
+
+    for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
+        const Aid aid = *(ptr.get_aids_ptr() + amps_m / 2 + amp_i);
+        const Amp amp = *(ptr.get_amps_ptr() + amps_m / 2 + amp_i);
+        printf("\t\t\t");
+        print_int_bits(aid, ptr.qubits_n);
+        printf(": ");
+        print_amplitude(amp);
+        printf("\n");
+    }
+
+    printf("\n");
+}
+
 
 static
 void print_shot_state(const ShotStatePtr ptr) {
     print_table(ptr.get_table_ptr());
     print_decomp(ptr.get_decomp_ptr());
-    print_amps(ptr.get_amps_map_ptr());
+    print_amps_halves(ptr.get_amps_map_ptr());
 }
 
 static
