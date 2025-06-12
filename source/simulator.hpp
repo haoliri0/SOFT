@@ -31,10 +31,11 @@ struct Simulator {
 
     void apply_cx(Qid control, Qid target) const noexcept;
 
+
+    void apply_t(Qid target) const noexcept;
+
     // void apply_reset(int qubit);
-    // void apply_t(int qubit);
     // void apply_tdg(int qubit);
-    // void apply_cnot(int qubit);
 };
 
 }

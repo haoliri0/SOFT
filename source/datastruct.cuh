@@ -172,19 +172,29 @@ struct AmpsMapPtr {
     }
 
     __device__ __host__
-    Kid *get_entries_n_ptr() {
+    Kid *get_entries_n_ptr() const {
         return reinterpret_cast<Kid *>(ptr);
     }
 
     __device__ __host__
-    AmpEntry *get_entries_ptr() {
+    AmpEntry *get_entries_ptr() const {
         const size_t offset = get_entries_n_bytes_n();
         return reinterpret_cast<AmpEntry *>(ptr + offset);
     }
 
     __device__ __host__
-    AmpEntry *get_entry_ptr(const Kid amp_i) {
+    AmpEntry *get_entry_ptr(const Kid amp_i) const {
         return get_entries_ptr() + amp_i;
+    }
+
+    __device__ __host__
+    AmpEntry *get_half0_entry_ptr(const Kid amp_i) const {
+        return get_entries_ptr() + amp_i;
+    }
+
+    __device__ __host__
+    AmpEntry *get_half1_entry_ptr(const Kid amp_i) const {
+        return get_entries_ptr() + amps_m / 2 + amp_i;
     }
 
 };
