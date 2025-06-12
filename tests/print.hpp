@@ -30,7 +30,7 @@ void print_int_bits(Aid integer, const unsigned int n) {
         const Bit bit = integer % 2;
         integer >>= 1;
         print_bit(bit);
-        print_bit(" ");
+        printf(" ");
     }
 }
 
