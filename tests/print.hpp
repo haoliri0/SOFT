@@ -25,6 +25,16 @@ void print_bits(const Bit *bits, const unsigned int n) {
 }
 
 static
+void print_int_bits(Aid integer, const unsigned int n) {
+    for (int i = 0; i < n; ++i) {
+        const Bit bit = integer % 2;
+        integer >>= 1;
+        print_bit(bit);
+        print_bit(" ");
+    }
+}
+
+static
 void print_sign(Bit sign) {
     sign %= 2;
     if (sign == 0) printf("+1");
@@ -38,6 +48,14 @@ void print_phase(Phs phase) {
     if (phase == 1) printf("+i");
     if (phase == 2) printf("-1");
     if (phase == 3) printf("-i");
+}
+
+static
+void print_amplitude(const Amp amp) {
+    const auto real = amp.real();
+    const auto imag = amp.imag();
+    const char *sign = imag >= 0 ? "+" : "-";
+    printf("%f %s %f i", real, sign, imag);
 }
 
 static
@@ -90,9 +108,26 @@ void print_decomp(const DecompPtr ptr) {
 }
 
 static
+void print_amps(const AmpsMapPtr ptr) {
+    printf("\t\tamplitudes:\n");
+    const Kid amps_n = *ptr.get_entries_n_ptr();
+    for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
+        const auto [key, value] = *ptr.get_entry_ptr(amp_i);
+        printf("\t\t\t");
+        print_int_bits(key, ptr.qubits_n);
+        printf(": ");
+        print_amplitude(value);
+        printf("\n");
+    }
+    printf("\n");
+}
+
+
+static
 void print_shot_state(const ShotStatePtr ptr) {
     print_table(ptr.get_table_ptr());
     print_decomp(ptr.get_decomp_ptr());
+    print_amps(ptr.get_amps_map_ptr());
 }
 
 static

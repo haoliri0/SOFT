@@ -151,6 +151,7 @@ struct AmpEntry {
 };
 
 struct AmpsMapPtr {
+    Qid qubits_n;
     Kid amps_m;
     char *ptr;
 
@@ -242,7 +243,7 @@ struct ShotStatePtr {
         const size_t offset =
             _compute_table_bytes_n(qubits_n) +
             _compute_decomp_bytes_n(qubits_n);
-        return AmpsMapPtr{amps_m, ptr + offset};
+        return AmpsMapPtr{qubits_n, amps_m, ptr + offset};
     }
 };
 
