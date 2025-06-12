@@ -145,57 +145,52 @@ struct DecompPtr {
     }
 };
 
-struct AmpEntry {
-    Aid key;
-    Amp value;
-};
-
 struct AmpsMapPtr {
     Qid qubits_n;
     Kid amps_m;
     char *ptr;
 
     static __device__ __host__
-    size_t get_entries_n_bytes_n() {
-        return sizeof(Kid);
+    size_t get_amps_bytes_n(const Kid amps_m) {
+        return amps_m * sizeof(Amp);
     }
 
     static __device__ __host__
-    size_t get_entries_bytes_n(const Kid amps_m) {
-        return amps_m * sizeof(AmpEntry);
+    size_t get_aids_bytes_n(const Kid amps_m) {
+        return amps_m * sizeof(Aid);
+    }
+
+    static __device__ __host__
+    size_t get_num_bytes_n() {
+        return sizeof(Kid);
     }
 
     static __device__ __host__
     size_t get_bytes_n(const Kid amps_m) {
         return
-            get_entries_n_bytes_n() +
-            get_entries_bytes_n(amps_m);
+            get_amps_bytes_n(amps_m) +
+            get_aids_bytes_n(amps_m) +
+            get_num_bytes_n();
     }
 
     __device__ __host__
-    Kid *get_entries_n_ptr() const {
-        return reinterpret_cast<Kid *>(ptr);
+    Amp *get_amps_ptr() const {
+        return reinterpret_cast<Amp *>(ptr);
     }
 
     __device__ __host__
-    AmpEntry *get_entries_ptr() const {
-        const size_t offset = get_entries_n_bytes_n();
-        return reinterpret_cast<AmpEntry *>(ptr + offset);
+    Aid *get_aids_ptr() const {
+        const size_t offset =
+            get_amps_bytes_n(amps_m);
+        return reinterpret_cast<Aid *>(ptr + offset);
     }
 
     __device__ __host__
-    AmpEntry *get_entry_ptr(const Kid amp_i) const {
-        return get_entries_ptr() + amp_i;
-    }
-
-    __device__ __host__
-    AmpEntry *get_half0_entry_ptr(const Kid amp_i) const {
-        return get_entries_ptr() + amp_i;
-    }
-
-    __device__ __host__
-    AmpEntry *get_half1_entry_ptr(const Kid amp_i) const {
-        return get_entries_ptr() + amps_m / 2 + amp_i;
+    Kid *get_num_ptr() const {
+        const size_t offset =
+            get_amps_bytes_n(amps_m) +
+            get_aids_bytes_n(amps_m);
+        return reinterpret_cast<Kid *>(ptr + offset);
     }
 
 };
@@ -206,25 +201,59 @@ struct ShotStatePtr {
     char *ptr;
 
     static __device__ __host__
-    size_t _compute_table_bytes_n(const Qid qubits_n) {
+    size_t get_table_bytes_n(const Qid qubits_n) {
         return TablePtr::compute_bytes_n(qubits_n);
     }
 
     static __device__ __host__
-    size_t _compute_decomp_bytes_n(const Qid qubits_n) {
+    size_t get_table_margin_bytes_n(const Qid qubits_n) {
+        const size_t offset =
+            get_table_bytes_n(qubits_n);
+        constexpr size_t align_bytes_n = sizeof(Amp);
+        return align_bytes_n - offset % align_bytes_n;
+    }
+
+    static __device__ __host__
+    size_t get_decomp_bytes_n(const Qid qubits_n) {
         return DecompPtr::compute_bytes_n(qubits_n);
     }
+
     static __device__ __host__
-    size_t _compute_amps_bytes_n(const Qid qubits_n) {
+    size_t get_decomp_margin_bytes_n(const Qid qubits_n) {
+        const size_t offset =
+            get_table_bytes_n(qubits_n) +
+            get_table_margin_bytes_n(qubits_n) +
+            get_decomp_bytes_n(qubits_n);
+        constexpr size_t align_bytes_n = sizeof(Amp);
+        return align_bytes_n - offset % align_bytes_n;
+    }
+
+    static __device__ __host__
+    size_t get_amps_bytes_n(const Qid qubits_n) {
         return AmpsMapPtr::get_bytes_n(qubits_n);
+    }
+
+    static __device__ __host__
+    size_t get_amps_margin_bytes_n(const Qid qubits_n) {
+        const size_t offset =
+            get_table_bytes_n(qubits_n) +
+            get_table_margin_bytes_n(qubits_n) +
+            get_decomp_bytes_n(qubits_n) +
+            get_decomp_margin_bytes_n(qubits_n) +
+            get_amps_bytes_n(qubits_n);
+        constexpr size_t align_bytes_n = sizeof(Amp);
+        return align_bytes_n - offset % align_bytes_n;
     }
 
     static __device__ __host__
     size_t compute_bytes_n(const Qid qubits_n, const Kid amps_m) {
         return
-            _compute_table_bytes_n(qubits_n) +
-            _compute_decomp_bytes_n(qubits_n) +
-            _compute_amps_bytes_n(amps_m);
+            get_table_bytes_n(qubits_n) +
+            get_table_margin_bytes_n(qubits_n) +
+            get_decomp_bytes_n(qubits_n) +
+            get_decomp_margin_bytes_n(qubits_n) +
+            get_amps_bytes_n(amps_m) +
+            get_amps_margin_bytes_n(qubits_n);
     }
 
     __device__ __host__
@@ -234,15 +263,19 @@ struct ShotStatePtr {
 
     __device__ __host__
     DecompPtr get_decomp_ptr() const {
-        const size_t offset = _compute_table_bytes_n(qubits_n);
+        const size_t offset =
+            get_table_bytes_n(qubits_n) +
+            get_table_margin_bytes_n(qubits_n);
         return DecompPtr{qubits_n, ptr + offset};
     }
 
     __device__ __host__
     AmpsMapPtr get_amps_map_ptr() const {
         const size_t offset =
-            _compute_table_bytes_n(qubits_n) +
-            _compute_decomp_bytes_n(qubits_n);
+            get_table_bytes_n(qubits_n) +
+            get_table_margin_bytes_n(qubits_n) +
+            get_decomp_bytes_n(qubits_n) +
+            get_decomp_margin_bytes_n(qubits_n);
         return AmpsMapPtr{qubits_n, amps_m, ptr + offset};
     }
 };
