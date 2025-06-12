@@ -106,18 +106,19 @@ void print_shots_state(const ShotsStatePtr ptr) {
 
 static
 void print_simulator(const Simulator &simulator) {
-    const auto [shots_n, qubits_n, ptr] = simulator.shots_state_ptr;
+    const auto [shots_n, qubits_n,amps_m, ptr] = simulator.shots_state_ptr;
 
     printf("\nSimulator:\n");
     printf("\tshots_n:%u\n", shots_n);
     printf("\tqubits_n:%u\n", qubits_n);
+    printf("\tamps_m:%u\n", amps_m);
     printf("\n");
 
-    const size_t state_bytes_n = ShotsStatePtr::compute_bytes_n(shots_n, qubits_n);
-    const auto buffer_ptr = static_cast<char*>(malloc(state_bytes_n));
+    const size_t state_bytes_n = ShotsStatePtr::compute_bytes_n(shots_n, qubits_n, amps_m);
+    const auto buffer_ptr = static_cast<char *>(malloc(state_bytes_n));
     cudaMemcpy(buffer_ptr, ptr, state_bytes_n, cudaMemcpyDeviceToHost);
 
-    print_shots_state({shots_n, qubits_n, buffer_ptr});
+    print_shots_state({shots_n, qubits_n, amps_m, buffer_ptr});
 
     free(buffer_ptr);
 }
