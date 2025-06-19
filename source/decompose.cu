@@ -1,7 +1,7 @@
 #include "./decompose.hpp"
 #include "./simulator.hpp"
 #include "./threads.cuh"
-#include "dimsop.cuh"
+#include "./dimsop.cuh"
 
 using namespace StnCuda;
 
