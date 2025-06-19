@@ -73,8 +73,6 @@ void test_decompose() {
             simulator.stream,
             simulator.shots_state_ptr);
 
-        cudaDeviceSynchronize();
-
         print_simulator(simulator);
     } while (false);
 

@@ -188,6 +188,8 @@ void print_simulator(const Simulator &simulator) {
     printf("\tamps_m:%u\n", amps_m);
     printf("\n");
 
+    cudaDeviceSynchronize();
+
     const size_t state_bytes_n = ShotsStatePtr::compute_bytes_n(shots_n, qubits_n, amps_m);
     const auto buffer_ptr = static_cast<char *>(malloc(state_bytes_n));
     cudaMemcpy(buffer_ptr, ptr, state_bytes_n, cudaMemcpyDeviceToHost);
