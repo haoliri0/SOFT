@@ -106,10 +106,33 @@ void test_gates_t() {
     simulator.destroy();
 }
 
+/** 测试 T 门 */
+void test_measure() {
+    printf("\n\n### test_measure ###\n");
+
+    Simulator simulator;
+    cudaError_t err;
+
+    do {
+        err = simulator.create(1, 2, 4);
+        if (err != cudaSuccess) break;
+
+        // simulator.apply_h(0);
+        simulator.measure(0, nullptr, nullptr);
+
+        print_simulator(simulator);
+    } while (false);
+
+    if (err != cudaSuccess)
+        print_cuda_error(err);
+
+    simulator.destroy();
+}
 
 int main() {
     test_simulator();
     test_gates();
     test_decompose();
     test_gates_t();
+    test_measure();
 }
