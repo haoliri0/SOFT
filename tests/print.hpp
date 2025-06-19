@@ -100,8 +100,7 @@ void print_decomp(const DecompPtr ptr) {
 
     printf("\t\t\t");
     print_bits(ptr.get_bits_ptr(), 2 * ptr.qubits_n);
-    printf(" cond=");
-    print_bit(*ptr.get_condition_ptr());
+    printf(" pivot=%u", *ptr.get_pivot_ptr());
     printf("\n");
 
     printf("\t\t\t");
