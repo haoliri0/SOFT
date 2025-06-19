@@ -118,11 +118,17 @@ struct DecompPtr {
     }
 
     static __device__ __host__
+    size_t _compute_condition_bytes_n() {
+        return sizeof(Bit);
+    }
+
+    static __device__ __host__
     size_t compute_bytes_n(const Qid qubits_n) {
         return
             _compute_bits_bytes_n(qubits_n) +
             _compute_pauli_bytes_n(qubits_n) +
-            _compute_phase_bytes_n();
+            _compute_phase_bytes_n() +
+            _compute_condition_bytes_n();
     }
 
     __device__ __host__
@@ -142,6 +148,15 @@ struct DecompPtr {
             _compute_bits_bytes_n(qubits_n) +
             _compute_pauli_bytes_n(qubits_n);
         return reinterpret_cast<Phs *>(ptr + offset);
+    }
+
+    __device__ __host__
+    Bit *get_condition_ptr() const {
+        const size_t offset =
+            _compute_bits_bytes_n(qubits_n) +
+            _compute_pauli_bytes_n(qubits_n) +
+            _compute_phase_bytes_n();
+        return reinterpret_cast<Bit *>(ptr + offset);
     }
 };
 
