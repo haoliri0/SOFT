@@ -118,6 +118,16 @@ struct DecompPtr {
     }
 
     static __device__ __host__
+    size_t _compute_phase_margin_bytes_n(const Qid qubits_n) {
+        const size_t offset =
+            _compute_bits_bytes_n(qubits_n) +
+            _compute_pauli_bytes_n(qubits_n) +
+            _compute_phase_bytes_n();
+        constexpr size_t align_bytes_n = sizeof(Qid);
+        return align_bytes_n - offset % align_bytes_n;
+    }
+
+    static __device__ __host__
     size_t _compute_pivot_bytes_n() {
         return sizeof(Qid);
     }
@@ -128,6 +138,7 @@ struct DecompPtr {
             _compute_bits_bytes_n(qubits_n) +
             _compute_pauli_bytes_n(qubits_n) +
             _compute_phase_bytes_n() +
+            _compute_phase_margin_bytes_n(qubits_n) +
             _compute_pivot_bytes_n();
     }
 
@@ -155,7 +166,8 @@ struct DecompPtr {
         const size_t offset =
             _compute_bits_bytes_n(qubits_n) +
             _compute_pauli_bytes_n(qubits_n) +
-            _compute_phase_bytes_n();
+            _compute_phase_bytes_n() +
+            _compute_phase_margin_bytes_n(qubits_n);
         return reinterpret_cast<Qid *>(ptr + offset);
     }
 };
