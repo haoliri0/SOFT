@@ -36,6 +36,9 @@ struct Simulator {
 
     void apply_tdg(Qid target) const noexcept;
 
+
+    void measure(Qid target, Bit *res, Flt *prob) const noexcept;
+
     // void apply_reset(int qubit);
 };
 
