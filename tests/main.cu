@@ -26,7 +26,7 @@ void test_simulator() {
 
 /** 测试 clifford gates */
 void test_gates() {
-    printf("\n\n### test_simulator ###\n");
+    printf("\n\n### test_gates ###\n");
 
     Simulator simulator;
     cudaError_t err;
@@ -86,7 +86,7 @@ void test_decompose() {
 
 /** 测试 T 门 */
 void test_gates_t() {
-    printf("\n\n### test_circuit ###\n");
+    printf("\n\n### test_gates_t ###\n");
 
     Simulator simulator;
     cudaError_t err;
