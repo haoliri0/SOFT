@@ -69,22 +69,12 @@ class DynamicStructTypeSpec(TypeSpec):
 
 class FieldSpec:
     name: str
-    size: str
-    align: str
 
 
 @dataclass(kw_only=True)
 class ItemFieldSpec(FieldSpec):
     name: str
     type: TypeSpec
-
-    @property
-    def size(self) -> str:
-        return self.type.size
-
-    @property
-    def align(self) -> str:
-        return self.type.align
 
 
 @dataclass(kw_only=True)
@@ -95,14 +85,6 @@ class ListFieldSpec(FieldSpec):
     index_name: str
     index_type: str
     count: str | int
-
-    @property
-    def size(self) -> str:
-        return f"{self.count} * get_{self.item_name}_size_bytes_n()"
-
-    @property
-    def align(self) -> str:
-        return self.item_type.align
 
 
 @dataclass(kw_only=True)
@@ -146,18 +128,6 @@ size_t compute_pad_bytes_n(const size_t offset_bytes_n, const size_t align_bytes
 builtin_postfix = ""
 
 
-def write_get_field_size_bytes_n_method_body(writer: Callable[[str], Any], field: FieldSpec):
-    writer(f"return {field.size};\n")
-
-
-def write_get_field_size_bytes_n_method(writer: Callable[[str], Any], field: FieldSpec):
-    writer("\n")
-    writer("__device__ __host__\n")
-    writer(f"size_t get_{field.name}_size_bytes_n() const {{\n")
-    write_get_field_size_bytes_n_method_body(make_indented_writer(writer), field)
-    writer("}\n")
-
-
 def write_get_field_item_size_bytes_n_method_body(writer: Callable[[str], Any], field: ListFieldSpec):
     writer(f"return {field.item_type.size};\n")
 
@@ -170,8 +140,60 @@ def write_get_field_item_size_bytes_n_method(writer: Callable[[str], Any], field
     writer("}\n")
 
 
+def write_get_field_item_align_bytes_n_method_body(writer: Callable[[str], Any], field: ListFieldSpec):
+    writer(f"return {field.item_type.align};\n")
+
+
+def write_get_field_item_align_bytes_n_method(writer: Callable[[str], Any], field: ListFieldSpec):
+    writer("\n")
+    writer("__device__ __host__\n")
+    writer(f"size_t get_{field.item_name}_align_bytes_n() const {{\n")
+    write_get_field_align_bytes_n_method_body(make_indented_writer(writer), field)
+    writer("}\n")
+
+
+def write_get_field_item_pad_bytes_n_method_body(writer: Callable[[str], Any], field: ListFieldSpec):
+    writer(f"return compute_pad_bytes_n(\n")
+    indented_writer = make_indented_writer(writer)
+    indented_writer(f"get_{field.item_name}_size_bytes_n(),\n")
+    indented_writer(f"get_{field.item_name}_align_bytes_n());\n")
+
+
+def write_get_field_item_pad_bytes_n_method(writer: Callable[[str], Any], field: ListFieldSpec):
+    writer("\n")
+    writer("__device__ __host__\n")
+    writer(f"size_t get_{field.item_name}_pad_bytes_n() const {{\n")
+    write_get_field_item_pad_bytes_n_method_body(make_indented_writer(writer), field)
+    writer("}\n")
+
+
+def write_get_field_size_bytes_n_method_body(writer: Callable[[str], Any], field: FieldSpec):
+    if isinstance(field, ItemFieldSpec):
+        writer(f"return {field.type.size};\n")
+    elif isinstance(field, ListFieldSpec):
+        writer(f"return \n")
+        indented_writer = make_indented_writer(writer)
+        indented_writer(f"{field.count} * get_{field.item_name}_size_bytes_n() +\n")
+        indented_writer(f"{field.count} * get_{field.item_name}_pad_bytes_n();\n")
+    else:
+        raise TypeError(f"Unsupported field type: {field}")
+
+
+def write_get_field_size_bytes_n_method(writer: Callable[[str], Any], field: FieldSpec):
+    writer("\n")
+    writer("__device__ __host__\n")
+    writer(f"size_t get_{field.name}_size_bytes_n() const {{\n")
+    write_get_field_size_bytes_n_method_body(make_indented_writer(writer), field)
+    writer("}\n")
+
+
 def write_get_field_align_bytes_n_method_body(writer: Callable[[str], Any], field: FieldSpec):
-    writer(f"return {field.align};\n")
+    if isinstance(field, ItemFieldSpec):
+        writer(f"return {field.type.align};\n")
+    elif isinstance(field, ListFieldSpec):
+        writer(f"return {field.item_type.align};\n")
+    else:
+        raise TypeError(f"Unsupported field type: {field}")
 
 
 def write_get_field_align_bytes_n_method(writer: Callable[[str], Any], field: FieldSpec):
@@ -190,9 +212,11 @@ def write_get_field_pad_bytes_n_method_body(
     if field_prev is None:
         writer("return 0;\n")
     else:
-        writer(f"const size_t offset_bytes_n = get_{field_prev.name}_offset_bytes_n();\n")
-        writer(f"const size_t align_bytes_n = get_{field.name}_align_bytes_n();\n")
-        writer(f"return compute_pad_bytes_n(offset_bytes_n, align_bytes_n);\n")
+        writer(f"return compute_pad_bytes_n(\n")
+        indented_writer = make_indented_writer(writer)
+        indented_writer(f"get_{field_prev.name}_offset_bytes_n() +\n")
+        indented_writer(f"get_{field_prev.name}_size_bytes_n(),\n")
+        indented_writer(f"get_{field.name}_align_bytes_n());\n")
 
 
 def write_get_field_pad_bytes_n_method(
@@ -231,6 +255,21 @@ def write_get_field_offset_bytes_n_method(
     writer("__device__ __host__\n")
     writer(f"size_t get_{field.name}_offset_bytes_n() const {{\n")
     write_get_field_offset_bytes_n_method_body(make_indented_writer(writer), field, field_prev)
+    writer("}\n")
+
+
+def write_get_field_item_offset_bytes_n_method_body(writer: Callable[[str], Any], field: ListFieldSpec):
+    writer(f"return get_{field.name}_offset_bytes_n() +\n")
+    indented_writer = make_indented_writer(writer)
+    indented_writer(f"{field.index_name} * get_{field.item_name}_size_bytes_n() +\n")
+    indented_writer(f"{field.index_name} * get_{field.item_name}_pad_bytes_n();\n")
+
+
+def write_get_field_item_offset_bytes_n_method(writer: Callable[[str], Any], field: ListFieldSpec):
+    writer("\n")
+    writer("__device__ __host__\n")
+    writer(f"size_t get_{field.item_name}_offset_bytes_n({field.index_type} {field.index_name}) const {{\n")
+    write_get_field_item_offset_bytes_n_method_body(make_indented_writer(writer), field)
     writer("}\n")
 
 
@@ -283,10 +322,14 @@ def write_dynamic_struct_args_define_body(writer: Callable[[str], Any], spec: Dy
     for field in spec.fields:
         if isinstance(field, ListFieldSpec):
             write_get_field_item_size_bytes_n_method(writer, field)
+            write_get_field_item_align_bytes_n_method(writer, field)
+            write_get_field_item_pad_bytes_n_method(writer, field)
         write_get_field_size_bytes_n_method(writer, field)
         write_get_field_align_bytes_n_method(writer, field)
         write_get_field_pad_bytes_n_method(writer, field, field_prev)
         write_get_field_offset_bytes_n_method(writer, field, field_prev)
+        if isinstance(field, ListFieldSpec):
+            write_get_field_item_offset_bytes_n_method(writer, field)
         field_prev = field
 
     write_get_size_bytes_n_method(writer, spec)
@@ -347,10 +390,7 @@ def write_get_field_item_ptr_method_body(writer: Callable[[str], Any], field: Li
     if isinstance(value_type, ValueTypeSpec):
         writer(f"return get_{field.name}_ptr() + {field.index_name};\n")
     elif isinstance(value_type, DynamicStructTypeSpec):
-        writer(f"const size_t offset =\n")
-        indented_writer = make_indented_writer(writer)
-        indented_writer(f"get_{field.name}_offset_bytes_n() +\n")
-        indented_writer(f"{field.index_name} * get_{field.item_name}_size_bytes_n();\n")
+        writer(f"const size_t offset = get_{field.item_name}_offset_bytes_n({field.index_name});\n")
         writer(f"return {{{', '.join(value_type.args)}, ptr + offset}};\n")
     else:
         raise TypeError(f"Unsupported field type: {value_type}")

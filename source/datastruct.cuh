@@ -31,8 +31,22 @@ struct PauliRowArgs {
     }
     
     __device__ __host__
+    size_t get_bit_align_bytes_n() const {
+        return alignof(Bit);
+    }
+    
+    __device__ __host__
+    size_t get_bit_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_bit_size_bytes_n(),
+            get_bit_align_bytes_n());
+    }
+    
+    __device__ __host__
     size_t get_bits_size_bytes_n() const {
-        return 2 * qubits_n * get_bit_size_bytes_n();
+        return 
+            2 * qubits_n * get_bit_size_bytes_n() +
+            2 * qubits_n * get_bit_pad_bytes_n();
     }
     
     __device__ __host__
@@ -48,6 +62,13 @@ struct PauliRowArgs {
     __device__ __host__
     size_t get_bits_offset_bytes_n() const {
         return 0;
+    }
+    
+    __device__ __host__
+    size_t get_bit_offset_bytes_n(Qid bit_i) const {
+        return get_bits_offset_bytes_n() +
+            bit_i * get_bit_size_bytes_n() +
+            bit_i * get_bit_pad_bytes_n();
     }
     
     __device__ __host__
@@ -124,9 +145,10 @@ struct TableRowArgs {
     
     __device__ __host__
     size_t get_sign_pad_bytes_n() const {
-        const size_t offset_bytes_n = get_pauli_offset_bytes_n();
-        const size_t align_bytes_n = get_sign_align_bytes_n();
-        return compute_pad_bytes_n(offset_bytes_n, align_bytes_n);
+        return compute_pad_bytes_n(
+            get_pauli_offset_bytes_n() +
+            get_pauli_size_bytes_n(),
+            get_sign_align_bytes_n());
     }
     
     __device__ __host__
@@ -179,8 +201,22 @@ struct TableArgs {
     }
     
     __device__ __host__
+    size_t get_row_align_bytes_n() const {
+        return TableRowArgs{qubits_n}.get_align_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_row_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_row_size_bytes_n(),
+            get_row_align_bytes_n());
+    }
+    
+    __device__ __host__
     size_t get_rows_size_bytes_n() const {
-        return 2 * qubits_n * get_row_size_bytes_n();
+        return 
+            2 * qubits_n * get_row_size_bytes_n() +
+            2 * qubits_n * get_row_pad_bytes_n();
     }
     
     __device__ __host__
@@ -196,6 +232,13 @@ struct TableArgs {
     __device__ __host__
     size_t get_rows_offset_bytes_n() const {
         return 0;
+    }
+    
+    __device__ __host__
+    size_t get_row_offset_bytes_n(Qid row_i) const {
+        return get_rows_offset_bytes_n() +
+            row_i * get_row_size_bytes_n() +
+            row_i * get_row_pad_bytes_n();
     }
     
     __device__ __host__
@@ -217,9 +260,7 @@ struct TablePtr : TableArgs {
     
     __device__ __host__
     TableRowPtr get_row_ptr(const Qid row_i) const {
-        const size_t offset =
-            get_rows_offset_bytes_n() +
-            row_i * get_row_size_bytes_n();
+        const size_t offset = get_row_offset_bytes_n(row_i);
         return {qubits_n, ptr + offset};
     }
 };
@@ -233,8 +274,22 @@ struct DecompArgs {
     }
     
     __device__ __host__
+    size_t get_bit_align_bytes_n() const {
+        return alignof(Bit);
+    }
+    
+    __device__ __host__
+    size_t get_bit_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_bit_size_bytes_n(),
+            get_bit_align_bytes_n());
+    }
+    
+    __device__ __host__
     size_t get_bits_size_bytes_n() const {
-        return 2 * qubits_n * get_bit_size_bytes_n();
+        return 
+            2 * qubits_n * get_bit_size_bytes_n() +
+            2 * qubits_n * get_bit_pad_bytes_n();
     }
     
     __device__ __host__
@@ -253,6 +308,13 @@ struct DecompArgs {
     }
     
     __device__ __host__
+    size_t get_bit_offset_bytes_n(Qid bit_i) const {
+        return get_bits_offset_bytes_n() +
+            bit_i * get_bit_size_bytes_n() +
+            bit_i * get_bit_pad_bytes_n();
+    }
+    
+    __device__ __host__
     size_t get_pauli_size_bytes_n() const {
         return PauliRowArgs{qubits_n}.get_size_bytes_n();
     }
@@ -264,9 +326,10 @@ struct DecompArgs {
     
     __device__ __host__
     size_t get_pauli_pad_bytes_n() const {
-        const size_t offset_bytes_n = get_bits_offset_bytes_n();
-        const size_t align_bytes_n = get_pauli_align_bytes_n();
-        return compute_pad_bytes_n(offset_bytes_n, align_bytes_n);
+        return compute_pad_bytes_n(
+            get_bits_offset_bytes_n() +
+            get_bits_size_bytes_n(),
+            get_pauli_align_bytes_n());
     }
     
     __device__ __host__
@@ -289,9 +352,10 @@ struct DecompArgs {
     
     __device__ __host__
     size_t get_phase_pad_bytes_n() const {
-        const size_t offset_bytes_n = get_pauli_offset_bytes_n();
-        const size_t align_bytes_n = get_phase_align_bytes_n();
-        return compute_pad_bytes_n(offset_bytes_n, align_bytes_n);
+        return compute_pad_bytes_n(
+            get_pauli_offset_bytes_n() +
+            get_pauli_size_bytes_n(),
+            get_phase_align_bytes_n());
     }
     
     __device__ __host__
@@ -314,9 +378,10 @@ struct DecompArgs {
     
     __device__ __host__
     size_t get_pivot_pad_bytes_n() const {
-        const size_t offset_bytes_n = get_phase_offset_bytes_n();
-        const size_t align_bytes_n = get_pivot_align_bytes_n();
-        return compute_pad_bytes_n(offset_bytes_n, align_bytes_n);
+        return compute_pad_bytes_n(
+            get_phase_offset_bytes_n() +
+            get_phase_size_bytes_n(),
+            get_pivot_align_bytes_n());
     }
     
     __device__ __host__
@@ -433,8 +498,22 @@ struct AmpsMapArgs {
     }
     
     __device__ __host__
+    size_t get_amp_align_bytes_n() const {
+        return alignof(Amp);
+    }
+    
+    __device__ __host__
+    size_t get_amp_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_amp_size_bytes_n(),
+            get_amp_align_bytes_n());
+    }
+    
+    __device__ __host__
     size_t get_amps_size_bytes_n() const {
-        return amps_m * get_amp_size_bytes_n();
+        return 
+            amps_m * get_amp_size_bytes_n() +
+            amps_m * get_amp_pad_bytes_n();
     }
     
     __device__ __host__
@@ -444,9 +523,10 @@ struct AmpsMapArgs {
     
     __device__ __host__
     size_t get_amps_pad_bytes_n() const {
-        const size_t offset_bytes_n = get_amps_n_offset_bytes_n();
-        const size_t align_bytes_n = get_amps_align_bytes_n();
-        return compute_pad_bytes_n(offset_bytes_n, align_bytes_n);
+        return compute_pad_bytes_n(
+            get_amps_n_offset_bytes_n() +
+            get_amps_n_size_bytes_n(),
+            get_amps_align_bytes_n());
     }
     
     __device__ __host__
@@ -458,13 +538,34 @@ struct AmpsMapArgs {
     }
     
     __device__ __host__
+    size_t get_amp_offset_bytes_n(Kid amp_i) const {
+        return get_amps_offset_bytes_n() +
+            amp_i * get_amp_size_bytes_n() +
+            amp_i * get_amp_pad_bytes_n();
+    }
+    
+    __device__ __host__
     size_t get_aid_size_bytes_n() const {
         return sizeof(Aid);
     }
     
     __device__ __host__
+    size_t get_aid_align_bytes_n() const {
+        return alignof(Aid);
+    }
+    
+    __device__ __host__
+    size_t get_aid_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_aid_size_bytes_n(),
+            get_aid_align_bytes_n());
+    }
+    
+    __device__ __host__
     size_t get_aids_size_bytes_n() const {
-        return amps_m * get_aid_size_bytes_n();
+        return 
+            amps_m * get_aid_size_bytes_n() +
+            amps_m * get_aid_pad_bytes_n();
     }
     
     __device__ __host__
@@ -474,9 +575,10 @@ struct AmpsMapArgs {
     
     __device__ __host__
     size_t get_aids_pad_bytes_n() const {
-        const size_t offset_bytes_n = get_amps_offset_bytes_n();
-        const size_t align_bytes_n = get_aids_align_bytes_n();
-        return compute_pad_bytes_n(offset_bytes_n, align_bytes_n);
+        return compute_pad_bytes_n(
+            get_amps_offset_bytes_n() +
+            get_amps_size_bytes_n(),
+            get_aids_align_bytes_n());
     }
     
     __device__ __host__
@@ -485,6 +587,13 @@ struct AmpsMapArgs {
             get_amps_offset_bytes_n() +
             get_amps_size_bytes_n() +
             get_aids_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_aid_offset_bytes_n(Kid amp_i) const {
+        return get_aids_offset_bytes_n() +
+            amp_i * get_aid_size_bytes_n() +
+            amp_i * get_aid_pad_bytes_n();
     }
     
     __device__ __host__
@@ -575,9 +684,10 @@ struct ShotStateArgs {
     
     __device__ __host__
     size_t get_decomp_pad_bytes_n() const {
-        const size_t offset_bytes_n = get_table_offset_bytes_n();
-        const size_t align_bytes_n = get_decomp_align_bytes_n();
-        return compute_pad_bytes_n(offset_bytes_n, align_bytes_n);
+        return compute_pad_bytes_n(
+            get_table_offset_bytes_n() +
+            get_table_size_bytes_n(),
+            get_decomp_align_bytes_n());
     }
     
     __device__ __host__
@@ -600,9 +710,10 @@ struct ShotStateArgs {
     
     __device__ __host__
     size_t get_amps_pad_bytes_n() const {
-        const size_t offset_bytes_n = get_decomp_offset_bytes_n();
-        const size_t align_bytes_n = get_amps_align_bytes_n();
-        return compute_pad_bytes_n(offset_bytes_n, align_bytes_n);
+        return compute_pad_bytes_n(
+            get_decomp_offset_bytes_n() +
+            get_decomp_size_bytes_n(),
+            get_amps_align_bytes_n());
     }
     
     __device__ __host__
@@ -666,8 +777,22 @@ struct ShotsStateArgs {
     }
     
     __device__ __host__
+    size_t get_shot_align_bytes_n() const {
+        return ShotStateArgs{qubits_n, amps_m}.get_align_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_shot_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_shot_size_bytes_n(),
+            get_shot_align_bytes_n());
+    }
+    
+    __device__ __host__
     size_t get_shots_size_bytes_n() const {
-        return shots_n * get_shot_size_bytes_n();
+        return 
+            shots_n * get_shot_size_bytes_n() +
+            shots_n * get_shot_pad_bytes_n();
     }
     
     __device__ __host__
@@ -683,6 +808,13 @@ struct ShotsStateArgs {
     __device__ __host__
     size_t get_shots_offset_bytes_n() const {
         return 0;
+    }
+    
+    __device__ __host__
+    size_t get_shot_offset_bytes_n(Sid shot_i) const {
+        return get_shots_offset_bytes_n() +
+            shot_i * get_shot_size_bytes_n() +
+            shot_i * get_shot_pad_bytes_n();
     }
     
     __device__ __host__
@@ -704,9 +836,7 @@ struct ShotsStatePtr : ShotsStateArgs {
     
     __device__ __host__
     ShotStatePtr get_shot_ptr(const Sid shot_i) const {
-        const size_t offset =
-            get_shots_offset_bytes_n() +
-            shot_i * get_shot_size_bytes_n();
+        const size_t offset = get_shot_offset_bytes_n(shot_i);
         return {qubits_n, amps_m, ptr + offset};
     }
 };
