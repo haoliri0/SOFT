@@ -519,8 +519,27 @@ Bit *get_z_ptr(const Qid qubit_i) const {
                 type=ValueTypeSpec(name="Phs")),
             ItemFieldSpec(
                 name="pivot",
-                type=ValueTypeSpec(name="Qid")),
-        ))
+                type=ValueTypeSpec(name="Qid"))),
+        extra_ptr_body="""
+__device__ __host__
+Bit *get_destab_bits_ptr() const {
+    return get_bits_ptr();
+}
+
+__device__ __host__
+Bit *get_destab_bit_ptr(const Qid qubit_i) const {
+    return get_destab_bits_ptr() + qubit_i;
+}
+
+__device__ __host__
+Bit *get_stab_bits_ptr() const {
+    return get_bits_ptr() + qubits_n;
+}
+
+__device__ __host__
+Bit *get_stab_bit_ptr(const Qid qubit_i) const {
+    return get_stab_bits_ptr() + qubit_i;
+}\n""")
     amps_spec = DynamicStructSpec(
         name="AmpsMap",
         params=(

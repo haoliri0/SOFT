@@ -382,6 +382,26 @@ struct DecompPtr : DecompArgs {
         const size_t offset = get_pivot_offset_bytes_n();
         return reinterpret_cast<Qid *>(ptr + offset);
     }
+    
+    __device__ __host__
+    Bit *get_destab_bits_ptr() const {
+        return get_bits_ptr();
+    }
+    
+    __device__ __host__
+    Bit *get_destab_bit_ptr(const Qid qubit_i) const {
+        return get_destab_bits_ptr() + qubit_i;
+    }
+    
+    __device__ __host__
+    Bit *get_stab_bits_ptr() const {
+        return get_bits_ptr() + qubits_n;
+    }
+    
+    __device__ __host__
+    Bit *get_stab_bit_ptr(const Qid qubit_i) const {
+        return get_stab_bits_ptr() + qubit_i;
+    }
 };
 
 struct AmpsMapArgs {
