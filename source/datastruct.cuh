@@ -5,16 +5,15 @@
 
 namespace StnCuda {
 
-template<typename Item>
-static __device__ __host__
-Item max() {
-    return 0;
-}
-
 template<typename Item, typename... Args>
 static __device__ __host__
-Item max(Item item, Args... args) {
-    return item + max<Item>(args...);
+Item max(Item item0, Args... args) {
+    if constexpr (sizeof...(Args) == 0) {
+        return item0;
+    } else {
+        Item item1 = max(args...);
+        return item0 > item1 ? item0 : item1;
+    }
 }
 
 static __device__ __host__
