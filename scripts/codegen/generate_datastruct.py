@@ -56,15 +56,15 @@ class ValueTypeSpec(TypeSpec):
 @dataclass(kw_only=True)
 class DynamicStructTypeSpec(TypeSpec):
     spec: 'DynamicStructSpec'
-    args: str
+    args: tuple[str, ...]
 
     @property
     def size(self) -> str:
-        return f"{self.spec.name}Ptr::get_size_bytes_n({self.args})"
+        return f"{self.spec.name}Args{{{', '.join(self.args)}}}.get_size_bytes_n()"
 
     @property
     def align(self) -> str:
-        return f"{self.spec.name}Ptr::get_align_bytes_n({self.args})"
+        return f"{self.spec.name}Args{{{', '.join(self.args)}}}.get_align_bytes_n()"
 
 
 class FieldSpec:
@@ -98,7 +98,7 @@ class ListFieldSpec(FieldSpec):
 
     @property
     def size(self) -> str:
-        return f"{self.count} * get_{self.item_name}_size_bytes_n(args)"
+        return f"{self.count} * get_{self.item_name}_size_bytes_n()"
 
     @property
     def align(self) -> str:
@@ -110,7 +110,8 @@ class DynamicStructSpec:
     name: str
     params: tuple[ParamSpec, ...]
     fields: tuple[FieldSpec, ...]
-    extras: str = ""
+    extra_args_body: str = ""
+    extra_ptr_body: str = ""
 
     @property
     def size_expr(self) -> str:
@@ -119,8 +120,8 @@ class DynamicStructSpec:
 
         parts_size_expr = []
         for field in self.fields:
-            parts_size_expr.append(f"get_{field.name}_bytes_n(args)")
-            parts_size_expr.append(f"get_{field.name}_align_bytes_n(args)")
+            parts_size_expr.append(f"get_{field.name}_bytes_n()")
+            parts_size_expr.append(f"get_{field.name}_align_bytes_n()")
         return "+".join(parts_size_expr)
 
 
@@ -145,25 +146,14 @@ size_t compute_pad_bytes_n(const size_t offset_bytes_n, const size_t align_bytes
 builtin_postfix = ""
 
 
-def write_args_define_body(writer: Callable[[str], Any], spec: DynamicStructSpec):
-    for arg in spec.params:
-        writer(f"{arg.type} {arg.name};\n")
-
-
-def write_args_define_expr(writer: Callable[[str], Any], spec: DynamicStructSpec):
-    writer("struct Args {\n")
-    write_args_define_body(make_indented_writer(writer), spec)
-    writer("};\n")
-
-
 def write_get_field_size_bytes_n_method_body(writer: Callable[[str], Any], field: FieldSpec):
     writer(f"return {field.size};\n")
 
 
 def write_get_field_size_bytes_n_method(writer: Callable[[str], Any], field: FieldSpec):
     writer("\n")
-    writer("static __device__ __host__\n")
-    writer(f"size_t get_{field.name}_size_bytes_n(const Args args) {{\n")
+    writer("__device__ __host__\n")
+    writer(f"size_t get_{field.name}_size_bytes_n() const {{\n")
     write_get_field_size_bytes_n_method_body(make_indented_writer(writer), field)
     writer("}\n")
 
@@ -174,8 +164,8 @@ def write_get_field_item_size_bytes_n_method_body(writer: Callable[[str], Any], 
 
 def write_get_field_item_size_bytes_n_method(writer: Callable[[str], Any], field: ListFieldSpec):
     writer("\n")
-    writer("static __device__ __host__\n")
-    writer(f"size_t get_{field.item_name}_size_bytes_n(const Args args) {{\n")
+    writer("__device__ __host__\n")
+    writer(f"size_t get_{field.item_name}_size_bytes_n() const {{\n")
     write_get_field_item_size_bytes_n_method_body(make_indented_writer(writer), field)
     writer("}\n")
 
@@ -186,8 +176,8 @@ def write_get_field_align_bytes_n_method_body(writer: Callable[[str], Any], fiel
 
 def write_get_field_align_bytes_n_method(writer: Callable[[str], Any], field: FieldSpec):
     writer("\n")
-    writer("static __device__ __host__\n")
-    writer(f"size_t get_{field.name}_align_bytes_n(const Args args) {{\n")
+    writer("__device__ __host__\n")
+    writer(f"size_t get_{field.name}_align_bytes_n() const {{\n")
     write_get_field_align_bytes_n_method_body(make_indented_writer(writer), field)
     writer("}\n")
 
@@ -200,8 +190,8 @@ def write_get_field_pad_bytes_n_method_body(
     if field_prev is None:
         writer("return 0;\n")
     else:
-        writer(f"const size_t offset_bytes_n = get_{field_prev.name}_offset_bytes_n(args);\n")
-        writer(f"const size_t align_bytes_n = get_{field.name}_align_bytes_n(args);\n")
+        writer(f"const size_t offset_bytes_n = get_{field_prev.name}_offset_bytes_n();\n")
+        writer(f"const size_t align_bytes_n = get_{field.name}_align_bytes_n();\n")
         writer(f"return compute_pad_bytes_n(offset_bytes_n, align_bytes_n);\n")
 
 
@@ -211,8 +201,8 @@ def write_get_field_pad_bytes_n_method(
     field_prev: FieldSpec | None,
 ):
     writer("\n")
-    writer("static __device__ __host__\n")
-    writer(f"size_t get_{field.name}_pad_bytes_n(const Args args) {{\n")
+    writer("__device__ __host__\n")
+    writer(f"size_t get_{field.name}_pad_bytes_n() const {{\n")
     write_get_field_pad_bytes_n_method_body(make_indented_writer(writer), field, field_prev)
     writer("}\n")
 
@@ -227,9 +217,9 @@ def write_get_field_offset_bytes_n_method_body(
     else:
         writer(f"return \n")
         indented_writer = make_indented_writer(writer)
-        indented_writer(f"get_{field_prev.name}_offset_bytes_n(args) +\n")
-        indented_writer(f"get_{field_prev.name}_size_bytes_n(args) +\n")
-        indented_writer(f"get_{field.name}_pad_bytes_n(args);\n")
+        indented_writer(f"get_{field_prev.name}_offset_bytes_n() +\n")
+        indented_writer(f"get_{field_prev.name}_size_bytes_n() +\n")
+        indented_writer(f"get_{field.name}_pad_bytes_n();\n")
 
 
 def write_get_field_offset_bytes_n_method(
@@ -238,8 +228,8 @@ def write_get_field_offset_bytes_n_method(
     field_prev: FieldSpec | None,
 ):
     writer("\n")
-    writer("static __device__ __host__\n")
-    writer(f"size_t get_{field.name}_offset_bytes_n(const Args args) {{\n")
+    writer("__device__ __host__\n")
+    writer(f"size_t get_{field.name}_offset_bytes_n() const {{\n")
     write_get_field_offset_bytes_n_method_body(make_indented_writer(writer), field, field_prev)
     writer("}\n")
 
@@ -253,14 +243,14 @@ def write_get_size_bytes_n_method_body(writer: Callable[[str], Any], spec: Dynam
     for field_i, field in enumerate(spec.fields):
         is_last = field_i == len(spec.fields) - 1
         tail_str = ";" if is_last else " +"
-        indented_writer(f"get_{field.name}_pad_bytes_n(args) +\n")
-        indented_writer(f"get_{field.name}_size_bytes_n(args){tail_str}\n")
+        indented_writer(f"get_{field.name}_pad_bytes_n() +\n")
+        indented_writer(f"get_{field.name}_size_bytes_n(){tail_str}\n")
 
 
 def write_get_size_bytes_n_method(writer: Callable[[str], Any], spec: DynamicStructSpec):
     writer("\n")
-    writer("static __device__ __host__\n")
-    writer(f"size_t get_size_bytes_n(const Args args) {{\n")
+    writer("__device__ __host__\n")
+    writer(f"size_t get_size_bytes_n() const {{\n")
     write_get_size_bytes_n_method_body(make_indented_writer(writer), spec)
     writer("}\n")
 
@@ -274,25 +264,50 @@ def write_get_align_bytes_n_method_body(writer: Callable[[str], Any], spec: Dyna
     for field_i, field in enumerate(spec.fields):
         is_last = field_i == len(spec.fields) - 1
         tail_str = ");" if is_last else ","
-        indented_writer(f"get_{field.name}_align_bytes_n(args){tail_str}\n")
+        indented_writer(f"get_{field.name}_align_bytes_n(){tail_str}\n")
 
 
 def write_get_align_bytes_n_method(writer: Callable[[str], Any], spec: DynamicStructSpec):
     writer("\n")
-    writer("static __device__ __host__\n")
-    writer(f"size_t get_align_bytes_n(const Args args) {{\n")
+    writer("__device__ __host__\n")
+    writer(f"size_t get_align_bytes_n() const {{\n")
     write_get_align_bytes_n_method_body(make_indented_writer(writer), spec)
     writer("}\n")
 
 
+def write_dynamic_struct_args_define_body(writer: Callable[[str], Any], spec: DynamicStructSpec):
+    for arg in spec.params:
+        writer(f"{arg.type} {arg.name};\n")
+
+    field_prev = None
+    for field in spec.fields:
+        if isinstance(field, ListFieldSpec):
+            write_get_field_item_size_bytes_n_method(writer, field)
+        write_get_field_size_bytes_n_method(writer, field)
+        write_get_field_align_bytes_n_method(writer, field)
+        write_get_field_pad_bytes_n_method(writer, field, field_prev)
+        write_get_field_offset_bytes_n_method(writer, field, field_prev)
+        field_prev = field
+
+    write_get_size_bytes_n_method(writer, spec)
+    write_get_align_bytes_n_method(writer, spec)
+
+    writer(spec.extra_args_body)
+
+
+def write_dynamic_struct_args_define(writer: Callable[[str], Any], spec: DynamicStructSpec):
+    writer("\n")
+    writer(f"struct {spec.name}Args {{\n")
+    write_dynamic_struct_args_define_body(make_indented_writer(writer), spec)
+    writer("};\n")
+
+
 def write_get_field_ptr_method_body(writer: Callable[[str], Any], field: FieldSpec):
+    writer(f"const size_t offset = get_{field.name}_offset_bytes_n();\n")
+
     if isinstance(field, ItemFieldSpec):
-        writer(f"const size_t offset = get_{field.name}_offset_bytes_n(args);\n")
         value_type = field.type
     elif isinstance(field, ListFieldSpec):
-        writer(f"const size_t {field.item_name}_size = get_{field.item_name}_size_bytes_n(args);\n")
-        writer(f"const size_t offset0 = get_{field.name}_offset_bytes_n(args);\n")
-        writer(f"const size_t offset = offset0 + {field.index_name} * {field.item_name}_size;\n")
         value_type = field.item_type
     else:
         raise ValueError(f"Unsupported field type: {field}")
@@ -300,7 +315,7 @@ def write_get_field_ptr_method_body(writer: Callable[[str], Any], field: FieldSp
     if isinstance(value_type, ValueTypeSpec):
         writer(f"return reinterpret_cast<{value_type.name} *>(ptr + offset);\n")
     elif isinstance(value_type, DynamicStructTypeSpec):
-        writer(f"return {{{value_type.args}, ptr + offset}};\n")
+        writer(f"return {{{', '.join(value_type.args)}, ptr + offset}};\n")
     else:
         raise TypeError(f"Unsupported field type: {value_type}")
 
@@ -317,11 +332,7 @@ def write_get_field_ptr_method(writer: Callable[[str], Any], field: FieldSpec):
             raise TypeError(f"Unsupported field type: {field.type}")
     elif isinstance(field, ListFieldSpec):
         if isinstance(field.item_type, ValueTypeSpec):
-            writer(f"{field.item_type.name} *get_{field.item_name}_ptr("
-                   f"const {field.index_type} {field.index_name}) const {{\n")
-        elif isinstance(field.item_type, DynamicStructTypeSpec):
-            writer(f"{field.item_type.spec.name}Ptr get_{field.item_name}_ptr("
-                   f"const {field.index_type} {field.index_name}) const {{\n")
+            writer(f"{field.item_type.name} *get_{field.name}_ptr() const {{\n")
         else:
             raise TypeError(f"Unsupported list field item type: {field.item_type}")
     else:
@@ -330,36 +341,60 @@ def write_get_field_ptr_method(writer: Callable[[str], Any], field: FieldSpec):
     writer("}\n")
 
 
-def write_dynamic_struct_define_body(writer: Callable[[str], Any], spec: DynamicStructSpec):
-    write_args_define_expr(writer, spec)
+def write_get_field_item_ptr_method_body(writer: Callable[[str], Any], field: ListFieldSpec):
+    value_type = field.item_type
 
-    field_prev = None
-    for field in spec.fields:
-        if isinstance(field, ListFieldSpec):
-            write_get_field_item_size_bytes_n_method(writer, field)
-        write_get_field_size_bytes_n_method(writer, field)
-        write_get_field_align_bytes_n_method(writer, field)
-        write_get_field_pad_bytes_n_method(writer, field, field_prev)
-        write_get_field_offset_bytes_n_method(writer, field, field_prev)
-        field_prev = field
+    if isinstance(value_type, ValueTypeSpec):
+        writer(f"return get_{field.name}_ptr() + {field.index_name};\n")
+    elif isinstance(value_type, DynamicStructTypeSpec):
+        writer(f"const size_t offset =\n")
+        indented_writer = make_indented_writer(writer)
+        indented_writer(f"get_{field.name}_offset_bytes_n() +\n")
+        indented_writer(f"{field.index_name} * get_{field.item_name}_size_bytes_n();\n")
+        writer(f"return {{{', '.join(value_type.args)}, ptr + offset}};\n")
+    else:
+        raise TypeError(f"Unsupported field type: {value_type}")
 
-    write_get_size_bytes_n_method(writer, spec)
-    write_get_align_bytes_n_method(writer, spec)
 
+def write_get_field_item_ptr_method(writer: Callable[[str], Any], field: ListFieldSpec):
     writer("\n")
-    writer("Args args;\n")
+    writer("__device__ __host__\n")
+    if isinstance(field.item_type, ValueTypeSpec):
+        writer(f"{field.item_type.name} *get_{field.item_name}_ptr("
+               f"const {field.index_type} {field.index_name}) const {{\n")
+    elif isinstance(field.item_type, DynamicStructTypeSpec):
+        writer(f"{field.item_type.spec.name}Ptr get_{field.item_name}_ptr("
+               f"const {field.index_type} {field.index_name}) const {{\n")
+    else:
+        raise TypeError(f"Unsupported list field item type: {field.item_type}")
+    write_get_field_item_ptr_method_body(make_indented_writer(writer), field)
+    writer("}\n")
+
+
+def write_dynamic_struct_ptr_define_body(writer: Callable[[str], Any], spec: DynamicStructSpec):
     writer("char *ptr;\n")
 
     for field in spec.fields:
-        write_get_field_ptr_method(writer, field)
+        if isinstance(field, ItemFieldSpec):
+            write_get_field_ptr_method(writer, field)
+        elif isinstance(field, ListFieldSpec):
+            if isinstance(field.item_type, ValueTypeSpec):
+                write_get_field_ptr_method(writer, field)
+                write_get_field_item_ptr_method(writer, field)
+            elif isinstance(field.item_type, DynamicStructTypeSpec):
+                write_get_field_item_ptr_method(writer, field)
+            else:
+                raise TypeError(f"Unsupported list field item type: {field.item_type}")
+        else:
+            raise TypeError(f"Unsupported field type: {field}")
 
-    writer(spec.extras)
+    writer(spec.extra_ptr_body)
 
 
-def write_dynamic_struct_define(writer: Callable[[str], Any], spec: DynamicStructSpec):
+def write_dynamic_struct_ptr_define(writer: Callable[[str], Any], spec: DynamicStructSpec):
     writer("\n")
-    writer(f"struct {spec.name}Ptr {{\n")
-    write_dynamic_struct_define_body(make_indented_writer(writer), spec)
+    writer(f"struct {spec.name}Ptr : {spec.name}Args {{\n")
+    write_dynamic_struct_ptr_define_body(make_indented_writer(writer), spec)
     writer("};\n")
 
 
@@ -389,7 +424,8 @@ def write_entire_code(writer: Callable[[str], Any], spec: DynamicStructSpec, pre
     defined_specs = []
     for spec in iter_dynamic_struct_spec(spec):
         if spec not in defined_specs:
-            write_dynamic_struct_define(writer, spec)
+            write_dynamic_struct_args_define(writer, spec)
+            write_dynamic_struct_ptr_define(writer, spec)
             defined_specs.append(spec)
 
     if builtin_postfix:
@@ -424,8 +460,8 @@ def main(code_file_path: str | None = None):
                 item_type=ValueTypeSpec(name="Bit"),
                 index_name="bit_i",
                 index_type="Qid",
-                count="2 * args.qubits_n"),),
-        extras="""
+                count="2 * qubits_n"),),
+        extra_ptr_body="""
 __device__ __host__
 Bit *get_x_ptr(const Qid qubit_i) const {
     return get_bit_ptr(qubit_i);
@@ -433,7 +469,7 @@ Bit *get_x_ptr(const Qid qubit_i) const {
 
 __device__ __host__
 Bit *get_z_ptr(const Qid qubit_i) const {
-    return get_bit_ptr(args.qubits_n + qubit_i);
+    return get_bit_ptr(qubits_n + qubit_i);
 }\n""")
     table_row_spec = DynamicStructSpec(
         name="TableRow",
@@ -443,7 +479,7 @@ Bit *get_z_ptr(const Qid qubit_i) const {
                 name="pauli",
                 type=DynamicStructTypeSpec(
                     spec=pauli_row_spec,
-                    args="{args.qubits_n}")),
+                    args=("qubits_n",))),
             ItemFieldSpec(
                 name="sign",
                 type=ValueTypeSpec(name="Bit")),
@@ -457,10 +493,10 @@ Bit *get_z_ptr(const Qid qubit_i) const {
                 item_name="row",
                 item_type=DynamicStructTypeSpec(
                     spec=table_row_spec,
-                    args="{args.qubits_n}"),
+                    args=("qubits_n",)),
                 index_name="row_i",
                 index_type="Qid",
-                count="2 * args.qubits_n"),
+                count="2 * qubits_n"),
         ))
     decomp_spec = DynamicStructSpec(
         name="Decomp",
@@ -472,12 +508,12 @@ Bit *get_z_ptr(const Qid qubit_i) const {
                 item_type=ValueTypeSpec(name="Bit"),
                 index_name="bit_i",
                 index_type="Qid",
-                count="2 * args.qubits_n"),
+                count="2 * qubits_n"),
             ItemFieldSpec(
                 name="pauli",
                 type=DynamicStructTypeSpec(
                     spec=pauli_row_spec,
-                    args="{args.qubits_n}")),
+                    args=("qubits_n",))),
             ItemFieldSpec(
                 name="phase",
                 type=ValueTypeSpec(name="Phs")),
@@ -500,14 +536,14 @@ Bit *get_z_ptr(const Qid qubit_i) const {
                 item_type=ValueTypeSpec(name="Amp"),
                 index_name="amp_i",
                 index_type="Kid",
-                count="args.amps_m"),
+                count="amps_m"),
             ListFieldSpec(
                 name="aids",
                 item_name="aid",
                 item_type=ValueTypeSpec(name="Aid"),
                 index_name="amp_i",
                 index_type="Kid",
-                count="args.amps_m"),
+                count="amps_m"),
         ))
     shot_state_spec = DynamicStructSpec(
         name="ShotState",
@@ -519,17 +555,17 @@ Bit *get_z_ptr(const Qid qubit_i) const {
                 name="table",
                 type=DynamicStructTypeSpec(
                     spec=table_spec,
-                    args="{args.qubits_n}")),
+                    args=("qubits_n",))),
             ItemFieldSpec(
                 name="decomp",
                 type=DynamicStructTypeSpec(
                     spec=decomp_spec,
-                    args="{args.qubits_n}")),
+                    args=("qubits_n",))),
             ItemFieldSpec(
                 name="amps",
                 type=DynamicStructTypeSpec(
                     spec=amps_spec,
-                    args="{args.qubits_n, args.amps_m}")),
+                    args=("qubits_n", "amps_m"))),
         ))
     shots_state_spec = DynamicStructSpec(
         name="ShotsState",
@@ -543,10 +579,10 @@ Bit *get_z_ptr(const Qid qubit_i) const {
                 item_name="shot",
                 item_type=DynamicStructTypeSpec(
                     spec=shot_state_spec,
-                    args="{args.qubits_n, args.amps_m}"),
+                    args=("qubits_n", "amps_m")),
                 index_name="shot_i",
                 index_type="Sid",
-                count="args.shots_n"),
+                count="shots_n"),
         ))
 
     if code_file_path is None:
