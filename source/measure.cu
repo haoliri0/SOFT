@@ -14,8 +14,7 @@ void op_compute_decomp_pivot(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const Bit *decomp_bits = decomp_ptr.get_destab_bits_ptr();
     Qid &decomp_pivot = *decomp_ptr.get_pivot_ptr();
 
-    decomp_pivot = 0;
-    decomp_pivot -= 1;
+    decomp_pivot = NullPivot;
     Qid const qubits_n = shot_state_ptr.qubits_n;
     for (int row_i = 0; row_i < qubits_n; ++row_i) {
         if (decomp_bits[row_i]) {

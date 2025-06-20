@@ -15,6 +15,8 @@ using Phs = unsigned char;
 using Flt = float;
 using Amp = cuda::std::complex<Flt>;
 
+constexpr Qid NullPivot = static_cast<Qid>(-1);
+
 }
 
 #endif

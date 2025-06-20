@@ -79,7 +79,7 @@ void print_pauli_row(const PauliRowPtr ptr) {
 
 static
 void print_pivot(const Qid pivot) {
-    if (pivot == -1) {
+    if (pivot == NullPivot) {
         printf("pivot=null");
     } else {
         printf("pivot=%u", pivot);
