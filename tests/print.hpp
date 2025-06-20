@@ -96,7 +96,9 @@ void print_table_row(const TableRowPtr ptr) {
 static
 void print_table(const TablePtr ptr) {
     printf("\t\ttable:\n");
-    for (int row_i = 0; row_i < ptr.get_rows_n(); ++row_i) {
+    const Qid qubits_n = ptr.qubits_n;
+    const Qid rows_n = 2 * qubits_n;
+    for (int row_i = 0; row_i < rows_n; ++row_i) {
         printf("\t\t\t");
         print_table_row(ptr.get_row_ptr(row_i));
         printf("\n");
@@ -121,7 +123,7 @@ void print_decomp(const DecompPtr ptr) {
 static
 void print_amps(const AmpsMapPtr ptr) {
     printf("\t\tamplitudes:\n");
-    const Kid amps_n = *ptr.get_num_ptr();
+    const Kid amps_n = *ptr.get_amps_n_ptr();
     printf("\t\t\t(amps_n = %u)\n", amps_n);
     for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
         const Aid aid = *(ptr.get_aids_ptr() + amp_i);
@@ -139,7 +141,7 @@ static
 void print_amps_halves(const AmpsMapPtr ptr) {
     printf("\t\tamplitudes:\n");
     const Kid amps_m = ptr.amps_m;
-    const Kid amps_n = *ptr.get_num_ptr();
+    const Kid amps_n = *ptr.get_amps_n_ptr();
     printf("\t\t\t(amps_n = %u)\n", amps_n);
     if (amps_n > amps_m / 2) {
         printf("\t\t\tToo Large!");
@@ -159,8 +161,8 @@ void print_amps_halves(const AmpsMapPtr ptr) {
     printf("\t\t\t----------------\n");
 
     for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Aid aid = *(ptr.get_aids_ptr() + amps_m / 2 + amp_i);
-        const Amp amp = *(ptr.get_amps_ptr() + amps_m / 2 + amp_i);
+        const Aid aid = *ptr.get_aid_ptr(amps_m / 2 + amp_i);
+        const Amp amp = *ptr.get_amp_ptr( amps_m / 2 + amp_i);
         printf("\t\t\t");
         print_int_bits(aid, ptr.qubits_n);
         printf(": ");
@@ -176,21 +178,24 @@ static
 void print_shot_state(const ShotStatePtr ptr) {
     print_table(ptr.get_table_ptr());
     print_decomp(ptr.get_decomp_ptr());
-    print_amps_halves(ptr.get_amps_map_ptr());
+    print_amps_halves(ptr.get_amps_ptr());
 }
 
 static
 void print_shots_state(const ShotsStatePtr ptr) {
     for (Sid shot_i = 0; shot_i < ptr.shots_n; ++shot_i) {
         printf("\tshot %u:\n", shot_i);
-        print_shot_state(ptr.get_shot_state_ptr(shot_i));
+        print_shot_state(ptr.get_shot_ptr(shot_i));
         printf("\n");
     }
 }
 
 static
 void print_simulator(const Simulator &simulator) {
-    const auto [shots_n, qubits_n,amps_m, ptr] = simulator.shots_state_ptr;
+    const Sid shots_n = simulator.shots_state_ptr.shots_n;
+    const Qid qubits_n = simulator.shots_state_ptr.qubits_n;
+    const Kid amps_m = simulator.shots_state_ptr.amps_m;
+    const char *ptr = simulator.shots_state_ptr.ptr;
 
     printf("\nSimulator:\n");
     printf("\tshots_n:%u\n", shots_n);
@@ -200,7 +205,7 @@ void print_simulator(const Simulator &simulator) {
 
     cudaDeviceSynchronize();
 
-    const size_t state_bytes_n = ShotsStatePtr::compute_bytes_n(shots_n, qubits_n, amps_m);
+    const size_t state_bytes_n = simulator.shots_state_ptr.get_size_bytes_n();
     const auto buffer_ptr = static_cast<char *>(malloc(state_bytes_n));
     cudaMemcpy(buffer_ptr, ptr, state_bytes_n, cudaMemcpyDeviceToHost);
 

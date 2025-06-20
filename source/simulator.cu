@@ -11,18 +11,18 @@ void op_init_table(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_id
     Qid const row_i = dims_idx.get<1>();
     Qid const col_i = row_i;
     Bit &bit = *shots_state_ptr
-        .get_shot_state_ptr(shot_i)
+        .get_shot_ptr(shot_i)
         .get_table_ptr()
         .get_row_ptr(row_i)
         .get_pauli_ptr()
-        .get_ptr(col_i);
+        .get_bit_ptr(col_i);
     bit = true;
 }
 
 static __host__
 void cuda_init_table(cudaStream_t const stream, const ShotsStatePtr shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
-    const Qid rows_n = TablePtr::get_rows_n(shots_state_ptr.qubits_n);
+    const Qid rows_n = 2 * shots_state_ptr.qubits_n;
     cuda_dims_op<ShotsStatePtr, 2, op_init_table>
         (stream, shots_state_ptr, dimsof(shots_n, rows_n));
 }
@@ -32,11 +32,11 @@ static __device__
 void op_init_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
     const AmpsMapPtr amps_map_ptr = shots_state_ptr
-        .get_shot_state_ptr(shot_i)
-        .get_amps_map_ptr();
-    Aid &aid0 = *amps_map_ptr.get_aids_ptr();
-    Amp &amp0 = *amps_map_ptr.get_amps_ptr();
-    Kid &amps_n = *amps_map_ptr.get_num_ptr();
+        .get_shot_ptr(shot_i)
+        .get_amps_ptr();
+    Aid &aid0 = *amps_map_ptr.get_aid_ptr(0);
+    Amp &amp0 = *amps_map_ptr.get_amp_ptr(0);
+    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
     aid0 = 0;
     amp0 = 1;
     amps_n = 1;
@@ -58,10 +58,8 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Kid const a
         if (err != cudaSuccess) break;
 
         // allocate state
-        this->shots_state_ptr.shots_n = shots_n;
-        this->shots_state_ptr.qubits_n = qubits_n;
-        this->shots_state_ptr.amps_m = amps_m;
-        const size_t state_bytes_n = ShotsStatePtr::compute_bytes_n(shots_n, qubits_n, amps_m);
+        this->shots_state_ptr = {shots_n, qubits_n, amps_m};
+        const size_t state_bytes_n = this->shots_state_ptr.get_size_bytes_n();
         err = cudaMallocAsync(&this->shots_state_ptr.ptr, state_bytes_n, this->stream);
         if (err != cudaSuccess) break;
 

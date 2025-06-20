@@ -9,9 +9,9 @@ using namespace StnCuda;
 static __device__
 void op_compute_decomp_pivot(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
-    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_state_ptr(shot_i);
+    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
-    const Bit *decomp_bits = decomp_ptr.get_bits_ptr();
+    const Bit *decomp_bits = decomp_ptr.get_destab_bits_ptr();
     Qid &decomp_pivot = *decomp_ptr.get_pivot_ptr();
 
     decomp_pivot = 0;

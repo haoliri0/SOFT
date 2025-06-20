@@ -20,7 +20,7 @@ void op_compute_decomposed_bits(const ComputeDecomposedBitsArgs args, const Dims
     Qid const target = args.target;
 
     const PauliRowPtr pauli_row_ptr = args.ptr
-        .get_shot_state_ptr(shot_i)
+        .get_shot_ptr(shot_i)
         .get_table_ptr()
         .get_row_ptr(row_i)
         .get_pauli_ptr();
@@ -31,7 +31,7 @@ void op_compute_decomposed_bits(const ComputeDecomposedBitsArgs args, const Dims
     const Bit z = *pauli_row_ptr.get_z_ptr(target);
 
     Bit *bits_ptr = args.ptr
-        .get_shot_state_ptr(shot_i)
+        .get_shot_ptr(shot_i)
         .get_decomp_ptr()
         .get_bits_ptr();
 
@@ -127,17 +127,18 @@ void op_compute_decomposed_phase(const ComputeDecomposedPhaseArgs args, const Di
     Qid const cols_n = 2 * qubits_n;
 
     Sid const shot_i = dims_idx.get<0>();
-    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_state_ptr(shot_i);
+    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
 
     const TablePtr table_ptr = shot_state_ptr.get_table_ptr();
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
-    const Bit *decomp_bits_ptr = decomp_ptr.get_bits_ptr();
+    const Bit *decomp_bits_ptr = decomp_ptr.get_destab_bits_ptr();
     const PauliRowPtr decomp_pauli_row = decomp_ptr.get_pauli_ptr();
     Phs &decomp_phase = *decomp_ptr.get_phase_ptr();
 
     // clear decomp pauli row
     for (Qid col_i = 0; col_i < cols_n; ++col_i)
-        *decomp_pauli_row.get_ptr(col_i) = false;
+        *decomp_pauli_row.get_bit_ptr(col_i) = false;
+
     // clear decomp phase
     decomp_phase = 0;
 
