@@ -83,12 +83,14 @@ void op_compute_measure_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
 
+    // check amps_n & amp_i
     const Kid amps_m = amps_map_ptr.amps_m;
     Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amp_i >= amps_n)
-        return; // index 超过了 amp 数，不用计算
-    if (amps_n > amps_m / 2) {
+    if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
+    if (amp_i >= amps_n) return; // 线程超出了 amp_n 的范围，不进行计算
+    if (amp_i == 0 && amps_n > amps_m / 2) {
         // 数量超过一半，无法计算，设置为 0 表示失败
+        // 只有一条线程会执行该修改，避免写入冲突
         amps_n = 0;
         return;
     }
@@ -107,7 +109,7 @@ void cuda_compute_measure_amps(cudaStream_t const stream, ShotsStatePtr const sh
     const Sid shots_n = shots_state_ptr.shots_n;
     const Kid amps_m = shots_state_ptr.amps_m;
     cuda_dims_op<ShotsStatePtr, 2, op_compute_measure_amps>
-        (stream, shots_state_ptr, dimsof(shots_n, amps_m));
+        (stream, shots_state_ptr, dimsof(shots_n, amps_m / 2));
 }
 
 
