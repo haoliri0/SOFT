@@ -169,8 +169,24 @@ void print_amps_halves(const AmpsMapPtr ptr) {
         print_amplitude(amp);
         printf("\n");
     }
+}
 
-    printf("\n");
+static
+void print_results(const ResultsPtr ptr) {
+    const Rid results_m = ptr.results_m;
+    const Rid results_n = *ptr.get_results_n_ptr();
+    const Rid results_idx0 = results_n > results_m ? results_n - results_m : 0;
+    if (results_n == 0) return;
+
+    printf("\t\tresults:\n");
+    for (Rid result_idx = results_idx0; result_idx < results_n; ++result_idx) {
+        const Rid result_i = result_idx % results_m;
+        const Bit bit = *ptr.get_bit_ptr(result_i);
+        const Flt prob = *ptr.get_prob_ptr(result_i);
+        printf("\t\t\tid=%04d result=", result_idx);
+        print_bit(bit);
+        printf(" prob=%f\n", prob);
+    }
 }
 
 
@@ -179,6 +195,7 @@ void print_shot_state(const ShotStatePtr ptr) {
     print_table(ptr.get_table_ptr());
     print_decomp(ptr.get_decomp_ptr());
     print_amps_halves(ptr.get_amps_ptr());
+    print_results(ptr.get_results_ptr());
 }
 
 static
