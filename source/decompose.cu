@@ -115,13 +115,8 @@ void compute_multiply_pauli_string(
     }
 }
 
-struct ComputeDecomposedPhaseArgs {
-    ShotsStatePtr shots_state_ptr;
-};
-
 static __device__
-void op_compute_decomposed_phase(const ComputeDecomposedPhaseArgs args, const DimsIdx<1> dims_idx) {
-    const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
+void op_compute_decomposed_phase(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx) {
     Qid const qubits_n = shots_state_ptr.qubits_n;
     Qid const rows_n = 2 * qubits_n;
     Qid const cols_n = 2 * qubits_n;
@@ -166,6 +161,6 @@ void cuda_compute_decomposed_phase(
     ShotsStatePtr const shots_state_ptr
 ) {
     const Sid shots_n = shots_state_ptr.shots_n;
-    cuda_dims_op<ComputeDecomposedPhaseArgs, 1, op_compute_decomposed_phase>
-        (stream, {shots_state_ptr}, dimsof(shots_n));
+    cuda_dims_op<ShotsStatePtr, 1, op_compute_decomposed_phase>
+        (stream, shots_state_ptr, dimsof(shots_n));
 }
