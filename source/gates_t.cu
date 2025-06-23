@@ -18,14 +18,13 @@ void op_update_amps_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
 
     const Kid amps_m = amps_map_ptr.amps_m;
     Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amps_n == 0)
-        return; // 这个 shot 已经失败，不进行计算
+    if (amp_i >= amps_n)
+        return; // index 超过了 amps_n，跳过计算
     if (amps_n > amps_m / 2) {
+        // 数量超过一半，无法计算，设置为 0 表示失败
         amps_n = 0;
-        return; // 数量超过一半，无法计算，设置为失败
+        return;
     }
-    if (amp_i > amps_n)
-        return; // index 超过了 amp 数，不用计算
 
     const Qid qubits_n = decomp_ptr.qubits_n;
     const Bit *destab_bits = decomp_ptr.get_destab_bits_ptr();
@@ -68,14 +67,13 @@ void op_update_amps_half0(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
 
     const Kid amps_m = amps_map_ptr.amps_m;
     Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amps_n == 0)
-        return; // 这个 shot 已经失败，不进行计算
+    if (amp_i >= amps_n)
+        return; // index 超过了 amps_n，跳过计算
     if (amps_n > amps_m / 2) {
+        // 数量超过一半，无法计算，设置为 0 表示失败
         amps_n = 0;
-        return; // 数量超过一半，无法计算，设置为失败
+        return;
     }
-    if (amp_i > amps_n)
-        return; // index 超过了 amp 数，不用计算
 
     // 直接原地修改前半部分
     Amp &src_amp = *amps_map_ptr.get_amp_ptr(amp_i);
@@ -109,7 +107,7 @@ void op_merge_amps_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> 
     Kid entries_add_n = 0;
     for (Kid src_amp_i = 0; src_amp_i < amps_n; ++src_amp_i) {
         const Kid src_aid = *amps_map_ptr.get_aid_ptr(amps_m / 2 + src_amp_i);
-        const Amp src_amp = *amps_map_ptr.get_amp_ptr( amps_m / 2 + src_amp_i);
+        const Amp src_amp = *amps_map_ptr.get_amp_ptr(amps_m / 2 + src_amp_i);
 
         // 在 half0 找 aid 对应的条目
         Kid dst_amp_i = 0;
