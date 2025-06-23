@@ -93,8 +93,9 @@ void op_compute_measure_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<
         return;
     }
 
+    // check pivot
     const Qid pivot = *decomp_ptr.get_pivot_ptr();
-    if (pivot != NullPivot) {
+    if (pivot == NullPivot) {
         compute_measure_amps_situation0(shot_state_ptr, amp_i);
     } else {
         compute_measure_amps_situation1(shot_state_ptr, amp_i, pivot);
@@ -240,9 +241,9 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const Bit result_bit = *results_ptr.get_bit_ptr(result_i);
     const Flt result_prob = *results_ptr.get_prob_ptr(result_i);
 
-    // sort amplitudes
+    // check pivot
     const Qid pivot = *decomp_ptr.get_pivot_ptr();
-    if (pivot != NullPivot) {
+    if (pivot == NullPivot) {
         op_apply_measure_result_situation0(amps_map_ptr, result_bit, result_prob);
     } else {
         op_apply_measure_result_situation1(amps_map_ptr, result_bit, result_prob);
