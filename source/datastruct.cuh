@@ -597,6 +597,110 @@ struct AmpsMapArgs {
     }
     
     __device__ __host__
+    size_t get_half0_amps_n_size_bytes_n() const {
+        return sizeof(Kid);
+    }
+    
+    __device__ __host__
+    size_t get_half0_amps_n_align_bytes_n() const {
+        return alignof(Kid);
+    }
+    
+    __device__ __host__
+    size_t get_half0_amps_n_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_amps_offset_bytes_n() +
+            get_amps_size_bytes_n(),
+            get_half0_amps_n_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_half0_amps_n_offset_bytes_n() const {
+        return 
+            get_amps_offset_bytes_n() +
+            get_amps_size_bytes_n() +
+            get_half0_amps_n_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_half1_amps_n_size_bytes_n() const {
+        return sizeof(Kid);
+    }
+    
+    __device__ __host__
+    size_t get_half1_amps_n_align_bytes_n() const {
+        return alignof(Kid);
+    }
+    
+    __device__ __host__
+    size_t get_half1_amps_n_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_half0_amps_n_offset_bytes_n() +
+            get_half0_amps_n_size_bytes_n(),
+            get_half1_amps_n_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_half1_amps_n_offset_bytes_n() const {
+        return 
+            get_half0_amps_n_offset_bytes_n() +
+            get_half0_amps_n_size_bytes_n() +
+            get_half1_amps_n_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_half0_prob_size_bytes_n() const {
+        return sizeof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_half0_prob_align_bytes_n() const {
+        return alignof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_half0_prob_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_half1_amps_n_offset_bytes_n() +
+            get_half1_amps_n_size_bytes_n(),
+            get_half0_prob_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_half0_prob_offset_bytes_n() const {
+        return 
+            get_half1_amps_n_offset_bytes_n() +
+            get_half1_amps_n_size_bytes_n() +
+            get_half0_prob_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_half1_prob_size_bytes_n() const {
+        return sizeof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_half1_prob_align_bytes_n() const {
+        return alignof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_half1_prob_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_half0_prob_offset_bytes_n() +
+            get_half0_prob_size_bytes_n(),
+            get_half1_prob_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_half1_prob_offset_bytes_n() const {
+        return 
+            get_half0_prob_offset_bytes_n() +
+            get_half0_prob_size_bytes_n() +
+            get_half1_prob_pad_bytes_n();
+    }
+    
+    __device__ __host__
     size_t get_size_bytes_n() const {
         return 
             get_amps_n_pad_bytes_n() +
@@ -604,7 +708,15 @@ struct AmpsMapArgs {
             get_aids_pad_bytes_n() +
             get_aids_size_bytes_n() +
             get_amps_pad_bytes_n() +
-            get_amps_size_bytes_n();
+            get_amps_size_bytes_n() +
+            get_half0_amps_n_pad_bytes_n() +
+            get_half0_amps_n_size_bytes_n() +
+            get_half1_amps_n_pad_bytes_n() +
+            get_half1_amps_n_size_bytes_n() +
+            get_half0_prob_pad_bytes_n() +
+            get_half0_prob_size_bytes_n() +
+            get_half1_prob_pad_bytes_n() +
+            get_half1_prob_size_bytes_n();
     }
     
     __device__ __host__
@@ -612,7 +724,11 @@ struct AmpsMapArgs {
         return max(
             get_amps_n_align_bytes_n(),
             get_aids_align_bytes_n(),
-            get_amps_align_bytes_n());
+            get_amps_align_bytes_n(),
+            get_half0_amps_n_align_bytes_n(),
+            get_half1_amps_n_align_bytes_n(),
+            get_half0_prob_align_bytes_n(),
+            get_half1_prob_align_bytes_n());
     }
 };
 
@@ -645,6 +761,30 @@ struct AmpsMapPtr : AmpsMapArgs {
     __device__ __host__
     Amp *get_amp_ptr(const Kid amp_i) const {
         return get_amps_ptr() + amp_i;
+    }
+    
+    __device__ __host__
+    Kid *get_half0_amps_n_ptr() const {
+        const size_t offset = get_half0_amps_n_offset_bytes_n();
+        return reinterpret_cast<Kid *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Kid *get_half1_amps_n_ptr() const {
+        const size_t offset = get_half1_amps_n_offset_bytes_n();
+        return reinterpret_cast<Kid *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Flt *get_half0_prob_ptr() const {
+        const size_t offset = get_half0_prob_offset_bytes_n();
+        return reinterpret_cast<Flt *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Flt *get_half1_prob_ptr() const {
+        const size_t offset = get_half1_prob_offset_bytes_n();
+        return reinterpret_cast<Flt *>(ptr + offset);
     }
     
     __device__ __host__

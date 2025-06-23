@@ -602,7 +602,19 @@ Bit *get_stab_bit_ptr(const Qid qubit_i) const {
                 item_type=ValueTypeSpec(name="Amp"),
                 index_name="amp_i",
                 index_type="Kid",
-                count="amps_m")),
+                count="amps_m"),
+            ItemFieldSpec(
+                name="half0_amps_n",
+                type=ValueTypeSpec(name="Kid")),
+            ItemFieldSpec(
+                name="half1_amps_n",
+                type=ValueTypeSpec(name="Kid")),
+            ItemFieldSpec(
+                name="half0_prob",
+                type=ValueTypeSpec(name="Flt")),
+            ItemFieldSpec(
+                name="half1_prob",
+                type=ValueTypeSpec(name="Flt"))),
         extra_ptr_body="""
 __device__ __host__
 Aid *get_half0_aids_ptr() const {
