@@ -315,6 +315,7 @@ void op_change_measure_basis_rowsum(const ShotsStatePtr shots_state_ptr, const D
 
     // check pivot
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
+    const Bit *decomp_bits = decomp_ptr.get_bits_ptr();
     const Qid pivot = *decomp_ptr.get_pivot_ptr();
     if (pivot == NullPivot)
         return; // situation0 不需要改 basis
@@ -322,8 +323,11 @@ void op_change_measure_basis_rowsum(const ShotsStatePtr shots_state_ptr, const D
     // update table
     const TablePtr table_ptr = shot_state_ptr.get_table_ptr();
     const Qid qubits_n = table_ptr.qubits_n;
-    if (row_i == qubits_n + pivot)
+    const Qid rows_n = 2 * qubits_n;
+    if (row_i == pivot || row_i == qubits_n + pivot)
         return; // skip the pivot row
+    if (!decomp_bits[(row_i + qubits_n) % rows_n])
+        return; // skip the non-xy row
 
     const TableRowPtr pivot_row_ptr = table_ptr.get_row_ptr(qubits_n + pivot);
     const TableRowPtr this_row_ptr = table_ptr.get_row_ptr(row_i);
@@ -379,12 +383,21 @@ void op_change_measure_basis_pivot(const ArgsApplyMeasureBasisPivot args, const 
     const TablePtr table_ptr = shot_state_ptr.get_table_ptr();
     const Qid qubits_n = table_ptr.qubits_n;
     const Qid cols_n = 2 * qubits_n;
+    const TableRowPtr destab_pivot_row_ptr = table_ptr.get_row_ptr(pivot);
+    const TableRowPtr stab_pivot_row_ptr = table_ptr.get_row_ptr(qubits_n + pivot);
 
-    const TableRowPtr pivot_row_ptr = table_ptr.get_row_ptr(qubits_n + pivot);
+    // set destab pivot = stab pivot
     for (int col_i = 0; col_i < cols_n; ++col_i)
-        *pivot_row_ptr.get_pauli_ptr().get_bit_ptr(col_i) = false;
-    *pivot_row_ptr.get_pauli_ptr().get_bit_ptr(qubits_n + args.target) = true;
-    *pivot_row_ptr.get_sign_ptr() = result_bit;
+        *destab_pivot_row_ptr.get_pauli_ptr().get_bit_ptr(col_i) =
+            *stab_pivot_row_ptr.get_pauli_ptr().get_bit_ptr(col_i);
+    *destab_pivot_row_ptr.get_sign_ptr() =
+        *stab_pivot_row_ptr.get_sign_ptr();
+
+    // set stab pivot = Z (sign=result)
+    for (int col_i = 0; col_i < cols_n; ++col_i)
+        *stab_pivot_row_ptr.get_pauli_ptr().get_bit_ptr(col_i) = false;
+    *stab_pivot_row_ptr.get_pauli_ptr().get_bit_ptr(qubits_n + args.target) = true;
+    *stab_pivot_row_ptr.get_sign_ptr() = result_bit;
 }
 
 static __host__
