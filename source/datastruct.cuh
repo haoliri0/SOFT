@@ -648,9 +648,189 @@ struct AmpsMapPtr : AmpsMapArgs {
     }
 };
 
+struct ResultsArgs {
+    Rid results_m;
+    
+    __device__ __host__
+    size_t get_results_n_size_bytes_n() const {
+        return sizeof(Rid);
+    }
+    
+    __device__ __host__
+    size_t get_results_n_align_bytes_n() const {
+        return alignof(Rid);
+    }
+    
+    __device__ __host__
+    size_t get_results_n_pad_bytes_n() const {
+        return 0;
+    }
+    
+    __device__ __host__
+    size_t get_results_n_offset_bytes_n() const {
+        return 0;
+    }
+    
+    __device__ __host__
+    size_t get_prob_size_bytes_n() const {
+        return sizeof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_prob_align_bytes_n() const {
+        return alignof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_prob_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_prob_size_bytes_n(),
+            get_prob_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_probs_size_bytes_n() const {
+        return 
+            results_m * get_prob_size_bytes_n() +
+            results_m * get_prob_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_probs_align_bytes_n() const {
+        return alignof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_probs_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_results_n_offset_bytes_n() +
+            get_results_n_size_bytes_n(),
+            get_probs_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_probs_offset_bytes_n() const {
+        return 
+            get_results_n_offset_bytes_n() +
+            get_results_n_size_bytes_n() +
+            get_probs_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_prob_offset_bytes_n(Rid result_i) const {
+        return get_probs_offset_bytes_n() +
+            result_i * get_prob_size_bytes_n() +
+            result_i * get_prob_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_bit_size_bytes_n() const {
+        return sizeof(Bit);
+    }
+    
+    __device__ __host__
+    size_t get_bit_align_bytes_n() const {
+        return alignof(Bit);
+    }
+    
+    __device__ __host__
+    size_t get_bit_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_bit_size_bytes_n(),
+            get_bit_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_bits_size_bytes_n() const {
+        return 
+            results_m * get_bit_size_bytes_n() +
+            results_m * get_bit_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_bits_align_bytes_n() const {
+        return alignof(Bit);
+    }
+    
+    __device__ __host__
+    size_t get_bits_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_probs_offset_bytes_n() +
+            get_probs_size_bytes_n(),
+            get_bits_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_bits_offset_bytes_n() const {
+        return 
+            get_probs_offset_bytes_n() +
+            get_probs_size_bytes_n() +
+            get_bits_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_bit_offset_bytes_n(Rid result_i) const {
+        return get_bits_offset_bytes_n() +
+            result_i * get_bit_size_bytes_n() +
+            result_i * get_bit_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_size_bytes_n() const {
+        return 
+            get_results_n_pad_bytes_n() +
+            get_results_n_size_bytes_n() +
+            get_probs_pad_bytes_n() +
+            get_probs_size_bytes_n() +
+            get_bits_pad_bytes_n() +
+            get_bits_size_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_align_bytes_n() const {
+        return max(
+            get_results_n_align_bytes_n(),
+            get_probs_align_bytes_n(),
+            get_bits_align_bytes_n());
+    }
+};
+
+struct ResultsPtr : ResultsArgs {
+    char *ptr;
+    
+    __device__ __host__
+    Rid *get_results_n_ptr() const {
+        const size_t offset = get_results_n_offset_bytes_n();
+        return reinterpret_cast<Rid *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Flt *get_probs_ptr() const {
+        const size_t offset = get_probs_offset_bytes_n();
+        return reinterpret_cast<Flt *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Flt *get_prob_ptr(const Rid result_i) const {
+        return get_probs_ptr() + result_i;
+    }
+    
+    __device__ __host__
+    Bit *get_bits_ptr() const {
+        const size_t offset = get_bits_offset_bytes_n();
+        return reinterpret_cast<Bit *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Bit *get_bit_ptr(const Rid result_i) const {
+        return get_bits_ptr() + result_i;
+    }
+};
+
 struct ShotStateArgs {
     Qid qubits_n;
     Kid amps_m;
+    Kid results_m;
     
     __device__ __host__
     size_t get_table_size_bytes_n() const {
@@ -725,6 +905,32 @@ struct ShotStateArgs {
     }
     
     __device__ __host__
+    size_t get_results_size_bytes_n() const {
+        return ResultsArgs{results_m}.get_size_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_results_align_bytes_n() const {
+        return ResultsArgs{results_m}.get_align_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_results_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_amps_offset_bytes_n() +
+            get_amps_size_bytes_n(),
+            get_results_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_results_offset_bytes_n() const {
+        return 
+            get_amps_offset_bytes_n() +
+            get_amps_size_bytes_n() +
+            get_results_pad_bytes_n();
+    }
+    
+    __device__ __host__
     size_t get_size_bytes_n() const {
         return 
             get_table_pad_bytes_n() +
@@ -732,7 +938,9 @@ struct ShotStateArgs {
             get_decomp_pad_bytes_n() +
             get_decomp_size_bytes_n() +
             get_amps_pad_bytes_n() +
-            get_amps_size_bytes_n();
+            get_amps_size_bytes_n() +
+            get_results_pad_bytes_n() +
+            get_results_size_bytes_n();
     }
     
     __device__ __host__
@@ -740,7 +948,8 @@ struct ShotStateArgs {
         return max(
             get_table_align_bytes_n(),
             get_decomp_align_bytes_n(),
-            get_amps_align_bytes_n());
+            get_amps_align_bytes_n(),
+            get_results_align_bytes_n());
     }
 };
 
@@ -764,21 +973,28 @@ struct ShotStatePtr : ShotStateArgs {
         const size_t offset = get_amps_offset_bytes_n();
         return {qubits_n, amps_m, ptr + offset};
     }
+    
+    __device__ __host__
+    ResultsPtr get_results_ptr() const {
+        const size_t offset = get_results_offset_bytes_n();
+        return {results_m, ptr + offset};
+    }
 };
 
 struct ShotsStateArgs {
     Sid shots_n;
     Qid qubits_n;
     Kid amps_m;
+    Kid results_m;
     
     __device__ __host__
     size_t get_shot_size_bytes_n() const {
-        return ShotStateArgs{qubits_n, amps_m}.get_size_bytes_n();
+        return ShotStateArgs{qubits_n, amps_m, results_m}.get_size_bytes_n();
     }
     
     __device__ __host__
     size_t get_shot_align_bytes_n() const {
-        return ShotStateArgs{qubits_n, amps_m}.get_align_bytes_n();
+        return ShotStateArgs{qubits_n, amps_m, results_m}.get_align_bytes_n();
     }
     
     __device__ __host__
@@ -797,7 +1013,7 @@ struct ShotsStateArgs {
     
     __device__ __host__
     size_t get_shots_align_bytes_n() const {
-        return ShotStateArgs{qubits_n, amps_m}.get_align_bytes_n();
+        return ShotStateArgs{qubits_n, amps_m, results_m}.get_align_bytes_n();
     }
     
     __device__ __host__
@@ -837,7 +1053,7 @@ struct ShotsStatePtr : ShotsStateArgs {
     __device__ __host__
     ShotStatePtr get_shot_ptr(const Sid shot_i) const {
         const size_t offset = get_shot_offset_bytes_n(shot_i);
-        return {qubits_n, amps_m, ptr + offset};
+        return {qubits_n, amps_m, results_m, ptr + offset};
     }
 };
 

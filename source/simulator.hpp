@@ -9,10 +9,10 @@ namespace StnCuda {
 
 struct Simulator {
     cudaStream_t stream = nullptr;
-    ShotsStatePtr shots_state_ptr = {0, 0, 0, nullptr};
+    ShotsStatePtr shots_state_ptr = {0, 0, 0, 0, nullptr};
 
 
-    cudaError_t create(Sid shots_n, Qid qubits_n, Aid map_limit) noexcept;
+    cudaError_t create(Sid shots_n, Qid qubits_n, Aid map_limit, Rid results_m) noexcept;
 
     cudaError_t destroy() noexcept;
 

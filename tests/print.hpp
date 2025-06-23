@@ -162,7 +162,7 @@ void print_amps_halves(const AmpsMapPtr ptr) {
 
     for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
         const Aid aid = *ptr.get_aid_ptr(amps_m / 2 + amp_i);
-        const Amp amp = *ptr.get_amp_ptr( amps_m / 2 + amp_i);
+        const Amp amp = *ptr.get_amp_ptr(amps_m / 2 + amp_i);
         printf("\t\t\t");
         print_int_bits(aid, ptr.qubits_n);
         printf(": ");
@@ -195,12 +195,14 @@ void print_simulator(const Simulator &simulator) {
     const Sid shots_n = simulator.shots_state_ptr.shots_n;
     const Qid qubits_n = simulator.shots_state_ptr.qubits_n;
     const Kid amps_m = simulator.shots_state_ptr.amps_m;
+    const Rid results_m = simulator.shots_state_ptr.results_m;
     const char *ptr = simulator.shots_state_ptr.ptr;
 
     printf("\nSimulator:\n");
     printf("\tshots_n:%u\n", shots_n);
     printf("\tqubits_n:%u\n", qubits_n);
     printf("\tamps_m:%u\n", amps_m);
+    printf("\tresults_m:%u\n", results_m);
     printf("\n");
 
     cudaDeviceSynchronize();
@@ -209,7 +211,7 @@ void print_simulator(const Simulator &simulator) {
     const auto buffer_ptr = static_cast<char *>(malloc(state_bytes_n));
     cudaMemcpy(buffer_ptr, ptr, state_bytes_n, cudaMemcpyDeviceToHost);
 
-    print_shots_state({shots_n, qubits_n, amps_m, buffer_ptr});
+    print_shots_state({shots_n, qubits_n, amps_m, results_m, buffer_ptr});
 
     free(buffer_ptr);
 }

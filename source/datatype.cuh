@@ -10,6 +10,7 @@ using Sid = unsigned int;
 using Qid = unsigned int;
 using Kid = unsigned int;
 using Aid = unsigned int;
+using Rid = unsigned int;
 using Bit = bool;
 using Phs = unsigned char;
 using Flt = float;

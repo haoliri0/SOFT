@@ -604,11 +604,35 @@ Bit *get_stab_bit_ptr(const Qid qubit_i) const {
                 index_type="Kid",
                 count="amps_m"),
         ))
+    results_spec = DynamicStructSpec(
+        name="Results",
+        params=(
+            ParamSpec(name="results_m", type="Rid"),),
+        fields=(
+            ItemFieldSpec(
+                name="results_n",
+                type=ValueTypeSpec(name="Rid")),
+            ListFieldSpec(
+                name="probs",
+                item_name="prob",
+                item_type=ValueTypeSpec(name="Flt"),
+                index_name="result_i",
+                index_type="Rid",
+                count="results_m"),
+            ListFieldSpec(
+                name="bits",
+                item_name="bit",
+                item_type=ValueTypeSpec(name="Bit"),
+                index_name="result_i",
+                index_type="Rid",
+                count="results_m"),
+        ))
     shot_state_spec = DynamicStructSpec(
         name="ShotState",
         params=(
             ParamSpec(name="qubits_n", type="Qid"),
-            ParamSpec(name="amps_m", type="Kid")),
+            ParamSpec(name="amps_m", type="Kid"),
+            ParamSpec(name="results_m", type="Kid")),
         fields=(
             ItemFieldSpec(
                 name="table",
@@ -625,20 +649,26 @@ Bit *get_stab_bit_ptr(const Qid qubit_i) const {
                 type=DynamicStructTypeSpec(
                     spec=amps_spec,
                     args=("qubits_n", "amps_m"))),
+            ItemFieldSpec(
+                name="results",
+                type=DynamicStructTypeSpec(
+                    spec=results_spec,
+                    args=("results_m",))),
         ))
     shots_state_spec = DynamicStructSpec(
         name="ShotsState",
         params=(
             ParamSpec(name="shots_n", type="Sid"),
             ParamSpec(name="qubits_n", type="Qid"),
-            ParamSpec(name="amps_m", type="Kid")),
+            ParamSpec(name="amps_m", type="Kid"),
+            ParamSpec(name="results_m", type="Kid")),
         fields=(
             ListFieldSpec(
                 name="shots",
                 item_name="shot",
                 item_type=DynamicStructTypeSpec(
                     spec=shot_state_spec,
-                    args=("qubits_n", "amps_m")),
+                    args=("qubits_n", "amps_m", "results_m")),
                 index_name="shot_i",
                 index_type="Sid",
                 count="shots_n"),

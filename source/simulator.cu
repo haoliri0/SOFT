@@ -50,7 +50,7 @@ void cuda_init_amps(cudaStream_t const stream, const ShotsStatePtr shots_state_p
 }
 
 
-cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Kid const amps_m) noexcept {
+cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Kid const amps_m, Rid const results_m) noexcept {
     cudaError_t err = cudaSuccess;
     do {
         // create stream
@@ -58,7 +58,7 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Kid const a
         if (err != cudaSuccess) break;
 
         // allocate state
-        this->shots_state_ptr = {shots_n, qubits_n, amps_m};
+        this->shots_state_ptr = {shots_n, qubits_n, amps_m, results_m};
         const size_t state_bytes_n = this->shots_state_ptr.get_size_bytes_n();
         err = cudaMallocAsync(&this->shots_state_ptr.ptr, state_bytes_n, this->stream);
         if (err != cudaSuccess) break;
@@ -84,7 +84,7 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Kid const a
 cudaError_t Simulator::destroy() noexcept {
     if (this->shots_state_ptr.ptr != nullptr) cudaFree(this->shots_state_ptr.ptr);
     if (this->stream != nullptr) cudaStreamDestroy(this->stream);
-    this->shots_state_ptr = {0, 0, 0, nullptr};
+    this->shots_state_ptr = {0, 0, 0, 0, nullptr};
     this->stream = nullptr;
     return cudaSuccess;
 }

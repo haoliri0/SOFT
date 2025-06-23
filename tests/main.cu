@@ -12,7 +12,7 @@ void test_simulator() {
     cudaError_t err;
 
     do {
-        err = simulator.create(1, 2, 4);
+        err = simulator.create(1, 2, 4, 4);
         if (err != cudaSuccess) break;
 
         print_simulator(simulator);
@@ -32,7 +32,7 @@ void test_gates() {
     cudaError_t err;
 
     do {
-        err = simulator.create(1, 2, 4);
+        err = simulator.create(1, 2, 4,4);
         if (err != cudaSuccess) break;
 
         simulator.apply_x(0);
@@ -60,7 +60,7 @@ void test_decompose() {
     cudaError_t err;
 
     do {
-        err = simulator.create(1, 2, 4);
+        err = simulator.create(1, 2, 4,4);
         if (err != cudaSuccess) break;
 
         constexpr Qid target = 0;
@@ -90,7 +90,7 @@ void test_gates_t() {
     cudaError_t err;
 
     do {
-        err = simulator.create(1, 2, 4);
+        err = simulator.create(1, 2, 4,4);
         if (err != cudaSuccess) break;
 
         simulator.apply_h(0);
@@ -114,7 +114,7 @@ void test_measure() {
     cudaError_t err;
 
     do {
-        err = simulator.create(1, 2, 4);
+        err = simulator.create(1, 2, 4,4);
         if (err != cudaSuccess) break;
 
         // simulator.apply_h(0);
