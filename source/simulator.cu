@@ -50,6 +50,24 @@ void cuda_init_amps(cudaStream_t const stream, const ShotsStatePtr shots_state_p
 }
 
 
+static __device__
+void op_init_rand(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx) {
+    Sid const shot_i = dims_idx.get<0>();
+    curandState *rand_state_ptr = shots_state_ptr
+        .get_shot_ptr(shot_i)
+        .get_results_ptr()
+        .get_rand_state_ptr();
+    curand_init(42, shot_i, 0, rand_state_ptr);
+}
+
+static __host__
+void cuda_init_rand(cudaStream_t const stream, const ShotsStatePtr shots_state_ptr) {
+    const Sid shots_n = shots_state_ptr.shots_n;
+    cuda_dims_op<ShotsStatePtr, 1, op_init_rand>
+        (stream, shots_state_ptr, dimsof(shots_n));
+}
+
+
 cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Kid const amps_m, Rid const results_m) noexcept {
     cudaError_t err = cudaSuccess;
     do {
@@ -69,6 +87,7 @@ cudaError_t Simulator::create(Sid const shots_n, Qid const qubits_n, Kid const a
 
         cuda_init_table(this->stream, this->shots_state_ptr);
         cuda_init_amps(this->stream, this->shots_state_ptr);
+        cuda_init_rand(this->stream, this->shots_state_ptr);
 
         // wait for async operations to complete
         err = cudaStreamSynchronize(this->stream);
