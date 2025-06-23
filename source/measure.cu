@@ -112,6 +112,93 @@ void cuda_compute_measure_amps(cudaStream_t const stream, ShotsStatePtr const sh
 
 
 static __device__
+void op_compute_measure_probs_situation0(const AmpsMapPtr amps_map_ptr, const Bit result) {
+    const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
+    Kid &amps_n_new = *(!result ? amps_map_ptr.get_half0_amps_n_ptr() : amps_map_ptr.get_half1_amps_n_ptr());
+    Flt &prob = *(!result ? amps_map_ptr.get_half0_prob_ptr() : amps_map_ptr.get_half1_prob_ptr());
+    Aid *aids = !result ? amps_map_ptr.get_half0_aids_ptr() : amps_map_ptr.get_half1_aids_ptr();
+    Amp *amps = !result ? amps_map_ptr.get_half0_amps_ptr() : amps_map_ptr.get_half1_amps_ptr();
+
+    amps_n_new = 0;
+    prob = 0;
+    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
+        const Aid aid = aids[amp_i];
+        const Amp amp = amps[amp_i];
+
+        constexpr Amp amp_zero = 0;
+        if (amp == amp_zero) continue;
+
+        const Kid amp_j = amps_n_new;
+        aids[amp_j] = aid;
+        amps[amp_j] = amp;
+        prob += norm(amp);
+        amps_n_new++;
+    }
+}
+
+static __device__
+void op_compute_measure_probs_situation1(const AmpsMapPtr amps_map_ptr, const Bit result) {
+    const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
+    Kid &amps_n_new = *(!result ? amps_map_ptr.get_half0_amps_n_ptr() : amps_map_ptr.get_half1_amps_n_ptr());
+    Flt &prob = *(!result ? amps_map_ptr.get_half0_prob_ptr() : amps_map_ptr.get_half1_prob_ptr());
+    Aid *aids = !result ? amps_map_ptr.get_half0_aids_ptr() : amps_map_ptr.get_half1_aids_ptr();
+    Amp *amps = !result ? amps_map_ptr.get_half0_amps_ptr() : amps_map_ptr.get_half1_amps_ptr();
+
+    amps_n_new = 0;
+    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
+        const Aid aid = aids[amp_i];
+        const Amp amp = amps[amp_i];
+
+        Kid amp_j = 0;
+        for (; amp_j < amps_n_new; ++amp_j) {
+            if (aids[amp_j] == aid) {
+                amps[amp_j] += amp;
+                break;
+            }
+        }
+
+        if (amp_j == amps_n_new) {
+            aids[amp_j] = aid;
+            amps[amp_j] = amp;
+            amps_n_new++;
+        }
+    }
+
+    prob = 0;
+    for (int amp_i = 0; amp_i < amps_n_new; ++amp_i) {
+        const Amp amp = amps[amp_i];
+        prob += norm(amp);
+    }
+}
+
+static __device__
+void op_compute_measure_probs(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
+    Sid const shot_i = dims_idx.get<0>();
+    Bit const result = dims_idx.get<1>();
+    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+
+    // check amps_n
+    const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
+    const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
+    if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
+
+    // check pivot
+    const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
+    const Qid pivot = *decomp_ptr.get_pivot_ptr();
+    pivot == NullPivot
+        ? op_compute_measure_probs_situation0(amps_map_ptr, result)
+        : op_compute_measure_probs_situation1(amps_map_ptr, result);
+}
+
+static __host__
+void cuda_compute_measure_probs(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
+    const Sid shots_n = shots_state_ptr.shots_n;
+    cuda_dims_op<ShotsStatePtr, 2, op_compute_measure_probs>
+        (stream, shots_state_ptr, dimsof(shots_n, 2));
+}
+
+
+static __device__
 void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
 
@@ -120,23 +207,13 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
     const Rid results_m = results_ptr.results_m;
 
+    // check amps_n
     const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
     if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
 
-    // compute probs
-    Flt prob0 = 0;
-    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Amp amp = *amps_map_ptr.get_half0_amp_ptr(amp_i);
-        prob0 += cuda::std::norm(amp);
-    }
-
-    Flt prob1 = 0;
-    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Amp amp = *amps_map_ptr.get_half1_amp_ptr(amp_i);
-        prob1 += cuda::std::norm(amp);
-    }
-
     // normalize probs
+    Flt prob0 = *amps_map_ptr.get_half0_prob_ptr();
+    Flt prob1 = *amps_map_ptr.get_half1_prob_ptr();
     const Flt total = prob0 + prob1;
     prob0 /= total;
     prob1 /= total;
@@ -352,6 +429,7 @@ void Simulator::measure(const Qid target) const noexcept {
     cuda_compute_decomp_pivot(stream, shots_state_ptr);
 
     cuda_compute_measure_amps(stream, shots_state_ptr);
+    cuda_compute_measure_probs(stream, shots_state_ptr);
     cuda_compute_measure_result(stream, shots_state_ptr);
     cuda_apply_measure_result(stream, shots_state_ptr);
 
