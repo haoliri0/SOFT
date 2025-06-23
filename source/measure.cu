@@ -200,6 +200,13 @@ void cuda_compute_measure_probs(cudaStream_t const stream, ShotsStatePtr const s
 }
 
 
+enum class SampleMode {
+    Random = -1,
+    Desire0 = 0,
+    Desire1 = 1,
+};
+
+template<SampleMode mode = SampleMode::Random>
 static __device__
 void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
@@ -221,8 +228,18 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     prob1 /= total;
 
     // random choice
-    curandState *rand_state_ptr = results_ptr.get_rand_state_ptr();
-    const Bit result = curand_uniform(rand_state_ptr) > prob0;
+    Bit result;
+    switch (mode) {
+        case SampleMode::Desire0:
+            result = false;
+            break;
+        case SampleMode::Desire1:
+            result = true;
+            break;
+        default:
+            curandState *rand_state_ptr = results_ptr.get_rand_state_ptr();
+            result = curand_uniform(rand_state_ptr) > prob0;
+    }
 
     // save result
     Rid &results_n = *results_ptr.get_results_n_ptr();
@@ -240,10 +257,11 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     }
 }
 
+template<SampleMode mode = SampleMode::Random>
 static __host__
 void cuda_compute_measure_result(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
-    cuda_dims_op<ShotsStatePtr, 1, op_compute_measure_result>
+    cuda_dims_op<ShotsStatePtr, 1, op_compute_measure_result<mode>>
         (stream, shots_state_ptr, dimsof(shots_n));
 }
 
@@ -386,6 +404,22 @@ void Simulator::measure(const Qid target) const noexcept {
     cuda_compute_measure_amps(stream, shots_state_ptr);
     cuda_compute_measure_probs(stream, shots_state_ptr);
     cuda_compute_measure_result(stream, shots_state_ptr);
+    cuda_apply_measure_result(stream, shots_state_ptr);
+
+    cuda_change_measure_basis_rowsum(stream, shots_state_ptr);
+    cuda_change_measure_basis_pivot(stream, shots_state_ptr, target);
+}
+
+void Simulator::desire(const Qid target, const Bit result) const noexcept {
+    cuda_compute_decomposed_bits(stream, shots_state_ptr, target);
+    cuda_compute_decomposed_phase(stream, shots_state_ptr);
+    cuda_compute_decomp_pivot(stream, shots_state_ptr);
+
+    cuda_compute_measure_amps(stream, shots_state_ptr);
+    cuda_compute_measure_probs(stream, shots_state_ptr);
+    !result
+        ? cuda_compute_measure_result<SampleMode::Desire0>(stream, shots_state_ptr)
+        : cuda_compute_measure_result<SampleMode::Desire1>(stream, shots_state_ptr);
     cuda_apply_measure_result(stream, shots_state_ptr);
 
     cuda_change_measure_basis_rowsum(stream, shots_state_ptr);
