@@ -258,6 +258,94 @@ void cuda_apply_measure_result(cudaStream_t const stream, ShotsStatePtr const sh
 }
 
 
+static __device__
+void op_change_measure_basis_rowsum(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
+    Sid const shot_i = dims_idx.get<0>();
+    Sid const row_i = dims_idx.get<1>();
+    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+
+    // check pivot
+    const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
+    const Qid pivot = *decomp_ptr.get_pivot_ptr();
+    if (pivot == NullPivot)
+        return; // situation0 不需要改 basis
+
+    // update table
+    const TablePtr table_ptr = shot_state_ptr.get_table_ptr();
+    const Qid qubits_n = table_ptr.qubits_n;
+    if (row_i == qubits_n + pivot)
+        return; // skip the pivot row
+
+    const TableRowPtr pivot_row_ptr = table_ptr.get_row_ptr(qubits_n + pivot);
+    const TableRowPtr this_row_ptr = table_ptr.get_row_ptr(row_i);
+
+    Phs phase = 0;
+    compute_multiply_pauli_rows(
+        pivot_row_ptr.get_pauli_ptr(),
+        this_row_ptr.get_pauli_ptr(),
+        this_row_ptr.get_pauli_ptr(),
+        phase);
+
+    const Bit sign = phase / 2 % 2;
+    const Bit pivot_sign = *pivot_row_ptr.get_sign_ptr();
+    Bit &this_sign = *this_row_ptr.get_sign_ptr();
+    this_sign ^= pivot_sign ^ sign;
+}
+
+static __host__
+void cuda_change_measure_basis_rowsum(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
+    const Sid shots_n = shots_state_ptr.shots_n;
+    const Qid qubits_n = shots_state_ptr.qubits_n;
+    const Qid rows_n = 2 * qubits_n;
+    cuda_dims_op<ShotsStatePtr, 2, op_change_measure_basis_rowsum>
+        (stream, shots_state_ptr, dimsof(shots_n, rows_n));
+}
+
+
+struct ArgsApplyMeasureBasisPivot {
+    const ShotsStatePtr shots_state_ptr;
+    const Qid target;
+};
+
+static __device__
+void op_change_measure_basis_pivot(const ArgsApplyMeasureBasisPivot args, const DimsIdx<1> dims_idx) {
+    Sid const shot_i = dims_idx.get<0>();
+    const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
+    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+
+    // check pivot
+    const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
+    const Qid pivot = *decomp_ptr.get_pivot_ptr();
+    if (pivot == NullPivot)
+        return; // situation0 不需要改 basis
+
+    // load result
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+    const Rid results_m = results_ptr.results_m;
+    const Rid results_n = *results_ptr.get_results_n_ptr();
+    const Rid result_i = (results_n - 1) % results_m;
+    const Bit result_bit = *results_ptr.get_bit_ptr(result_i);
+
+    // update table
+    const TablePtr table_ptr = shot_state_ptr.get_table_ptr();
+    const Qid qubits_n = table_ptr.qubits_n;
+    const Qid cols_n = 2 * qubits_n;
+
+    const TableRowPtr pivot_row_ptr = table_ptr.get_row_ptr(qubits_n + pivot);
+    for (int col_i = 0; col_i < cols_n; ++col_i)
+        *pivot_row_ptr.get_pauli_ptr().get_bit_ptr(col_i) = false;
+    *pivot_row_ptr.get_pauli_ptr().get_bit_ptr(qubits_n + args.target) = true;
+    *pivot_row_ptr.get_sign_ptr() = result_bit;
+}
+
+static __host__
+void cuda_change_measure_basis_pivot(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr, const Qid target) {
+    const Sid shots_n = shots_state_ptr.shots_n;
+    cuda_dims_op<ArgsApplyMeasureBasisPivot, 1, op_change_measure_basis_pivot>
+        (stream, {shots_state_ptr, target}, dimsof(shots_n));
+}
+
+
 void Simulator::measure(const Qid target) const noexcept {
     cuda_compute_decomposed_bits(stream, shots_state_ptr, target);
     cuda_compute_decomposed_phase(stream, shots_state_ptr);
@@ -266,4 +354,7 @@ void Simulator::measure(const Qid target) const noexcept {
     cuda_compute_measure_amps(stream, shots_state_ptr);
     cuda_compute_measure_result(stream, shots_state_ptr);
     cuda_apply_measure_result(stream, shots_state_ptr);
+
+    cuda_change_measure_basis_rowsum(stream, shots_state_ptr);
+    cuda_change_measure_basis_pivot(stream, shots_state_ptr, target);
 }
