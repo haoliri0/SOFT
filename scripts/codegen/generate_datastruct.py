@@ -610,6 +610,9 @@ Bit *get_stab_bit_ptr(const Qid qubit_i) const {
             ParamSpec(name="results_m", type="Rid"),),
         fields=(
             ItemFieldSpec(
+                name="rand_state",
+                type=ValueTypeSpec(name="curandState")),
+            ItemFieldSpec(
                 name="results_n",
                 type=ValueTypeSpec(name="Rid")),
             ListFieldSpec(

@@ -3,6 +3,7 @@
 
 #include<complex>
 #include<cuda/std/complex>
+#include<curand_kernel.h>
 
 namespace StnCuda {
 
