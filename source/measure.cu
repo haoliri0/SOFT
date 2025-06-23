@@ -49,13 +49,12 @@ void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Ai
     Amp &amp0 = *amps_map_ptr.get_half0_amp_ptr(amp_i);
     Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(amp_i);
     Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(amp_i);
+    constexpr Flt coef = M_SQRT1_2; // sqrt(1/2);
 
     constexpr Aid aid_one = 1;
     const Aid aid_mask = aid_one << pivot;
-    const Bit sign_aid = aid & aid_mask; // 取 aid 中的第 pivot 那个 bit
-
-    constexpr Flt coef = M_SQRT1_2; // sqrt(1/2);
-    if (!sign_aid) {
+    if (aid & aid_mask) {
+        // 取 aid 中的第 pivot 那个 bit
         const Bit sign_phase = phase / 2 % 2;
         const Bit sign_stab = compute_sign(aid, stab, qubits_n);
         const Bit sign = sign_phase ^ sign_stab;
