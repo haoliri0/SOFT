@@ -100,7 +100,6 @@ void op_merge_amps_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> 
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
 
-    const Kid amps_m = amps_map_ptr.amps_m;
     Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
     if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
 
