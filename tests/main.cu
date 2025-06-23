@@ -118,7 +118,7 @@ void test_measure() {
         if (err != cudaSuccess) break;
 
         // simulator.apply_h(0);
-        simulator.measure(0, nullptr, nullptr);
+        simulator.measure(0);
 
         print_simulator(simulator);
     } while (false);
