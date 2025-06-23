@@ -36,10 +36,11 @@ void compute_measure_amps_situation0(const ShotStatePtr shot_state_ptr, const Ai
 }
 
 static __device__
-void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Aid amp_i) {
+void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Aid amp_i, const Qid pivot) {
     const Qid qubits_n = shot_state_ptr.qubits_n;
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const Bit *stab = decomp_ptr.get_stab_bits_ptr();
+    const Bit *destab = decomp_ptr.get_destab_bits_ptr();
     const Phs phase = *decomp_ptr.get_phase_ptr();
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
     const Aid aid = *amps_map_ptr.get_aid_ptr(amp_i);
@@ -49,20 +50,28 @@ void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Ai
     Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(amp_i);
     Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(amp_i);
 
-    // TODO
-    // const Bit sign_phase = phase / 2 % 2;
-    // const Bit sign_stab = compute_sign(aid, stab, qubits_n);
-    // const Bit sign = sign_phase ^ sign_stab;
+    constexpr Aid aid_one = 1;
+    const Aid aid_mask = aid_one << pivot;
+    const Bit sign_aid = aid & aid_mask; // 取 aid 中的第 pivot 那个 bit
 
-    // aid0 = aid;
-    // aid1 = aid;
-    // if (!sign) {
-    //     amp0 = amp;
-    //     amp1 = 0;
-    // } else {
-    //     amp0 = 0;
-    //     amp1 = amp;
-    // }
+    constexpr Flt coef = M_SQRT1_2; // sqrt(1/2);
+    if (!sign_aid) {
+        const Bit sign_phase = phase / 2 % 2;
+        const Bit sign_stab = compute_sign(aid, stab, qubits_n);
+        const Bit sign = sign_phase ^ sign_stab;
+        const Flt phase0 = !sign ? +1. : -1.;
+        const Flt phase1 = !sign ? -1. : +1.;
+
+        amp0 = amp * coef * phase0;
+        amp1 = amp * coef * phase1;
+        aid0 = aid ^ bits_to_int(destab, qubits_n);
+        aid1 = aid ^ bits_to_int(destab, qubits_n);
+    } else {
+        amp0 = amp * coef;
+        amp1 = amp * coef;
+        aid0 = aid;
+        aid1 = aid;
+    }
 }
 
 static __device__
@@ -88,7 +97,7 @@ void op_compute_measure_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     if (pivot != NullPivot) {
         compute_measure_amps_situation0(shot_state_ptr, amp_i);
     } else {
-        compute_measure_amps_situation1(shot_state_ptr, amp_i);
+        compute_measure_amps_situation1(shot_state_ptr, amp_i, pivot);
     }
 }
 
