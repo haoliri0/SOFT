@@ -16,4 +16,9 @@ void cuda_compute_decomposed_phase(
     ShotsStatePtr shots_state_ptr
 );
 
+void cuda_compute_decomp_pivot(
+    cudaStream_t stream,
+    ShotsStatePtr shots_state_ptr
+);
+
 #endif
