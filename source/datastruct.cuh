@@ -646,6 +646,46 @@ struct AmpsMapPtr : AmpsMapArgs {
     Aid *get_aid_ptr(const Kid amp_i) const {
         return get_aids_ptr() + amp_i;
     }
+    
+    __device__ __host__
+    Aid *get_half0_aids_ptr() const {
+        return get_aids_ptr();
+    }
+    
+    __device__ __host__
+    Aid *get_half0_aid_ptr(const Kid amp_i) const {
+        return get_half0_aids_ptr() + amp_i;
+    }
+    
+    __device__ __host__
+    Amp *get_half0_amps_ptr() const {
+        return get_amps_ptr();
+    }
+    
+    __device__ __host__
+    Amp *get_half0_amp_ptr(const Kid amp_i) const {
+        return get_half0_amps_ptr() + amp_i;
+    }
+    
+    __device__ __host__
+    Aid *get_half1_aids_ptr() const {
+        return get_aids_ptr() + amps_m / 2;
+    }
+    
+    __device__ __host__
+    Aid *get_half1_aid_ptr(const Kid amp_i) const {
+        return get_half1_aids_ptr() + amp_i;
+    }
+    
+    __device__ __host__
+    Amp *get_half1_amps_ptr() const {
+        return get_amps_ptr() + amps_m / 2;
+    }
+    
+    __device__ __host__
+    Amp *get_half1_amp_ptr(const Kid amp_i) const {
+        return get_half1_amps_ptr() + amp_i;
+    }
 };
 
 struct ResultsArgs {
