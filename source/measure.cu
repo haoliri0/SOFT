@@ -296,7 +296,7 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     if (amp_i >= amps_n_new) return; // 线程超出了 amp_n 的范围，不进行计算
 
     aids_dst[amp_i] = aids_src[amp_i];
-    amps_dst[amp_i] = amps_src[amp_i] / result_prob;
+    amps_dst[amp_i] = amps_src[amp_i] / sqrt(result_prob);
 }
 
 static __host__
