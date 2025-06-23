@@ -6,16 +6,9 @@
 
 using namespace StnCuda;
 
-
 static __device__
-void op_compute_amps_branch0(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
-    Sid const shot_i = dims_idx.get<0>();
-    Aid const amp_i = dims_idx.get<1>();
-
-    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
-    const Qid qubits_n = shots_state_ptr.qubits_n;
-    const Kid amps_m = shots_state_ptr.amps_m;
-
+void compute_measure_amps_situation0(const ShotStatePtr shot_state_ptr, const Aid amp_i) {
+    const Qid qubits_n = shot_state_ptr.qubits_n;
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const Bit *stab = decomp_ptr.get_stab_bits_ptr();
     const Phs phase = *decomp_ptr.get_phase_ptr();
@@ -26,15 +19,6 @@ void op_compute_amps_branch0(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     Amp &amp0 = *amps_map_ptr.get_half0_amp_ptr(amp_i);
     Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(amp_i);
     Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(amp_i);
-
-    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amp_i >= amps_n)
-        return; // index 超过了 amp 数，不用计算
-    if (amps_n > amps_m / 2) {
-        // 数量超过一半，无法计算，设置为 0 表示失败
-        amps_n = 0;
-        return;
-    }
 
     const Bit sign_phase = phase / 2 % 2;
     const Bit sign_stab = compute_sign(aid, stab, qubits_n);
@@ -51,11 +35,68 @@ void op_compute_amps_branch0(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     }
 }
 
+static __device__
+void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Aid amp_i) {
+    const Qid qubits_n = shot_state_ptr.qubits_n;
+    const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
+    const Bit *stab = decomp_ptr.get_stab_bits_ptr();
+    const Phs phase = *decomp_ptr.get_phase_ptr();
+    const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
+    const Aid aid = *amps_map_ptr.get_aid_ptr(amp_i);
+    const Amp amp = *amps_map_ptr.get_amp_ptr(amp_i);
+    Aid &aid0 = *amps_map_ptr.get_half0_aid_ptr(amp_i);
+    Amp &amp0 = *amps_map_ptr.get_half0_amp_ptr(amp_i);
+    Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(amp_i);
+    Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(amp_i);
+
+    // TODO
+    // const Bit sign_phase = phase / 2 % 2;
+    // const Bit sign_stab = compute_sign(aid, stab, qubits_n);
+    // const Bit sign = sign_phase ^ sign_stab;
+
+    // aid0 = aid;
+    // aid1 = aid;
+    // if (!sign) {
+    //     amp0 = amp;
+    //     amp1 = 0;
+    // } else {
+    //     amp0 = 0;
+    //     amp1 = amp;
+    // }
+}
+
+static __device__
+void op_compute_measure_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
+    Sid const shot_i = dims_idx.get<0>();
+    Aid const amp_i = dims_idx.get<1>();
+
+    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+    const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
+    const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
+
+    const Kid amps_m = amps_map_ptr.amps_m;
+    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
+    if (amp_i >= amps_n)
+        return; // index 超过了 amp 数，不用计算
+    if (amps_n > amps_m / 2) {
+        // 数量超过一半，无法计算，设置为 0 表示失败
+        amps_n = 0;
+        return;
+    }
+
+    const Qid pivot = *decomp_ptr.get_pivot_ptr();
+    if (pivot != NullPivot) {
+        compute_measure_amps_situation0(shot_state_ptr, amp_i);
+    } else {
+        compute_measure_amps_situation1(shot_state_ptr, amp_i);
+    }
+}
+
 static __host__
-void cuda_compute_measure_amps_branch0(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
+void cuda_compute_measure_amps(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
     const Kid amps_m = shots_state_ptr.amps_m;
-    cuda_dims_op<ShotsStatePtr, 2, op_compute_amps_branch0>
+    cuda_dims_op<ShotsStatePtr, 2, op_compute_measure_amps>
         (stream, shots_state_ptr, dimsof(shots_n, amps_m));
 }
 
@@ -165,7 +206,7 @@ void Simulator::measure(const Qid target) const noexcept {
     cuda_compute_decomposed_phase(stream, shots_state_ptr);
     cuda_compute_decomp_pivot(stream, shots_state_ptr);
 
-    cuda_compute_measure_amps_branch0(stream, shots_state_ptr);
+    cuda_compute_measure_amps(stream, shots_state_ptr);
     cuda_compute_measure_result(stream, shots_state_ptr);
     cuda_apply_measure_result_branch0(stream, shots_state_ptr);
 }
