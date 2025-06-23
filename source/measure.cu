@@ -22,10 +22,10 @@ void op_compute_amps_branch0(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
     const Aid aid = *amps_map_ptr.get_aid_ptr(amp_i);
     const Amp amp = *amps_map_ptr.get_amp_ptr(amp_i);
-    Aid &aid0 = *amps_map_ptr.get_aid_ptr(amp_i);
-    Amp &amp0 = *amps_map_ptr.get_amp_ptr(amp_i);
-    Aid &aid1 = *amps_map_ptr.get_aid_ptr(amps_m / 2 + amp_i);
-    Amp &amp1 = *amps_map_ptr.get_amp_ptr(amps_m / 2 + amp_i);
+    Aid &aid0 = *amps_map_ptr.get_half0_aid_ptr(amp_i);
+    Amp &amp0 = *amps_map_ptr.get_half0_amp_ptr(amp_i);
+    Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(amp_i);
+    Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(amp_i);
 
     Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
     if (amp_i >= amps_n)
@@ -66,7 +66,6 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
 
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
-    const Kid amps_m = amps_map_ptr.amps_m;
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
     const Rid results_m = results_ptr.results_m;
 
@@ -76,13 +75,13 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     // compute probs
     Flt prob0 = 0;
     for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Amp amp = *amps_map_ptr.get_amp_ptr(amp_i);
+        const Amp amp = *amps_map_ptr.get_half0_amp_ptr(amp_i);
         prob0 += cuda::std::norm(amp);
     }
 
     Flt prob1 = 0;
     for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Amp amp = *amps_map_ptr.get_amp_ptr(amps_m / 2 + amp_i);
+        const Amp amp = *amps_map_ptr.get_half1_amp_ptr(amp_i);
         prob1 += cuda::std::norm(amp);
     }
 
@@ -137,14 +136,13 @@ void op_apply_measure_result_branch0(const ShotsStatePtr shots_state_ptr, const 
     const Rid result_i = (results_n - 1) % results_m;
     const Bit result_bit = *results_ptr.get_bit_ptr(result_i);
     const Flt result_prob = *results_ptr.get_prob_ptr(result_i);
-    const Kid amp_i_offset = result_bit ? amps_m / 2 : 0;
 
     // compute probs
     Kid amps_n_new = 0;
     constexpr Amp amp_zero = 0;
     for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Amp amp = *amps_map_ptr.get_amp_ptr(amp_i + amp_i_offset);
-        const Aid aid = *amps_map_ptr.get_aid_ptr(amp_i + amp_i_offset);
+        const Aid aid = *(!result_bit ? amps_map_ptr.get_half0_aid_ptr(amp_i) : amps_map_ptr.get_half1_aid_ptr(amp_i));
+        const Amp amp = *(!result_bit ? amps_map_ptr.get_half0_amp_ptr(amp_i) : amps_map_ptr.get_half1_amp_ptr(amp_i));
         if (amp == amp_zero) continue;
 
         const Kid amp_i_new = amps_n_new++;

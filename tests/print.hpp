@@ -126,8 +126,8 @@ void print_amps(const AmpsMapPtr ptr) {
     const Kid amps_n = *ptr.get_amps_n_ptr();
     printf("\t\t\t(amps_n = %u)\n", amps_n);
     for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Aid aid = *(ptr.get_aids_ptr() + amp_i);
-        const Amp amp = *(ptr.get_amps_ptr() + amp_i);
+        const Aid aid = *ptr.get_aid_ptr(amp_i);
+        const Amp amp = *ptr.get_amp_ptr(amp_i);
         printf("\t\t\t");
         print_int_bits(aid, ptr.qubits_n);
         printf(": ");
@@ -149,8 +149,8 @@ void print_amps_halves(const AmpsMapPtr ptr) {
     }
 
     for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Aid aid = *(ptr.get_aids_ptr() + amp_i);
-        const Amp amp = *(ptr.get_amps_ptr() + amp_i);
+        const Aid aid = *ptr.get_half0_aid_ptr(amp_i);
+        const Amp amp = *ptr.get_half0_amp_ptr(amp_i);
         printf("\t\t\t");
         print_int_bits(aid, ptr.qubits_n);
         printf(": ");
@@ -161,8 +161,8 @@ void print_amps_halves(const AmpsMapPtr ptr) {
     printf("\t\t\t----------------\n");
 
     for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Aid aid = *ptr.get_aid_ptr(amps_m / 2 + amp_i);
-        const Amp amp = *ptr.get_amp_ptr(amps_m / 2 + amp_i);
+        const Aid aid = *ptr.get_half1_aid_ptr(amp_i);
+        const Amp amp = *ptr.get_half1_amp_ptr(amp_i);
         printf("\t\t\t");
         print_int_bits(aid, ptr.qubits_n);
         printf(": ");
