@@ -212,8 +212,8 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
 
     // normalize probs
-    Flt prob0 = *amps_map_ptr.get_half0_prob_ptr();
-    Flt prob1 = *amps_map_ptr.get_half1_prob_ptr();
+    Flt &prob0 = *amps_map_ptr.get_half0_prob_ptr();
+    Flt &prob1 = *amps_map_ptr.get_half1_prob_ptr();
     const Flt total = prob0 + prob1;
     prob0 /= total;
     prob1 /= total;
