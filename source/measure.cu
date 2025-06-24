@@ -3,6 +3,7 @@
 #include "./decompose.cuh"
 #include "./datatype.cuh"
 #include "./dimsop.cuh"
+#include "./gates.cuh"
 
 using namespace StnCuda;
 
@@ -411,6 +412,50 @@ void cuda_change_measure_basis_pivot(cudaStream_t const stream, ShotsStatePtr co
 }
 
 
+struct ArgsApplyResetOperation {
+    const ShotsStatePtr shots_state_ptr;
+    const Qid target;
+    const Bit value;
+};
+
+static __device__ __host__
+void op_apply_x(Bit &s, Bit &x, Bit &z) {
+    s ^= z;
+}
+
+static __device__
+void op_apply_reset_operation(const ArgsApplyResetOperation args, const DimsIdx<2> dims_idx) {
+    Sid const shot_i = dims_idx.get<0>();
+    const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
+    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+
+    const Rid results_m = results_ptr.results_m;
+    const Rid results_n = *results_ptr.get_results_n_ptr();
+    if (results_n == 0) return;
+
+    const Rid result_i = (results_n - 1) % results_m;
+    const Bit result_bit = *results_ptr.get_bit_ptr(result_i);
+    if (result_bit == args.value) return;
+
+    op_apply_gate1<op_apply_x>({shots_state_ptr, args.target}, dims_idx);
+}
+
+static __host__
+void cuda_apply_reset_operation(
+    cudaStream_t const stream,
+    ShotsStatePtr const shots_state_ptr,
+    const Qid target,
+    const Bit value
+) {
+    const Sid shots_n = shots_state_ptr.shots_n;
+    const Qid qubits_n = shots_state_ptr.qubits_n;
+    const Qid rows_n = 2 * qubits_n;
+    cuda_dims_op<ArgsApplyResetOperation, 2, op_apply_reset_operation>
+        (stream, {shots_state_ptr, target, value}, dimsof(shots_n, rows_n));
+}
+
+
 void Simulator::measure(const Qid target) const noexcept {
     cuda_compute_decomposed_bits(stream, shots_state_ptr, target);
     cuda_compute_decomposed_phase(stream, shots_state_ptr);
@@ -439,4 +484,20 @@ void Simulator::desire(const Qid target, const Bit result) const noexcept {
 
     cuda_change_measure_basis_rowsum(stream, shots_state_ptr);
     cuda_change_measure_basis_pivot(stream, shots_state_ptr, target);
+}
+
+void Simulator::assign(const Qid target, const Bit value) const noexcept {
+    cuda_compute_decomposed_bits(stream, shots_state_ptr, target);
+    cuda_compute_decomposed_phase(stream, shots_state_ptr);
+    cuda_compute_decomp_pivot(stream, shots_state_ptr);
+
+    cuda_compute_measure_amps(stream, shots_state_ptr);
+    cuda_compute_measure_probs(stream, shots_state_ptr);
+    cuda_compute_measure_result<SampleMode::Maximum>(stream, shots_state_ptr);
+    cuda_apply_measure_result(stream, shots_state_ptr);
+
+    cuda_change_measure_basis_rowsum(stream, shots_state_ptr);
+    cuda_change_measure_basis_pivot(stream, shots_state_ptr, target);
+
+    cuda_apply_reset_operation(stream, shots_state_ptr, target, value);
 }

@@ -41,7 +41,8 @@ struct Simulator {
 
     void desire(Qid target, Bit result) const noexcept;
 
-    // void apply_reset(int qubit);
+    void assign(Qid target, Bit value) const noexcept;
+
 };
 
 }
