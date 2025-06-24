@@ -34,26 +34,32 @@ void apply_operation(const Simulator &simulator, const OperationArgs args) {
         return simulator.assign(target0, target1);
 }
 
-void print_results(const Simulator &simulator, const Rid results_n, const Rid result_i) {
+cudaError print_results(const Simulator &simulator, const Rid results_n, const Rid result_i) {
     const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
     const Kid results_m = shots_state_ptr.results_m;
     const Sid shots_n = shots_state_ptr.shots_n;
-    cudaStreamSynchronize(simulator.stream);
+
+    cudaError cuda_err = cudaStreamSynchronize(simulator.stream);
+    if (cuda_err != cudaSuccess) return cuda_err;
+
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
         const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
 
         Kid amps_n;
-        cudaMemcpy(&amps_n, shot_state_ptr.get_amps_ptr().get_amps_n_ptr(),
+        cuda_err = cudaMemcpy(&amps_n, shot_state_ptr.get_amps_ptr().get_amps_n_ptr(),
             sizeof(Kid), cudaMemcpyDeviceToHost);
+        if (cuda_err != cudaSuccess) return cuda_err;
         const Bit failed = amps_n == 0;
 
         Bit results_bit[results_m];
-        cudaMemcpy(results_bit, shot_state_ptr.get_results_ptr().get_bits_ptr(),
+        cuda_err = cudaMemcpy(results_bit, shot_state_ptr.get_results_ptr().get_bits_ptr(),
             results_m * sizeof(Bit), cudaMemcpyDeviceToHost);
+        if (cuda_err != cudaSuccess) return cuda_err;
 
         Flt results_prob[results_m];
-        cudaMemcpy(results_prob, shot_state_ptr.get_results_ptr().get_probs_ptr(),
+        cuda_err = cudaMemcpy(results_prob, shot_state_ptr.get_results_ptr().get_probs_ptr(),
             results_m * sizeof(Flt), cudaMemcpyDeviceToHost);
+        if (cuda_err != cudaSuccess) return cuda_err;
 
         for (Rid result_j = result_i; result_j < results_n; ++result_j) {
             const Bit bit = results_bit[result_j % results_m];
@@ -61,6 +67,8 @@ void print_results(const Simulator &simulator, const Rid results_n, const Rid re
             printf("%u,%u,%u,%f\n", shot_i, failed, bit, prob);
         }
     }
+
+    return cudaSuccess;
 }
 
 int main() {
@@ -102,17 +110,23 @@ int main() {
             if (op.type == M || op.type == D || op.type == R) {
                 results_n += 1;
                 if (results_n - results_n_printed >= results_m) {
-                    print_results(simulator, results_n, results_n_printed);
+                    cuda_err = print_results(simulator, results_n, results_n_printed);
+                    if (cuda_err != cudaSuccess) break;
                     results_n_printed = results_n;
                 }
             }
         }
 
+        if (cuda_err != cudaSuccess)
+            break;
+
         if (scan_err == ReadLineFailed)
             scan_err = Success;
 
-        if (results_n - results_n_printed > 0)
-            print_results(simulator, results_n, results_n_printed);
+        if (results_n - results_n_printed > 0) {
+            cuda_err = print_results(simulator, results_n, results_n_printed);
+            if (cuda_err != cudaSuccess) break;
+        }
 
         cuda_err = cudaStreamSynchronize(simulator.stream);
         if (cuda_err != cudaSuccess) break;
