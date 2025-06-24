@@ -201,6 +201,7 @@ void cuda_compute_measure_probs(cudaStream_t const stream, ShotsStatePtr const s
 
 enum class SampleMode {
     Random = -1,
+    Maximum = -2,
     Desire0 = 0,
     Desire1 = 1,
 };
@@ -235,6 +236,8 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
         case SampleMode::Desire1:
             result = true;
             break;
+        case SampleMode::Maximum:
+            result = prob0 <= prob1;
         default:
             curandState *rand_state_ptr = results_ptr.get_rand_state_ptr();
             result = curand_uniform(rand_state_ptr) > prob0;
