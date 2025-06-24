@@ -16,3 +16,6 @@ add_library(stn_cuda
 
 add_executable(stn_cuda_tests "tests/main.cu")
 target_link_libraries(stn_cuda_tests PRIVATE stn_cuda)
+
+add_executable(stn_cuda_exec "exec/main.cpp")
+target_link_libraries(stn_cuda_exec PRIVATE stn_cuda)
