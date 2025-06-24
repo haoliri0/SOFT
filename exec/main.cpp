@@ -1,3 +1,4 @@
+#include <ctime>
 #include <cstdio>
 #include "./scan.hpp"
 #include "../source/simulator.hpp"
@@ -79,9 +80,15 @@ int main() {
         cuda_err = simulator.create(shots_n, qubits_n, amps_m, results_m);
         if (cuda_err != cudaSuccess) break;
 
+        cuda_err = cudaStreamSynchronize(simulator.stream);
+        if (cuda_err != cudaSuccess) break;
+
         fprintf(stderr, "Simulator created\n");
         fprintf(stderr, "shots_n=%u, qubits_n=%u, amps_m=%u, results_m=%u\n",
             shots_n, qubits_n, amps_m, results_m);
+
+        fprintf(stderr, "Circuit start\n");
+        const clock_t time_start = clock();
 
         Rid results_n = 0;
         Rid results_n_printed = 0;
@@ -101,11 +108,21 @@ int main() {
             }
         }
 
+        if (scan_err == ReadLineFailed)
+            scan_err = Success;
+
         if (results_n - results_n_printed > 0)
             print_results(simulator, results_n, results_n_printed);
 
-        if (scan_err == ReadLineFailed)
-            scan_err = Success;
+        cuda_err = cudaStreamSynchronize(simulator.stream);
+        if (cuda_err != cudaSuccess) break;
+
+        const clock_t time_end = clock();
+        const clock_t time_span = time_end - time_start;
+        const float time_span_seconds = static_cast<float>(time_span) / CLOCKS_PER_SEC;
+
+        fprintf(stderr, "Circuit end\n");
+        fprintf(stderr, "span_time: %f s\n", time_span_seconds);
 
     } while (false);
 
