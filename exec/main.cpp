@@ -141,10 +141,10 @@ int main() {
     } while (false);
 
     if (scan_err != Success)
-        fprintf(stderr, "%s", get_scan_error_name(scan_err));
+        fprintf(stderr, "%s\n", get_scan_error_name(scan_err));
 
     if (cuda_err != cudaSuccess)
-        fprintf(stderr, "%s\n%s", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
+        fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
 
     simulator.destroy();
 }
