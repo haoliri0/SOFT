@@ -28,7 +28,7 @@ const char *get_scan_error_name(const ScanError err) {
 }
 
 static
-bool starts_with(const char *str, const char *seg) {
+bool match(const char *str, const char *seg) {
     for (int i = 0;; i++) {
         if (seg[i] == '\0') return true;
         if (str[i] != seg[i]) return false;
@@ -55,7 +55,7 @@ static
 ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &args) {
     for (unsigned int i = 1; i < argc;) {
         const char *arg_key = argv[i++];
-        if (starts_with(arg_key, "--shots_n")) {
+        if (match(arg_key, "--shots_n")) {
             const char *arg_value = argv[i++];
             args.shots_n = strtoul(arg_value, nullptr, 10);
             if (args.shots_n == 0) {
@@ -64,7 +64,7 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
             }
             continue;
         }
-        if (starts_with(arg_key, "--qubits_n")) {
+        if (match(arg_key, "--qubits_n")) {
             const char *arg_value = argv[i++];
             args.qubits_n = strtoul(arg_value, nullptr, 10);
             if (args.qubits_n == 0) {
@@ -73,7 +73,7 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
             }
             continue;
         }
-        if (starts_with(arg_key, "--amps_m")) {
+        if (match(arg_key, "--amps_m")) {
             const char *arg_value = argv[i++];
             args.amps_m = strtoul(arg_value, nullptr, 10);
             if (args.amps_m == 0) {
@@ -82,7 +82,7 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
             }
             continue;
         }
-        if (starts_with(arg_key, "--results_m")) {
+        if (match(arg_key, "--results_m")) {
             const char *arg_value = argv[i++];
             args.results_m = strtoul(arg_value, nullptr, 10);
             if (args.results_m == 0) {
@@ -91,7 +91,7 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
             }
             continue;
         }
-        if (starts_with(arg_key, "-")) {
+        if (match(arg_key, "-")) {
             fprintf(stderr, "Unrecognized option: %s\n", arg_key);
             return ParseCliArgsError::IllegalKey;
         }
@@ -134,84 +134,84 @@ ScanError scan_operation_args(FILE *file, OperationArgs &args) noexcept {
     Qid &target0 = args.target0;
     Qid &target1 = args.target1;
 
-    if (starts_with(line, "X ")) {
+    if (match(line, "X ")) {
         type = X;
         const int err = sscanf(line, "X %u", &target0);
         if (err == EOF) return ParseFormatFailed;
         return Success;
     }
 
-    if (starts_with(line, "Y ")) {
+    if (match(line, "Y ")) {
         type = Y;
         const int err = sscanf(line, "Y %u", &target0);
         if (err == EOF) return ParseFormatFailed;
         return Success;
     }
 
-    if (starts_with(line, "Z ")) {
+    if (match(line, "Z ")) {
         type = Z;
         const int err = sscanf(line, "Z %u", &target0);
         if (err == EOF) return ParseFormatFailed;
         return Success;
     }
 
-    if (starts_with(line, "H ")) {
+    if (match(line, "H ")) {
         type = H;
         const int err = sscanf(line, "H %u", &target0);
         if (err == EOF) return ParseFormatFailed;
         return Success;
     }
 
-    if (starts_with(line, "S ")) {
+    if (match(line, "S ")) {
         type = S;
         const int err = sscanf(line, "S %u", &target0);
         if (err == EOF) return ParseFormatFailed;
         return Success;
     }
 
-    if (starts_with(line, "SDG ")) {
+    if (match(line, "SDG ")) {
         type = SDG;
         const int err = sscanf(line, "SDG %u", &target0);
         if (err == EOF) return ParseFormatFailed;
         return Success;
     }
 
-    if (starts_with(line, "T ")) {
+    if (match(line, "T ")) {
         type = T;
         const int err = sscanf(line, "T %u", &target0);
         if (err == EOF) return ParseFormatFailed;
         return Success;
     }
 
-    if (starts_with(line, "TDG ")) {
+    if (match(line, "TDG ")) {
         type = TDG;
         const int err = sscanf(line, "TDG %u", &target0);
         if (err == EOF) return ParseFormatFailed;
         return Success;
     }
 
-    if (starts_with(line, "CX ")) {
+    if (match(line, "CX ")) {
         type = CX;
         const int err = sscanf(line, "CX %u %u", &target0, &target1);
         if (err == EOF) return ParseFormatFailed;
         return Success;
     }
 
-    if (starts_with(line, "M ")) {
+    if (match(line, "M ")) {
         type = M;
         const int err = sscanf(line, "M %u", &target0);
         if (err == EOF) return ParseFormatFailed;
         return Success;
     }
 
-    if (starts_with(line, "D ")) {
+    if (match(line, "D ")) {
         type = D;
         const int err = sscanf(line, "D %u", &target0);
         if (err == EOF) return ParseFormatFailed;
         return Success;
     }
 
-    if (starts_with(line, "R ")) {
+    if (match(line, "R ")) {
         type = R;
         const int err = sscanf(line, "R %u", &target0);
         if (err == EOF) return ParseFormatFailed;
