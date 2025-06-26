@@ -26,6 +26,7 @@ struct CliArgs {
     Qid qubits_n = 4;
     Kid amps_m = 4;
     Rid results_m = 4;
+    bool no_output = false;
 };
 
 enum class ParseCliArgsError {
@@ -73,6 +74,10 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
                 fprintf(stderr, "Illegal value: results_m=%s\n", arg_value);
                 return ParseCliArgsError::IllegalValue;
             }
+            continue;
+        }
+        if (match(arg_key, "--no_output")) {
+            args.no_output = true;
             continue;
         }
         if (match(arg_key, "-")) {
@@ -331,6 +336,7 @@ ParseCircuitLineError execute_line(
 }
 
 cudaError flush_results(
+    const CliArgs &args,
     const Simulator &simulator,
     const size_t line_i,
     const size_t lines_n,
@@ -347,6 +353,9 @@ cudaError flush_results(
         fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
         return cuda_err;
     }
+
+    if (args.no_output)
+        return cuda_err;
 
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
         const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
@@ -441,7 +450,8 @@ int main(const int argc, const char **argv) {
             if (measure) {
                 results_n += 1;
                 if (results_n - results_n_flushed >= args.results_m) {
-                    cuda_err = flush_results(simulator,
+                    cuda_err = flush_results(
+                        args, simulator,
                         lines_n_flushed, lines_n,
                         results_n_flushed, results_n);
                     if (cuda_err != cudaSuccess) break;
@@ -456,7 +466,8 @@ int main(const int argc, const char **argv) {
         if (cuda_err != cudaSuccess)
             break;
 
-        cuda_err = flush_results(simulator,
+        cuda_err = flush_results(
+            args, simulator,
             lines_n_flushed, lines_n,
             results_n_flushed, results_n);
 
@@ -471,9 +482,9 @@ int main(const int argc, const char **argv) {
         const float time_span_seconds = static_cast<float>(time_span) / CLOCKS_PER_SEC;
         const float shots_per_second = static_cast<float>(args.shots_n) / time_span_seconds;
 
-        fprintf(stderr, "Circuit end\n");
-        fprintf(stderr, "span_time: %f s\n", time_span_seconds);
-        fprintf(stderr, "avg_speed: %f shot/s\n", shots_per_second);
+        fprintf(stderr, "Finished Circuit\n");
+        fprintf(stderr, "\tspan_time: %f s\n", time_span_seconds);
+        fprintf(stderr, "\tavg_speed: %f shot/s\n", shots_per_second);
     } while (false);
 
     simulator.destroy();
