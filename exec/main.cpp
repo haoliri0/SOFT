@@ -71,15 +71,16 @@ cudaError print_results(const Simulator &simulator, const Rid results_n, const R
     return cudaSuccess;
 }
 
-int main() {
-    SimulatorArgs args{};
+int main(const int argc, const char **argv) {
+    CliArgs args{};
     Simulator simulator;
+    auto args_err = ParseCliArgsError::Success;
     ScanError scan_err = Success;
     cudaError cuda_err = cudaSuccess;
 
     do {
-        scan_err = scan_simulator_args(stdin, &args);
-        if (scan_err != Success) break;
+        args_err = parse_cli_args(argc, argv, args);
+        if (args_err != ParseCliArgsError::Success) break;
         const Sid shots_n = args.shots_n;
         const Qid qubits_n = args.qubits_n;
         const Kid amps_m = args.amps_m;
