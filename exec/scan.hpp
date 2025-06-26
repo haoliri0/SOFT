@@ -102,29 +102,6 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
 }
 
 
-struct SimulatorArgs {
-    Sid shots_n;
-    Qid qubits_n;
-    Kid amps_m;
-    Rid results_m;
-};
-
-static
-ScanError scan_simulator_args(FILE *file, SimulatorArgs *args) noexcept {
-    constexpr size_t buffer_size = 256;
-    char buffer[buffer_size];
-    const char *line = fgets(buffer, buffer_size, file);
-    if (line == nullptr) return ReadLineFailed;
-
-    const int err = sscanf(line,
-        "shots_n=%u, qubits_n=%u, amps_m=%u, results_m=%u",
-        &args->shots_n, &args->qubits_n, &args->amps_m, &args->results_m);
-    if (err == EOF) return ParseFormatFailed;
-
-    return Success;
-}
-
-
 enum OpType {
     X,
     Y,
