@@ -37,6 +37,71 @@ bool starts_with(const char *str, const char *seg) {
 }
 
 
+struct CliArgs {
+    Sid shots_n = 1;
+    Qid qubits_n = 4;
+    Kid amps_m = 4;
+    Rid results_m = 4;
+};
+
+enum class ParseCliArgsError {
+    Success = 0,
+    IllegalArg = 100001,
+    IllegalKey = 100002,
+    IllegalValue = 100003,
+};
+
+static
+ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &args) {
+    for (unsigned int i = 1; i < argc;) {
+        const char *arg_key = argv[i++];
+        if (starts_with(arg_key, "--shots_n")) {
+            const char *arg_value = argv[i++];
+            args.shots_n = strtoul(arg_value, nullptr, 10);
+            if (args.shots_n == 0) {
+                fprintf(stderr, "Illegal value: shots_n=%s\n", arg_value);
+                return ParseCliArgsError::IllegalValue;
+            }
+            continue;
+        }
+        if (starts_with(arg_key, "--qubits_n")) {
+            const char *arg_value = argv[i++];
+            args.qubits_n = strtoul(arg_value, nullptr, 10);
+            if (args.qubits_n == 0) {
+                fprintf(stderr, "Illegal value: qubits_n=%s\n", arg_value);
+                return ParseCliArgsError::IllegalValue;
+            }
+            continue;
+        }
+        if (starts_with(arg_key, "--amps_m")) {
+            const char *arg_value = argv[i++];
+            args.amps_m = strtoul(arg_value, nullptr, 10);
+            if (args.amps_m == 0) {
+                fprintf(stderr, "Illegal value: amps_m=%s\n", arg_value);
+                return ParseCliArgsError::IllegalValue;
+            }
+            continue;
+        }
+        if (starts_with(arg_key, "--results_m")) {
+            const char *arg_value = argv[i++];
+            args.results_m = strtoul(arg_value, nullptr, 10);
+            if (args.results_m == 0) {
+                fprintf(stderr, "Illegal value: results_m=%s\n", arg_value);
+                return ParseCliArgsError::IllegalValue;
+            }
+            continue;
+        }
+        if (starts_with(arg_key, "-")) {
+            fprintf(stderr, "Unrecognized option: %s\n", arg_key);
+            return ParseCliArgsError::IllegalKey;
+        }
+        fprintf(stderr, "Unexpected arg: %s\n", arg_key);
+        return ParseCliArgsError::IllegalArg;
+    }
+    return ParseCliArgsError::Success;
+}
+
+
 struct SimulatorArgs {
     Sid shots_n;
     Qid qubits_n;
