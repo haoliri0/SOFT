@@ -134,10 +134,11 @@ int main() {
         const clock_t time_end = clock();
         const clock_t time_span = time_end - time_start;
         const float time_span_seconds = static_cast<float>(time_span) / CLOCKS_PER_SEC;
+        const float shots_per_second = static_cast<float>(shots_n) / time_span_seconds;
 
         fprintf(stderr, "Circuit end\n");
         fprintf(stderr, "span_time: %f s\n", time_span_seconds);
-
+        fprintf(stderr, "avg_speed: %f shot/s\n", shots_per_second);
     } while (false);
 
     if (scan_err != Success)
