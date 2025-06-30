@@ -232,6 +232,23 @@ ParseCircuitLineError read_qid(
     return ParseCircuitLineError::Success;
 }
 
+ParseCircuitLineError read_bit(
+    FILE *file,
+    Bit &bit,
+    bool &eol,
+    bool &eof
+) {
+    size_t count;
+    constexpr size_t limit = 16;
+    unsigned int value;
+    read_uint(file, limit, value, count, eol, eof);
+    if (count == 0) return ParseCircuitLineError::IllegalArg;
+    if (count > limit) return ParseCircuitLineError::FullBuffer;
+    if (value != 0 && value != 1) return ParseCircuitLineError::IllegalArg;
+    bit = value;
+    return ParseCircuitLineError::Success;
+}
+
 template<void (Simulator::*op)(Qid) const noexcept, bool isMeasure = false>
 ParseCircuitLineError execute_op_q(
     const Simulator &simulator,
@@ -273,6 +290,31 @@ ParseCircuitLineError execute_op_qq(
         err != ParseCircuitLineError::Success) { return err; }
 
     (simulator.*op)(target0, target1);
+
+    return ParseCircuitLineError::Success;
+}
+
+template<void (Simulator::*op)(Qid, Bit) const noexcept, bool isMeasure = false>
+ParseCircuitLineError execute_op_qb(
+    const Simulator &simulator,
+    FILE *file,
+    bool &measure,
+    bool &eol,
+    bool &eof
+) noexcept {
+    measure = true;
+
+    Qid target;
+    if (eol || eof) return ParseCircuitLineError::IllegalFormat;
+    if (const ParseCircuitLineError err = read_qid(file, target, eol, eof);
+        err != ParseCircuitLineError::Success) { return err; }
+
+    Bit value;
+    if (eol || eof) return ParseCircuitLineError::IllegalFormat;
+    if (const ParseCircuitLineError err = read_bit(file, value, eol, eof);
+        err != ParseCircuitLineError::Success) { return err; }
+
+    (simulator.*op)(target, value);
 
     return ParseCircuitLineError::Success;
 }
@@ -330,6 +372,8 @@ ParseCircuitLineError execute_line(
         return execute_op_qq<&Simulator::apply_cx>(simulator, file, measure, eol, eof);
     if (match(name, "M"))
         return execute_op_q<&Simulator::measure, true>(simulator, file, measure, eol, eof);
+    if (match(name, "D"))
+        return execute_op_qb<&Simulator::desire, true>(simulator, file, measure, eol, eof);
     if (match(name, "R"))
         return execute_op_reset(simulator, file, measure, eol, eof);
     return ParseCircuitLineError::IllegalOp;
