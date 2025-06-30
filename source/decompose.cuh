@@ -9,9 +9,8 @@ static __device__
 Aid bits_to_int(const Bit *bits, const unsigned int n) {
     Aid v = 0;
     for (unsigned int i = 0; i < n; i++) {
-        const Bit bit = bits[i];
-        v <<= 1;
-        v |= bit;
+        const Aid bit = !bits[i] ? 0 : 1;
+        v |= bit << i;
     }
     return v;
 }
