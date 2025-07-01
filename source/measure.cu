@@ -121,8 +121,8 @@ void op_compute_measure_probs_situation0(const AmpsMapPtr amps_map_ptr, const Bi
     Aid *aids = !result ? amps_map_ptr.get_half0_aids_ptr() : amps_map_ptr.get_half1_aids_ptr();
     Amp *amps = !result ? amps_map_ptr.get_half0_amps_ptr() : amps_map_ptr.get_half1_amps_ptr();
 
-    amps_n_new = 0;
     prob = 0;
+    amps_n_new = 0;
     for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
         const Aid aid = aids[amp_i];
         const Amp amp = amps[amp_i];
