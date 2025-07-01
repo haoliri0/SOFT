@@ -302,7 +302,7 @@ ParseCircuitLineError execute_op_qb(
     bool &eol,
     bool &eof
 ) noexcept {
-    measure = true;
+    measure = isMeasure;
 
     Qid target;
     if (eol || eof) return ParseCircuitLineError::IllegalFormat;
