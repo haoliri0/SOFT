@@ -82,6 +82,7 @@ void op_compute_decomposed_phase(const ShotsStatePtr shots_state_ptr, const Dims
     // clear decomp phase
     decomp_phase = 0;
 
+    // compute
     for (Qid row_i = 0; row_i < rows_n; ++row_i) {
         if (decomp_bits_ptr[row_i]) {
             const TableRowPtr table_row_ptr = table_ptr.get_row_ptr(row_i);
