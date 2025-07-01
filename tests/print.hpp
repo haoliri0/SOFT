@@ -138,6 +138,24 @@ void print_amps(const AmpsMapPtr ptr) {
 }
 
 static
+void print_amps_full(const AmpsMapPtr ptr) {
+    printf("\t\tamplitudes:\n");
+    const Kid amps_m = ptr.amps_m;
+    const Kid amps_n = *ptr.get_amps_n_ptr();
+    printf("\t\t\t(amps_n = %u)\n", amps_n);
+    for (int amp_i = 0; amp_i < amps_m; ++amp_i) {
+        const Aid aid = *ptr.get_aid_ptr(amp_i);
+        const Amp amp = *ptr.get_amp_ptr(amp_i);
+        printf("\t\t\t");
+        print_int_bits(aid, ptr.qubits_n);
+        printf(": ");
+        print_amplitude(amp);
+        printf("\n");
+    }
+    printf("\n");
+}
+
+static
 void print_amps_halves(const AmpsMapPtr ptr) {
     printf("\t\tamplitudes:\n");
     const Kid amps_m = ptr.amps_m;
@@ -194,7 +212,7 @@ static
 void print_shot_state(const ShotStatePtr ptr) {
     print_table(ptr.get_table_ptr());
     print_decomp(ptr.get_decomp_ptr());
-    print_amps_halves(ptr.get_amps_ptr());
+    print_amps_full(ptr.get_amps_ptr());
     print_results(ptr.get_results_ptr());
 }
 
