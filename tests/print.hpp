@@ -36,9 +36,9 @@ void print_int_bits(Aid integer, const unsigned int n) {
 
 static
 void print_sign(Bit sign) {
-    sign %= 2;
-    if (sign == 0) printf("+1");
-    if (sign == 1) printf("-1");
+    !(sign %= 2)
+        ? printf("+")
+        : printf("-");
 }
 
 static
@@ -73,7 +73,6 @@ void print_pauli_row(const PauliRowPtr ptr) {
         const Bit x = *ptr.get_x_ptr(qubit_i);
         const Bit z = *ptr.get_z_ptr(qubit_i);
         print_pauli(x, z);
-        printf(" ");
     }
 }
 
@@ -89,8 +88,8 @@ void print_pivot(const Qid pivot) {
 
 static
 void print_table_row(const TableRowPtr ptr) {
-    print_pauli_row(ptr.get_pauli_ptr());
     print_sign(*ptr.get_sign_ptr());
+    print_pauli_row(ptr.get_pauli_ptr());
 }
 
 static
@@ -116,6 +115,7 @@ void print_decomp(const DecompPtr ptr) {
 
     printf("\t\t\t");
     print_pauli_row(ptr.get_pauli_ptr());
+    printf(" ");
     print_phase(*ptr.get_phase_ptr());
     printf("\n");
 }
