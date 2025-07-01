@@ -36,7 +36,7 @@ struct CliArgs {
     Qid qubits_n = 4;
     Kid amps_m = 4;
     Rid results_m = 4;
-    bool no_output = false;
+    unsigned int mode = 1;
 };
 
 enum class ParseCliArgsError {
@@ -86,8 +86,13 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
             }
             continue;
         }
-        if (match(arg_key, "--no_output")) {
-            args.no_output = true;
+        if (match(arg_key, "--mode")) {
+            const char *arg_value = argv[i++];
+            args.mode = strtoul(arg_value, nullptr, 10);
+            if (args.mode > 2) {
+                fprintf(stderr, "Illegal value: mode=%s\n", arg_value);
+                return ParseCliArgsError::IllegalValue;
+            }
             continue;
         }
         if (match_head(arg_key, "-")) {
@@ -408,7 +413,7 @@ cudaError flush_results(
         return cuda_err;
     }
 
-    if (args.no_output)
+    if (args.mode < 1)
         return cuda_err;
 
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
