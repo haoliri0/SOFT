@@ -38,12 +38,20 @@ void op_update_amps_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
     Kid &dst_aid = *amps_map_ptr.get_half1_aid_ptr(amp_i);
     Amp &dst_amp = *amps_map_ptr.get_half1_amp_ptr(amp_i);
 
-    const Bit sign_bit = compute_sign(src_aid, stab_bits, qubits_n);
-    const Amp sign_amp = sign_bit ? 1 : -1;
-    const Amp coef = {0, -sinf(M_PI / 8) * (dagger ? -1 : 1)};
+    const Amp coef = {0, -sinf(M_PI / 8)};
+
+    const Bit dagger_sign = dagger;
+    const Flt dagger_sign_amp = sign_to_flt(dagger_sign);
+
+    const Bit aid_sign = compute_sign(src_aid, stab_bits, qubits_n);
+    const Flt aid_sign_amp = sign_to_flt(aid_sign);
+
+    const Phs decomp_phase = *decomp_ptr.get_phase_ptr();
+    const Phs decomp_phase_inv = -decomp_phase; // 这是 DDD 乘起来的系数，要取反得到 Z 分解的系数！
+    const Amp decomp_phase_amp = phase_to_amp(decomp_phase_inv);
 
     dst_aid = src_aid ^ bits_to_int(destab_bits, qubits_n);
-    dst_amp = src_amp * coef * sign_amp;
+    dst_amp = src_amp * coef * dagger_sign_amp * aid_sign_amp * decomp_phase_amp;
 }
 
 template<bool dagger>
