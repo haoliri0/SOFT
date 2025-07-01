@@ -4,6 +4,7 @@
 
 #include "../source/datatype.cuh"
 #include "../source/simulator.hpp"
+#include "../tests/print.hpp"
 
 using namespace StnCuda;
 
@@ -508,7 +509,7 @@ int main(const int argc, const char **argv) {
 
             if (measure) {
                 results_n += 1;
-                if (results_n - results_n_flushed >= args.results_m) {
+                if (args.mode >= 2 || results_n - results_n_flushed >= args.results_m) {
                     cuda_err = flush_results(
                         args, simulator,
                         lines_n_flushed, lines_n,
@@ -518,6 +519,9 @@ int main(const int argc, const char **argv) {
                     results_n_flushed = results_n;
                 }
             }
+
+            if (args.mode >= 2)
+                print_simulator(simulator);
 
             if (eof) break;
         }
