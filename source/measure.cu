@@ -12,7 +12,7 @@ void compute_measure_amps_situation0(const ShotStatePtr shot_state_ptr, const Ai
     const Qid qubits_n = shot_state_ptr.qubits_n;
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const Bit *stab = decomp_ptr.get_stab_bits_ptr();
-    const Phs phase = *decomp_ptr.get_phase_ptr();
+    const Phs decomp_phase = *decomp_ptr.get_phase_ptr();
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
     const Aid aid = *amps_map_ptr.get_aid_ptr(amp_i);
     const Amp amp = *amps_map_ptr.get_amp_ptr(amp_i);
@@ -21,7 +21,7 @@ void compute_measure_amps_situation0(const ShotStatePtr shot_state_ptr, const Ai
     Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(amp_i);
     Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(amp_i);
 
-    const Bit sign_phase = phase / 2 % 2;
+    const Bit sign_phase = decomp_phase / 2 % 2; // definitely +1 or -1
     const Bit sign_stab = compute_sign(aid, stab, qubits_n);
     const Bit sign = sign_phase ^ sign_stab;
 
@@ -42,7 +42,7 @@ void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Ai
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const Bit *stab = decomp_ptr.get_stab_bits_ptr();
     const Bit *destab = decomp_ptr.get_destab_bits_ptr();
-    const Phs phase = *decomp_ptr.get_phase_ptr();
+    const Phs decomp_phase = *decomp_ptr.get_phase_ptr();
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
     const Aid aid = *amps_map_ptr.get_aid_ptr(amp_i);
     const Amp amp = *amps_map_ptr.get_amp_ptr(amp_i);
@@ -52,18 +52,19 @@ void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Ai
     Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(amp_i);
     constexpr Flt coef = M_SQRT1_2; // sqrt(1/2);
 
+    // 取 aid 中的第 pivot 那个 bit
     constexpr Aid aid_one = 1;
     const Aid aid_mask = aid_one << pivot;
     if (aid & aid_mask) {
-        // 取 aid 中的第 pivot 那个 bit
-        const Bit sign_phase = phase / 2 % 2;
-        const Bit sign_stab = compute_sign(aid, stab, qubits_n);
-        const Bit sign = sign_phase ^ sign_stab;
-        const Flt phase0 = !sign ? +1. : -1.;
-        const Flt phase1 = !sign ? -1. : +1.;
+        const Phs decomp_phase_inv = -decomp_phase;
+        const Amp decomp_phase_amp = phase_to_amp(decomp_phase_inv);
+        const Bit stab_sign = compute_sign(aid, stab, qubits_n);
+        const Flt stab_sign_amp = sign_to_flt(stab_sign);
+        const Flt result0_amp = +1;
+        const Flt result1_amp = -1;
 
-        amp0 = amp * coef * phase0;
-        amp1 = amp * coef * phase1;
+        amp0 = amp * coef * decomp_phase_amp * stab_sign_amp * result0_amp;
+        amp1 = amp * coef * decomp_phase_amp * stab_sign_amp * result1_amp;
         aid0 = aid ^ bits_to_int(destab, qubits_n);
         aid1 = aid ^ bits_to_int(destab, qubits_n);
     } else {
