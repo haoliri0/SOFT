@@ -30,7 +30,6 @@ void print_int_bits(Aid integer, const unsigned int n) {
         const Bit bit = integer % 2;
         integer >>= 1;
         print_bit(bit);
-        printf(" ");
     }
 }
 
@@ -130,7 +129,7 @@ void print_amps(const AmpsMapPtr ptr) {
         const Amp amp = *ptr.get_amp_ptr(amp_i);
         printf("\t\t\t");
         print_int_bits(aid, ptr.qubits_n);
-        printf(": ");
+        printf(" : ");
         print_amplitude(amp);
         printf("\n");
     }
@@ -148,7 +147,7 @@ void print_amps_full(const AmpsMapPtr ptr) {
         const Amp amp = *ptr.get_amp_ptr(amp_i);
         printf("\t\t\t");
         print_int_bits(aid, ptr.qubits_n);
-        printf(": ");
+        printf(" : ");
         print_amplitude(amp);
         printf("\n");
     }
@@ -171,7 +170,7 @@ void print_amps_halves(const AmpsMapPtr ptr) {
         const Amp amp = *ptr.get_half0_amp_ptr(amp_i);
         printf("\t\t\t");
         print_int_bits(aid, ptr.qubits_n);
-        printf(": ");
+        printf(" : ");
         print_amplitude(amp);
         printf("\n");
     }
@@ -183,7 +182,7 @@ void print_amps_halves(const AmpsMapPtr ptr) {
         const Amp amp = *ptr.get_half1_amp_ptr(amp_i);
         printf("\t\t\t");
         print_int_bits(aid, ptr.qubits_n);
-        printf(": ");
+        printf(" : ");
         print_amplitude(amp);
         printf("\n");
     }
