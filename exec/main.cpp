@@ -10,7 +10,17 @@ using namespace StnCuda;
 // common utils
 
 static
-const char *match(const char *str, const char *seg) {
+bool match(const char *str, const char *seg) {
+    while (true) {
+        if (*str != *seg) return false;
+        if (*seg == '\0') return true;
+        str++;
+        seg++;
+    }
+}
+
+static
+const char *match_head(const char *str, const char *seg) {
     while (true) {
         if (*seg == '\0') return str;
         if (*str != *seg) return nullptr;
@@ -80,7 +90,7 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
             args.no_output = true;
             continue;
         }
-        if (match(arg_key, "-")) {
+        if (match_head(arg_key, "-")) {
             fprintf(stderr, "Unrecognized option: %s\n", arg_key);
             return ParseCliArgsError::IllegalKey;
         }
