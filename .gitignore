@@ -1,5 +1,9 @@
 # cmake
 /cmake-build*
 
+# python
+__pycache__
+/.venv
+
 # ide clion
 /.idea

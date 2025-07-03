@@ -1,0 +1,12 @@
+[project]
+name = "stn-cuda"
+version = "0.1.1"
+
+requires-python = ">=3.11"
+[dependency-groups]
+dev = [
+    "tqdm>=4.67.1",
+    "numpy>=2.3.1",
+    "qiskit>=2.1.0",
+    "qiskit-aer>=0.17.1",
+]
