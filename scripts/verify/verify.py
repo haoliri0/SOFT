@@ -1,4 +1,5 @@
 import os
+from itertools import count
 from typing import Iterable
 
 import numpy as np
@@ -20,19 +21,18 @@ def sync_global_phase(state0, state1):
     return state1 * coef
 
 
-def verify_ops(
-    key: str,
-    ops: Iterable[Op],
+def verify_ops(*,
+    label: str | None = None,
+    exec_file_path: str,
     qubits_n: int,
     amps_m: int,
+    ops: Iterable[Op],
 ):
     ops = tuple(ops)
     results_n = sum(typ == "M" for typ, _ in ops)
     qc = make_qiskit_circuit(ops, qubits_n, results_n)
     states, results, _ = run_qiskit_circuit(qc)
 
-    project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
-    exec_file_path = os.path.join(project_dir_path, "cmake-build-release/stn_cuda_exec")
     states_stn = run_stn_mode2(
         exec_file_path, ops, results,
         qubits_n, amps_m, max(results_n, 1))
@@ -50,7 +50,8 @@ def verify_ops(
         err_step_index = err_step_indices[0]
         print("\n\n\n")
         print("Found error!!!!!")
-        print(f"key={key}")
+        if label is not None:
+            print(f"label={label}")
         cmd = make_stn_cmd(
             exec_file_path=exec_file_path,
             qubits_n=qubits_n,
@@ -68,36 +69,48 @@ def verify_ops(
     return True
 
 
-def verify_custom(
-    ops_str: str,
+def verify_custom(*,
+    exec_file_path: str,
     qubits_n: int,
     amps_m: int,
+    ops_str: str,
 ):
     ops = parse_ops(ops_str)
-    verify_ops("custom", ops, qubits_n, amps_m)
+    verify_ops(
+        exec_file_path=exec_file_path,
+        qubits_n=qubits_n,
+        amps_m=amps_m,
+        ops=ops)
 
 
-def verify_random(
-    ops_n: int = 16,
-    qubits_n: int = 2,
-    amps_m: int = 8,
+def verify_random(*,
+    exec_file_path: str,
+    qubits_n: int,
+    amps_m: int,
+    ops_n: int,
     seed_head: int = 0,
-    seed_tail: int = 1024,
+    seed_tail: int | None = None,
 ):
-    for seed in tqdm(range(seed_head, seed_tail)):
+    seeds = range(seed_head, seed_tail) \
+        if seed_tail is not None else count(seed_head)
+    for seed in tqdm(seeds):
         rng = np.random.default_rng(seed)
         ops = generate_random_ops(ops_n, qubits_n, rng)
         verified = verify_ops(
-            key=f"seed_{seed}",
-            ops=ops,
+            label=f"seed_{seed}",
+            exec_file_path=exec_file_path,
             qubits_n=qubits_n,
-            amps_m=amps_m)
+            amps_m=amps_m,
+            ops=ops)
         if not verified:
             break
 
 
 if __name__ == "__main__":
+    project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
+    exec_file_path = os.path.join(project_dir_path, "cmake-build-release/stn_cuda_exec")
     verify_random(
-        qubits_n=4,
-        amps_m=64,
+        exec_file_path=exec_file_path,
+        qubits_n=8,
+        amps_m=128,
         ops_n=256)
