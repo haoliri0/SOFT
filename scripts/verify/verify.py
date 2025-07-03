@@ -1,9 +1,13 @@
 import os
+import sys
 from itertools import count
 from typing import Iterable
 
 import numpy as np
 from tqdm import tqdm
+
+project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
+sys.path.append(project_dir_path)
 
 from scripts.verify.utils_ops import Op, generate_random_ops, parse_ops, print_ops
 from scripts.verify.utils_qiskit import make_qiskit_circuit, run_qiskit_circuit
@@ -120,7 +124,6 @@ def verify_random(*,
 
 
 if __name__ == "__main__":
-    project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
     exec_file_path = os.path.join(project_dir_path, "cmake-build-release/stn_cuda_exec")
     verify_random(
         exec_file_path=exec_file_path,
