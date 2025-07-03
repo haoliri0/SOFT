@@ -43,7 +43,7 @@ def compute_clifford_state(clifford: Clifford, entries: Iterable[tuple[tuple[boo
         entries_state.append(entry_state)
 
     if len(entries_state) == 0:
-        raise ValueError("Empty entries")
+        return None
 
     return sum(
         np.asarray(amp * entry_state)

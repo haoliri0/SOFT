@@ -30,16 +30,29 @@ def verify_ops(*,
 ):
     ops = tuple(ops)
     results_n = sum(typ == "M" for typ, _ in ops)
-    qc = make_qiskit_circuit(ops, qubits_n, results_n)
-    states, results, _ = run_qiskit_circuit(qc)
+
+    circuit = make_qiskit_circuit(ops, qubits_n, results_n)
+    states, results, _ = run_qiskit_circuit(circuit)
 
     states_stn = run_stn_mode2(
         exec_file_path, ops, results,
         qubits_n, amps_m, max(results_n, 1))
 
-    states = np.asarray(states)
-    states_stn = np.asarray(states_stn)
+    fail_step_i = None
+    for step_i, step_state_stn in enumerate(states_stn):
+        if step_state_stn is None:
+            fail_step_i = step_i
+            break
+    if fail_step_i is not None:
+        print("Found failure")
+        if label is not None:
+            print(f"label={label}")
+        print(f"fail_step={fail_step_i}")
 
+        states = states[:fail_step_i]
+        states_stn = states_stn[:fail_step_i]
+
+    states = np.asarray(states)
     states_stn = np.asarray([
         sync_global_phase(state, state_stn)
         for state, state_stn in zip(states, states_stn)])
