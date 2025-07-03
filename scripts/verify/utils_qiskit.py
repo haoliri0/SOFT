@@ -2,7 +2,6 @@ from collections.abc import Iterator
 from itertools import count
 from typing import Iterable
 
-import numpy as np
 from qiskit import QuantumCircuit
 from qiskit_aer import AerSimulator
 
@@ -30,13 +29,10 @@ def make_qiskit_op(
             qc.sdg(target)
         case ('T', target):
             qc.t(target)
-            qc.global_phase -= np.pi / 8
         case ('TDG', target):
             qc.tdg(target)
-            qc.global_phase += np.pi / 8
         case ('M', target):
             result_i = next(results_i)
-            qc.save_statevector(label=f'state_before_result_{result_i}')
             qc.save_probabilities([target], label=f'prob_{result_i}')
             qc.measure(target, result_i)
         case _:
