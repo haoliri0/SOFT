@@ -125,5 +125,5 @@ if __name__ == "__main__":
     verify_random(
         exec_file_path=exec_file_path,
         qubits_n=8,
-        amps_m=128,
-        ops_n=256)
+        amps_m=1024,
+        ops_n=1024)
