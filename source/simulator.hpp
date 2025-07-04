@@ -37,11 +37,11 @@ struct Simulator {
     void apply_tdg(Qid target) const noexcept;
 
 
-    void measure(Qid target) const noexcept;
+    void apply_measure(Qid target) const noexcept;
 
-    void desire(Qid target, Bit result) const noexcept;
+    void apply_desire(Qid target, Bit result) const noexcept;
 
-    void assign(Qid target, Bit value) const noexcept;
+    void apply_assign(Qid target, Bit value) const noexcept;
 
 };
 

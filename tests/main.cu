@@ -118,9 +118,9 @@ void test_measure() {
         if (err != cudaSuccess) break;
 
         simulator.apply_h(0);
-        simulator.measure(0);
-        // simulator.desire(0, false);
-        // simulator.assign(0, false);
+        simulator.apply_measure(0);
+        // simulator.apply_desire(0, false);
+        // simulator.apply_assign(0, false);
 
         print_simulator(simulator);
     } while (false);

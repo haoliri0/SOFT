@@ -457,7 +457,7 @@ void cuda_apply_reset_operation(
 }
 
 
-void Simulator::measure(const Qid target) const noexcept {
+void Simulator::apply_measure(const Qid target) const noexcept {
     cuda_compute_decomposed_bits(stream, shots_state_ptr, target);
     cuda_compute_decomposed_phase(stream, shots_state_ptr);
     cuda_compute_decomp_pivot(stream, shots_state_ptr);
@@ -471,7 +471,7 @@ void Simulator::measure(const Qid target) const noexcept {
     cuda_change_measure_basis_pivot(stream, shots_state_ptr, target);
 }
 
-void Simulator::desire(const Qid target, const Bit result) const noexcept {
+void Simulator::apply_desire(const Qid target, const Bit result) const noexcept {
     cuda_compute_decomposed_bits(stream, shots_state_ptr, target);
     cuda_compute_decomposed_phase(stream, shots_state_ptr);
     cuda_compute_decomp_pivot(stream, shots_state_ptr);
@@ -487,7 +487,7 @@ void Simulator::desire(const Qid target, const Bit result) const noexcept {
     cuda_change_measure_basis_pivot(stream, shots_state_ptr, target);
 }
 
-void Simulator::assign(const Qid target, const Bit value) const noexcept {
+void Simulator::apply_assign(const Qid target, const Bit value) const noexcept {
     cuda_compute_decomposed_bits(stream, shots_state_ptr, target);
     cuda_compute_decomposed_phase(stream, shots_state_ptr);
     cuda_compute_decomp_pivot(stream, shots_state_ptr);

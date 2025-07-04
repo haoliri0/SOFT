@@ -349,7 +349,7 @@ ParseCircuitLineError execute_op_reset(
     if (const ParseCircuitLineError err = read_qid(file, target, eol, eof);
         err != ParseCircuitLineError::Success) { return err; }
 
-    simulator.assign(target, false);
+    simulator.apply_assign(target, false);
 
     return ParseCircuitLineError::Success;
 }
@@ -387,9 +387,9 @@ ParseCircuitLineError execute_line(
     if (match(name, "CX"))
         return execute_op_qq<&Simulator::apply_cx>(simulator, file, measure, eol, eof);
     if (match(name, "M"))
-        return execute_op_q<&Simulator::measure, true>(simulator, file, measure, eol, eof);
+        return execute_op_q<&Simulator::apply_measure, true>(simulator, file, measure, eol, eof);
     if (match(name, "D"))
-        return execute_op_qb<&Simulator::desire, true>(simulator, file, measure, eol, eof);
+        return execute_op_qb<&Simulator::apply_desire, true>(simulator, file, measure, eol, eof);
     if (match(name, "R"))
         return execute_op_reset(simulator, file, measure, eol, eof);
     return ParseCircuitLineError::IllegalOp;
