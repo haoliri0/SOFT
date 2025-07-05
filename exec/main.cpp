@@ -234,12 +234,7 @@ enum class ParseCircuitLineError {
     IllegalArg
 };
 
-ParseCircuitLineError read_qid(
-    FILE *file,
-    Qid &qid,
-    bool &eol,
-    bool &eof
-) {
+ParseCircuitLineError read_arg(Qid &qid, FILE *file, bool &eol, bool &eof) {
     size_t count;
     constexpr size_t limit = 16;
     read_uint(file, limit, qid, count, eol, eof);
@@ -248,12 +243,7 @@ ParseCircuitLineError read_qid(
     return ParseCircuitLineError::Success;
 }
 
-ParseCircuitLineError read_bit(
-    FILE *file,
-    Bit &bit,
-    bool &eol,
-    bool &eof
-) {
+ParseCircuitLineError read_arg(Bit &arg, FILE *file, bool &eol, bool &eof) {
     size_t count;
     constexpr size_t limit = 16;
     unsigned int value;
@@ -261,98 +251,41 @@ ParseCircuitLineError read_bit(
     if (count == 0) return ParseCircuitLineError::IllegalArg;
     if (count > limit) return ParseCircuitLineError::FullBuffer;
     if (value != 0 && value != 1) return ParseCircuitLineError::IllegalArg;
-    bit = value;
+    arg = value;
     return ParseCircuitLineError::Success;
 }
 
-template<void (Simulator::*op)(Qid) const noexcept, bool isMeasure = false>
-ParseCircuitLineError execute_op_q(
-    const Simulator &simulator,
-    FILE *file,
-    bool &measure,
-    bool &eol,
-    bool &eof
+ParseCircuitLineError execute_op(
+    const std::function<void()> &op,
+    FILE *, bool &, bool &
 ) noexcept {
-    measure = isMeasure;
-
-    Qid target;
-    if (eol || eof) return ParseCircuitLineError::IllegalFormat;
-    if (const ParseCircuitLineError err = read_qid(file, target, eol, eof);
-        err != ParseCircuitLineError::Success) { return err; }
-
-    (simulator.*op)(target);
-
+    op();
     return ParseCircuitLineError::Success;
 }
 
-template<void (Simulator::*op)(Qid, Qid) const noexcept, bool isMeasure = false>
-ParseCircuitLineError execute_op_qq(
-    const Simulator &simulator,
-    FILE *file,
-    bool &measure,
-    bool &eol,
-    bool &eof
+template<typename Arg0, typename... Args>
+ParseCircuitLineError execute_op(
+    const std::function<void(Arg0, Args...)> &op,
+    FILE *file, bool &eol, bool &eof
 ) noexcept {
-    measure = isMeasure;
-
-    Qid target0;
+    Arg0 arg0;
     if (eol || eof) return ParseCircuitLineError::IllegalFormat;
-    if (const ParseCircuitLineError err = read_qid(file, target0, eol, eof);
+    if (const ParseCircuitLineError err = read_arg(arg0, file, eol, eof);
         err != ParseCircuitLineError::Success) { return err; }
-
-    Qid target1;
-    if (eol || eof) return ParseCircuitLineError::IllegalFormat;
-    if (const ParseCircuitLineError err = read_qid(file, target1, eol, eof);
-        err != ParseCircuitLineError::Success) { return err; }
-
-    (simulator.*op)(target0, target1);
-
-    return ParseCircuitLineError::Success;
+    const std::function wrapped = [op, arg0](Args... args) { op(arg0, args...); };
+    return execute_op(wrapped, file, eol, eof);
 }
 
-template<void (Simulator::*op)(Qid, Bit) const noexcept, bool isMeasure = false>
-ParseCircuitLineError execute_op_qb(
-    const Simulator &simulator,
-    FILE *file,
-    bool &measure,
-    bool &eol,
-    bool &eof
+template<typename Receiver, typename... Args>
+ParseCircuitLineError execute_op(
+    void (Receiver::*op)(Args...) const noexcept,
+    Receiver receiver,
+    FILE *file, bool &eol, bool &eof
 ) noexcept {
-    measure = isMeasure;
-
-    Qid target;
-    if (eol || eof) return ParseCircuitLineError::IllegalFormat;
-    if (const ParseCircuitLineError err = read_qid(file, target, eol, eof);
-        err != ParseCircuitLineError::Success) { return err; }
-
-    Bit value;
-    if (eol || eof) return ParseCircuitLineError::IllegalFormat;
-    if (const ParseCircuitLineError err = read_bit(file, value, eol, eof);
-        err != ParseCircuitLineError::Success) { return err; }
-
-    (simulator.*op)(target, value);
-
-    return ParseCircuitLineError::Success;
+    std::function wrapped = [receiver,op](Args... args) { (receiver.*op)(args...); };
+    return execute_op(wrapped, file, eol, eof);
 }
 
-ParseCircuitLineError execute_op_reset(
-    const Simulator &simulator,
-    FILE *file,
-    bool &measure,
-    bool &eol,
-    bool &eof
-) noexcept {
-    measure = true;
-
-    Qid target;
-    if (eol || eof) return ParseCircuitLineError::IllegalFormat;
-    if (const ParseCircuitLineError err = read_qid(file, target, eol, eof);
-        err != ParseCircuitLineError::Success) { return err; }
-
-    simulator.apply_assign(target, false);
-
-    return ParseCircuitLineError::Success;
-}
 
 ParseCircuitLineError execute_line(
     const Simulator &simulator,
@@ -368,30 +301,38 @@ ParseCircuitLineError execute_line(
     if (count == 0) return ParseCircuitLineError::Success;
     if (count >= name_limit) return ParseCircuitLineError::FullBuffer;
 
+    measure = false;
     if (match(name, "X"))
-        return execute_op_q<&Simulator::apply_x>(simulator, file, measure, eol, eof);
+        return execute_op(&Simulator::apply_x, simulator, file, eol, eof);
     if (match(name, "Y"))
-        return execute_op_q<&Simulator::apply_y>(simulator, file, measure, eol, eof);
+        return execute_op(&Simulator::apply_y, simulator, file, eol, eof);
     if (match(name, "Z"))
-        return execute_op_q<&Simulator::apply_z>(simulator, file, measure, eol, eof);
+        return execute_op(&Simulator::apply_z, simulator, file, eol, eof);
     if (match(name, "H"))
-        return execute_op_q<&Simulator::apply_h>(simulator, file, measure, eol, eof);
+        return execute_op(&Simulator::apply_h, simulator, file, eol, eof);
     if (match(name, "S"))
-        return execute_op_q<&Simulator::apply_s>(simulator, file, measure, eol, eof);
+        return execute_op(&Simulator::apply_s, simulator, file, eol, eof);
     if (match(name, "SDG"))
-        return execute_op_q<&Simulator::apply_sdg>(simulator, file, measure, eol, eof);
+        return execute_op(&Simulator::apply_sdg, simulator, file, eol, eof);
     if (match(name, "T"))
-        return execute_op_q<&Simulator::apply_t>(simulator, file, measure, eol, eof);
+        return execute_op(&Simulator::apply_t, simulator, file, eol, eof);
     if (match(name, "TDG"))
-        return execute_op_q<&Simulator::apply_tdg>(simulator, file, measure, eol, eof);
+        return execute_op(&Simulator::apply_tdg, simulator, file, eol, eof);
     if (match(name, "CX"))
-        return execute_op_qq<&Simulator::apply_cx>(simulator, file, measure, eol, eof);
-    if (match(name, "M"))
-        return execute_op_q<&Simulator::apply_measure, true>(simulator, file, measure, eol, eof);
-    if (match(name, "D"))
-        return execute_op_qb<&Simulator::apply_desire, true>(simulator, file, measure, eol, eof);
-    if (match(name, "R"))
-        return execute_op_reset(simulator, file, measure, eol, eof);
+        return execute_op(&Simulator::apply_cx, simulator, file, eol, eof);
+    if (match(name, "M")) {
+        measure = true;
+        return execute_op(&Simulator::apply_measure, simulator, file, eol, eof);
+    }
+    if (match(name, "D")) {
+        measure = true;
+        return execute_op(&Simulator::apply_desire, simulator, file, eol, eof);
+    }
+    if (match(name, "R")) {
+        measure = true;
+        const std::function op_func = [simulator](const Qid target) { simulator.apply_assign(target, false); };
+        return execute_op(op_func, file, eol, eof);
+    }
     return ParseCircuitLineError::IllegalOp;
 }
 
