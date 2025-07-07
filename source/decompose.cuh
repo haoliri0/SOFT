@@ -18,7 +18,7 @@ Aid bits_to_int(const Bit *bits, const unsigned int n) {
 static __device__
 Bit compute_sign(Aid key, const Bit *stab_bits, const Qid qubits_n) {
     Bit sign = false;
-    for (int qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
+    for (Qid qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
         const Bit key_bit = key % 2;
         const Bit stab_bit = stab_bits[qubit_i];
         sign ^= stab_bit & key_bit;
@@ -71,7 +71,7 @@ void compute_multiply_pauli_rows(
     Phs &phase
 ) {
     const Qid qubits_n = pauli_row_ptr.qubits_n;
-    for (int qubit_i = 0; qubit_i < qubits_n; qubit_i++) {
+    for (Qid qubit_i = 0; qubit_i < qubits_n; qubit_i++) {
         const Bit gate0_x = *pauli_row_ptr0.get_x_ptr(qubit_i);
         const Bit gate0_z = *pauli_row_ptr0.get_z_ptr(qubit_i);
         const Bit gate1_x = *pauli_row_ptr1.get_x_ptr(qubit_i);

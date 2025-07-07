@@ -68,7 +68,7 @@ void print_pauli(const Bit x, const Bit z) {
 
 static
 void print_pauli_row(const PauliRowPtr ptr) {
-    for (int qubit_i = 0; qubit_i < ptr.qubits_n; ++qubit_i) {
+    for (Qid qubit_i = 0; qubit_i < ptr.qubits_n; ++qubit_i) {
         const Bit x = *ptr.get_x_ptr(qubit_i);
         const Bit z = *ptr.get_z_ptr(qubit_i);
         print_pauli(x, z);
@@ -96,7 +96,7 @@ void print_table(const TablePtr ptr) {
     printf("\t\ttable:\n");
     const Qid qubits_n = ptr.qubits_n;
     const Qid rows_n = 2 * qubits_n;
-    for (int row_i = 0; row_i < rows_n; ++row_i) {
+    for (Qid row_i = 0; row_i < rows_n; ++row_i) {
         printf("\t\t\t");
         print_table_row(ptr.get_row_ptr(row_i));
         printf("\n");
@@ -124,7 +124,7 @@ void print_amps(const AmpsMapPtr ptr) {
     printf("\t\tamplitudes:\n");
     const Kid amps_n = *ptr.get_amps_n_ptr();
     printf("\t\t\t(amps_n = %u)\n", amps_n);
-    for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
+    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
         const Aid aid = *ptr.get_aid_ptr(amp_i);
         const Amp amp = *ptr.get_amp_ptr(amp_i);
         printf("\t\t\t");
@@ -142,7 +142,7 @@ void print_amps_full(const AmpsMapPtr ptr) {
     const Kid amps_m = ptr.amps_m;
     const Kid amps_n = *ptr.get_amps_n_ptr();
     printf("\t\t\t(amps_n = %u)\n", amps_n);
-    for (int amp_i = 0; amp_i < amps_m; ++amp_i) {
+    for (Kid amp_i = 0; amp_i < amps_m; ++amp_i) {
         const Aid aid = *ptr.get_aid_ptr(amp_i);
         const Amp amp = *ptr.get_amp_ptr(amp_i);
         printf("\t\t\t");
@@ -165,7 +165,7 @@ void print_amps_halves(const AmpsMapPtr ptr) {
         return;
     }
 
-    for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
+    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
         const Aid aid = *ptr.get_half0_aid_ptr(amp_i);
         const Amp amp = *ptr.get_half0_amp_ptr(amp_i);
         printf("\t\t\t");
@@ -177,7 +177,7 @@ void print_amps_halves(const AmpsMapPtr ptr) {
 
     printf("\t\t\t----------------\n");
 
-    for (int amp_i = 0; amp_i < amps_n; ++amp_i) {
+    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
         const Aid aid = *ptr.get_half1_aid_ptr(amp_i);
         const Amp amp = *ptr.get_half1_amp_ptr(amp_i);
         printf("\t\t\t");
