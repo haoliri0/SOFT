@@ -288,8 +288,8 @@ ParseCircuitLineError execute_op(
 
 ParseCircuitLineError execute_line(
     const Simulator &simulator,
+    bool &hasResult,
     FILE *file,
-    bool &measure,
     bool &eol,
     bool &eof
 ) noexcept {
@@ -300,7 +300,7 @@ ParseCircuitLineError execute_line(
     if (count == 0) return ParseCircuitLineError::Success;
     if (count >= name_limit) return ParseCircuitLineError::FullBuffer;
 
-    measure = false;
+    hasResult = false;
     if (match(name, "X"))
         return execute_op(&Simulator::apply_x, simulator, file, eol, eof);
     if (match(name, "Y"))
@@ -320,15 +320,15 @@ ParseCircuitLineError execute_line(
     if (match(name, "CX"))
         return execute_op(&Simulator::apply_cx, simulator, file, eol, eof);
     if (match(name, "M")) {
-        measure = true;
+        hasResult = true;
         return execute_op(&Simulator::apply_measure, simulator, file, eol, eof);
     }
     if (match(name, "D")) {
-        measure = true;
+        hasResult = true;
         return execute_op(&Simulator::apply_desire, simulator, file, eol, eof);
     }
     if (match(name, "R")) {
-        measure = true;
+        hasResult = true;
         const std::function op_func = [simulator](const Qid target) { simulator.apply_assign(target, false); };
         return execute_op(op_func, file, eol, eof);
     }
@@ -434,8 +434,8 @@ int main(const int argc, const char **argv) {
         while (true) {
             bool eof = false;
             bool eol = false;
-            bool measure = false;
-            line_err = execute_line(simulator,stdin, measure, eol, eof);
+            bool hasResult = false;
+            line_err = execute_line(simulator, hasResult, stdin, eol, eof);
             if (line_err != ParseCircuitLineError::Success) {
                 fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
                 break;
@@ -447,7 +447,7 @@ int main(const int argc, const char **argv) {
             }
             lines_n += 1;
 
-            if (measure) {
+            if (hasResult) {
                 results_n += 1;
                 if (args.mode >= 2 || results_n - results_n_flushed >= args.results_m) {
                     cuda_err = flush_results(
