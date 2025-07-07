@@ -122,7 +122,7 @@ void op_compute_decomp_pivot(const ShotsStatePtr shots_state_ptr, const DimsIdx<
 
     decomp_pivot = NullPivot;
     Qid const qubits_n = shot_state_ptr.qubits_n;
-    for (int row_i = 0; row_i < qubits_n; ++row_i) {
+    for (Qid row_i = 0; row_i < qubits_n; ++row_i) {
         if (decomp_bits[row_i]) {
             decomp_pivot = row_i;
             break;

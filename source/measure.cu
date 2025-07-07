@@ -392,14 +392,14 @@ void op_change_measure_basis_pivot(const ArgsApplyMeasureBasisPivot args, const 
     const TableRowPtr stab_pivot_row_ptr = table_ptr.get_row_ptr(qubits_n + pivot);
 
     // set destab pivot = stab pivot
-    for (int col_i = 0; col_i < cols_n; ++col_i)
+    for (Qid col_i = 0; col_i < cols_n; ++col_i)
         *destab_pivot_row_ptr.get_pauli_ptr().get_bit_ptr(col_i) =
             *stab_pivot_row_ptr.get_pauli_ptr().get_bit_ptr(col_i);
     *destab_pivot_row_ptr.get_sign_ptr() =
         *stab_pivot_row_ptr.get_sign_ptr();
 
     // set stab pivot = Z (sign=result)
-    for (int col_i = 0; col_i < cols_n; ++col_i)
+    for (Qid col_i = 0; col_i < cols_n; ++col_i)
         *stab_pivot_row_ptr.get_pauli_ptr().get_bit_ptr(col_i) = false;
     *stab_pivot_row_ptr.get_pauli_ptr().get_bit_ptr(qubits_n + args.target) = true;
     *stab_pivot_row_ptr.get_sign_ptr() = result_bit;
