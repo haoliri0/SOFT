@@ -1,5 +1,5 @@
-#ifndef STN_CUDA_PRINT_CUH
-#define STN_CUDA_PRINT_CUH
+#ifndef STN_CUDA_PRINT_HPP
+#define STN_CUDA_PRINT_HPP
 
 #include "./simulator.hpp"
 
