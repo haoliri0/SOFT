@@ -1,10 +1,9 @@
 #include <ctime>
 #include <cstdio>
 #include <functional>
-
-#include "../source/datatype.cuh"
-#include "../source/simulator.hpp"
-#include "../tests/print.hpp"
+#include "./datatype.cuh"
+#include "./simulator.hpp"
+#include "./print.hpp"
 
 using namespace StnCuda;
 

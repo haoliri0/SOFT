@@ -1,6 +1,6 @@
-#include "cstdio"
+#include <cstdio>
 #include "./print.hpp"
-#include "../source/decompose.hpp"
+#include "./decompose.hpp"
 
 using namespace StnCuda;
 
