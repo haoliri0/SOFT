@@ -674,9 +674,9 @@ Amp *get_half1_amp_ptr(const Kid amp_i) const {
                 index_type="Rid",
                 count="results_m"),
             ListFieldSpec(
-                name="bits",
-                item_name="bit",
-                item_type=ValueTypeSpec(name="Bit"),
+                name="values",
+                item_name="value",
+                item_type=ValueTypeSpec(name="int"),
                 index_name="result_i",
                 index_type="Rid",
                 count="results_m"),

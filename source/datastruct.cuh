@@ -930,55 +930,55 @@ struct ResultsArgs {
     }
     
     __device__ __host__
-    size_t get_bit_size_bytes_n() const {
-        return sizeof(Bit);
+    size_t get_value_size_bytes_n() const {
+        return sizeof(int);
     }
     
     __device__ __host__
-    size_t get_bit_align_bytes_n() const {
-        return alignof(Bit);
+    size_t get_value_align_bytes_n() const {
+        return alignof(int);
     }
     
     __device__ __host__
-    size_t get_bit_pad_bytes_n() const {
+    size_t get_value_pad_bytes_n() const {
         return compute_pad_bytes_n(
-            get_bit_size_bytes_n(),
-            get_bit_align_bytes_n());
+            get_value_size_bytes_n(),
+            get_value_align_bytes_n());
     }
     
     __device__ __host__
-    size_t get_bits_size_bytes_n() const {
+    size_t get_values_size_bytes_n() const {
         return 
-            results_m * get_bit_size_bytes_n() +
-            results_m * get_bit_pad_bytes_n();
+            results_m * get_value_size_bytes_n() +
+            results_m * get_value_pad_bytes_n();
     }
     
     __device__ __host__
-    size_t get_bits_align_bytes_n() const {
-        return alignof(Bit);
+    size_t get_values_align_bytes_n() const {
+        return alignof(int);
     }
     
     __device__ __host__
-    size_t get_bits_pad_bytes_n() const {
+    size_t get_values_pad_bytes_n() const {
         return compute_pad_bytes_n(
             get_probs_offset_bytes_n() +
             get_probs_size_bytes_n(),
-            get_bits_align_bytes_n());
+            get_values_align_bytes_n());
     }
     
     __device__ __host__
-    size_t get_bits_offset_bytes_n() const {
+    size_t get_values_offset_bytes_n() const {
         return 
             get_probs_offset_bytes_n() +
             get_probs_size_bytes_n() +
-            get_bits_pad_bytes_n();
+            get_values_pad_bytes_n();
     }
     
     __device__ __host__
-    size_t get_bit_offset_bytes_n(Rid result_i) const {
-        return get_bits_offset_bytes_n() +
-            result_i * get_bit_size_bytes_n() +
-            result_i * get_bit_pad_bytes_n();
+    size_t get_value_offset_bytes_n(Rid result_i) const {
+        return get_values_offset_bytes_n() +
+            result_i * get_value_size_bytes_n() +
+            result_i * get_value_pad_bytes_n();
     }
     
     __device__ __host__
@@ -990,8 +990,8 @@ struct ResultsArgs {
             get_results_n_size_bytes_n() +
             get_probs_pad_bytes_n() +
             get_probs_size_bytes_n() +
-            get_bits_pad_bytes_n() +
-            get_bits_size_bytes_n();
+            get_values_pad_bytes_n() +
+            get_values_size_bytes_n();
     }
     
     __device__ __host__
@@ -1000,7 +1000,7 @@ struct ResultsArgs {
             get_rand_state_align_bytes_n(),
             get_results_n_align_bytes_n(),
             get_probs_align_bytes_n(),
-            get_bits_align_bytes_n());
+            get_values_align_bytes_n());
     }
 };
 
@@ -1031,14 +1031,14 @@ struct ResultsPtr : ResultsArgs {
     }
     
     __device__ __host__
-    Bit *get_bits_ptr() const {
-        const size_t offset = get_bits_offset_bytes_n();
-        return reinterpret_cast<Bit *>(ptr + offset);
+    int *get_values_ptr() const {
+        const size_t offset = get_values_offset_bytes_n();
+        return reinterpret_cast<int *>(ptr + offset);
     }
     
     __device__ __host__
-    Bit *get_bit_ptr(const Rid result_i) const {
-        return get_bits_ptr() + result_i;
+    int *get_value_ptr(const Rid result_i) const {
+        return get_values_ptr() + result_i;
     }
 };
 

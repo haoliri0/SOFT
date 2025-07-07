@@ -367,8 +367,8 @@ cudaError flush_results(
         if (cuda_err != cudaSuccess)break;
         const Bit failed = amps_n == 0;
 
-        Bit results_bit[results_m];
-        cuda_err = cudaMemcpy(results_bit, shot_state_ptr.get_results_ptr().get_bits_ptr(),
+        int results_value[results_m];
+        cuda_err = cudaMemcpy(results_value, shot_state_ptr.get_results_ptr().get_values_ptr(),
             results_m * sizeof(Bit), cudaMemcpyDeviceToHost);
         if (cuda_err != cudaSuccess)break;
 
@@ -378,9 +378,9 @@ cudaError flush_results(
         if (cuda_err != cudaSuccess) break;
 
         for (Rid result_j = result_i; result_j < results_n; ++result_j) {
-            const Bit bit = results_bit[result_j % results_m];
+            const int value = results_value[result_j % results_m];
             const Flt prob = results_prob[result_j % results_m];
-            printf("%u,%u,%u,%f\n", shot_i, failed, bit, prob);
+            printf("%u,%u,%d,%f\n", shot_i, failed, value, prob);
         }
     }
 
