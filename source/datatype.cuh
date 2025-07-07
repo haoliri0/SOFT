@@ -12,8 +12,9 @@ using Qid = unsigned int;
 using Kid = unsigned int;
 using Aid = unsigned int;
 using Rid = unsigned int;
-using Bit = bool;
+using Rvl = unsigned int;
 using Phs = unsigned char;
+using Bit = bool;
 using Flt = float;
 using Amp = cuda::std::complex<Flt>;
 

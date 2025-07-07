@@ -931,12 +931,12 @@ struct ResultsArgs {
     
     __device__ __host__
     size_t get_value_size_bytes_n() const {
-        return sizeof(int);
+        return sizeof(Rvl);
     }
     
     __device__ __host__
     size_t get_value_align_bytes_n() const {
-        return alignof(int);
+        return alignof(Rvl);
     }
     
     __device__ __host__
@@ -955,7 +955,7 @@ struct ResultsArgs {
     
     __device__ __host__
     size_t get_values_align_bytes_n() const {
-        return alignof(int);
+        return alignof(Rvl);
     }
     
     __device__ __host__
@@ -1031,13 +1031,13 @@ struct ResultsPtr : ResultsArgs {
     }
     
     __device__ __host__
-    int *get_values_ptr() const {
+    Rvl *get_values_ptr() const {
         const size_t offset = get_values_offset_bytes_n();
-        return reinterpret_cast<int *>(ptr + offset);
+        return reinterpret_cast<Rvl *>(ptr + offset);
     }
     
     __device__ __host__
-    int *get_value_ptr(const Rid result_i) const {
+    Rvl *get_value_ptr(const Rid result_i) const {
         return get_values_ptr() + result_i;
     }
 };

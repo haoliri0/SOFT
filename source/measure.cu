@@ -249,7 +249,7 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     Rid &results_n = *results_ptr.get_results_n_ptr();
     const Rid result_i = results_n % results_m;
     Flt &result_prob = *results_ptr.get_prob_ptr(result_i);
-    int &result_value = *results_ptr.get_value_ptr(result_i);
+    Rvl &result_value = *results_ptr.get_value_ptr(result_i);
 
     results_n += 1;
     if (!result) {

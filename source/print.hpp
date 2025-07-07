@@ -198,9 +198,9 @@ void print_results(const ResultsPtr ptr) {
     printf("\t\tresults:\n");
     for (Rid result_idx = results_idx0; result_idx < results_n; ++result_idx) {
         const Rid result_i = result_idx % results_m;
-        const int value = *ptr.get_value_ptr(result_i);
-        const Flt prob = *ptr.get_prob_ptr(result_i);
-        printf("\t\t\tresult_idx=%04d value=%d prob=%f\n", result_idx, value, prob);
+        const Rvl result_value = *ptr.get_value_ptr(result_i);
+        const Flt result_prob = *ptr.get_prob_ptr(result_i);
+        printf("\t\t\tidx=%04u value=%u prob=%f\n", result_idx, result_value, result_prob);
     }
 }
 
