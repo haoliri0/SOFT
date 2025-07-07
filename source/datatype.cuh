@@ -2,8 +2,8 @@
 #define STN_CUDA_DATATYPE_CUH
 
 #include<complex>
-#include<cuda/std/complex>
 #include<curand_kernel.h>
+#include<cuda/std/complex>
 
 namespace StnCuda {
 
