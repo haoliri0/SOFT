@@ -419,11 +419,6 @@ struct ArgsAssignOperation {
     const Bit value;
 };
 
-static __device__ __host__
-void op_apply_x(Bit &s, Bit &x, Bit &z) {
-    s ^= z;
-}
-
 static __device__
 void op_apply_assign(const ArgsAssignOperation args, const DimsIdx<2> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
