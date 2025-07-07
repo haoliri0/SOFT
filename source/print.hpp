@@ -1,7 +1,7 @@
 #ifndef STN_CUDA_PRINT_CUH
 #define STN_CUDA_PRINT_CUH
 
-#include "../source/simulator.hpp"
+#include "./simulator.hpp"
 
 using namespace StnCuda;
 
