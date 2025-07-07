@@ -48,6 +48,8 @@ struct Simulator {
 
     void apply_noise_z(Qid target, Flt prob) const noexcept;
 
+    void apply_noise_depo1(Qid target, Flt prob) const noexcept;
+
 };
 
 }
