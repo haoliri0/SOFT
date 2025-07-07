@@ -319,19 +319,17 @@ ParseCircuitLineError execute_line(
         return execute_op(&Simulator::apply_tdg, simulator, file, eol, eof);
     if (match(name, "CX"))
         return execute_op(&Simulator::apply_cx, simulator, file, eol, eof);
-    if (match(name, "M")) {
-        hasResult = true;
+
+    hasResult = true;
+    if (match(name, "M"))
         return execute_op(&Simulator::apply_measure, simulator, file, eol, eof);
-    }
-    if (match(name, "D")) {
-        hasResult = true;
+    if (match(name, "D"))
         return execute_op(&Simulator::apply_desire, simulator, file, eol, eof);
-    }
-    if (match(name, "R")) {
-        hasResult = true;
-        const std::function op_func = [simulator](const Qid target) { simulator.apply_assign(target, false); };
-        return execute_op(op_func, file, eol, eof);
-    }
+    if (match(name, "R"))
+        return execute_op(
+            std::function([simulator](const Qid target) { simulator.apply_assign(target, false); }),
+            file, eol, eof);
+
     return ParseCircuitLineError::IllegalOp;
 }
 
