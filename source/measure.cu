@@ -413,7 +413,7 @@ void cuda_change_measure_basis_pivot(cudaStream_t const stream, ShotsStatePtr co
 }
 
 
-struct ArgsApplyResetOperation {
+struct ArgsAssignOperation {
     const ShotsStatePtr shots_state_ptr;
     const Qid target;
     const Bit value;
@@ -425,7 +425,7 @@ void op_apply_x(Bit &s, Bit &x, Bit &z) {
 }
 
 static __device__
-void op_apply_reset_operation(const ArgsApplyResetOperation args, const DimsIdx<2> dims_idx) {
+void op_apply_assign(const ArgsAssignOperation args, const DimsIdx<2> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
     const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
@@ -443,7 +443,7 @@ void op_apply_reset_operation(const ArgsApplyResetOperation args, const DimsIdx<
 }
 
 static __host__
-void cuda_apply_reset_operation(
+void cuda_apply_assign(
     cudaStream_t const stream,
     ShotsStatePtr const shots_state_ptr,
     const Qid target,
@@ -452,7 +452,7 @@ void cuda_apply_reset_operation(
     const Sid shots_n = shots_state_ptr.shots_n;
     const Qid qubits_n = shots_state_ptr.qubits_n;
     const Qid rows_n = 2 * qubits_n;
-    cuda_dims_op<ArgsApplyResetOperation, 2, op_apply_reset_operation>
+    cuda_dims_op<ArgsAssignOperation, 2, op_apply_assign>
         (stream, {shots_state_ptr, target, value}, dimsof(shots_n, rows_n));
 }
 
@@ -500,5 +500,5 @@ void Simulator::apply_assign(const Qid target, const Bit value) const noexcept {
     cuda_change_measure_basis_rowsum(stream, shots_state_ptr);
     cuda_change_measure_basis_pivot(stream, shots_state_ptr, target);
 
-    cuda_apply_reset_operation(stream, shots_state_ptr, target, value);
+    cuda_apply_assign(stream, shots_state_ptr, target, value);
 }
