@@ -42,8 +42,8 @@ void cuda_apply_gate1_op(
 
 struct ArgsApplyGate2 {
     const ShotsStatePtr shots_state_ptr;
-    const Qid control;
-    const Qid target;
+    const Qid target0;
+    const Qid target1;
 };
 
 template<void (*op)(Bit &s, Bit &cx, Bit &cz, Bit &tx, Bit &tz)>
@@ -56,10 +56,10 @@ void op_apply_gate2(const ArgsApplyGate2 args, const DimsIdx<2> dims_idx) {
         .get_table_ptr()
         .get_row_ptr(row_i);
     op(*ptr.get_sign_ptr(),
-        *ptr.get_pauli_ptr().get_x_ptr(args.control),
-        *ptr.get_pauli_ptr().get_z_ptr(args.control),
-        *ptr.get_pauli_ptr().get_x_ptr(args.target),
-        *ptr.get_pauli_ptr().get_z_ptr(args.target));
+        *ptr.get_pauli_ptr().get_x_ptr(args.target0),
+        *ptr.get_pauli_ptr().get_z_ptr(args.target0),
+        *ptr.get_pauli_ptr().get_x_ptr(args.target1),
+        *ptr.get_pauli_ptr().get_z_ptr(args.target1));
 }
 
 template<void (*op)(Bit &s, Bit &cx, Bit &cz, Bit &tx, Bit &tz)>
