@@ -149,3 +149,50 @@ void Simulator::apply_noise_depo1(const Qid target, const Flt prob) const noexce
     cuda_random_choose(stream, shots_state_ptr, arrayof<Flt>(prob / 3, prob / 3, prob / 3));
     cuda_noise_depo1(stream, shots_state_ptr, target);
 }
+
+
+static __device__
+void op_noise_depo2(const ArgsApplyGate2 args, const DimsIdx<2> dims_idx) noexcept {
+    const Sid shot_i = dims_idx.get<0>();
+    const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
+    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+    const Rid results_m = results_ptr.results_m;
+    const Rid results_n = *results_ptr.get_results_n_ptr();
+    const Rid result_i = (results_n - 1) % results_m;
+    const Rvl result_value = *results_ptr.get_value_ptr(result_i);
+
+    const Rvl result_value0 = result_value % 4;
+    const Rvl result_value1 = result_value / 4 % 4;
+    const ArgsApplyGate1 args0 = {args.shots_state_ptr, args.target0};
+    const ArgsApplyGate1 args1 = {args.shots_state_ptr, args.target1};
+
+    if (result_value0 == 1) op_apply_gate1<op_apply_x>(args0, dims_idx);
+    if (result_value0 == 2) op_apply_gate1<op_apply_y>(args0, dims_idx);
+    if (result_value0 == 3) op_apply_gate1<op_apply_z>(args0, dims_idx);
+
+    if (result_value1 == 1) op_apply_gate1<op_apply_x>(args1, dims_idx);
+    if (result_value1 == 2) op_apply_gate1<op_apply_y>(args1, dims_idx);
+    if (result_value1 == 3) op_apply_gate1<op_apply_z>(args1, dims_idx);
+}
+
+void cuda_noise_depo2(
+    cudaStream_t const stream,
+    ShotsStatePtr const shots_state_ptr,
+    Qid const target0,
+    Qid const target1
+) noexcept {
+    const Sid shots_n = shots_state_ptr.shots_n;
+    const Qid qubits_n = shots_state_ptr.qubits_n;
+    const Qid rows_n = 2 * qubits_n;
+    cuda_dims_op<ArgsApplyGate2, 2, op_noise_depo2>
+        (stream, {shots_state_ptr, target0, target1}, dimsof(shots_n, rows_n));
+}
+
+void Simulator::apply_noise_depo2(const Qid target0, const Qid target1, const Flt prob) const noexcept {
+    cuda_random_choose(stream, shots_state_ptr, arrayof<Flt>(
+        prob / 15, prob / 15, prob / 15, prob / 15, prob / 15,
+        prob / 15, prob / 15, prob / 15, prob / 15, prob / 15,
+        prob / 15, prob / 15, prob / 15, prob / 15, prob / 15));
+    cuda_noise_depo2(stream, shots_state_ptr, target0, target1);
+}
