@@ -13,6 +13,7 @@ add_library(stn_cuda
     "source/simulator.cu"
     "source/decompose.cu"
     "source/measure.cu"
+    "source/noises.cu"
     "source/gates_t.cu"
     "source/gates.cu")
 
