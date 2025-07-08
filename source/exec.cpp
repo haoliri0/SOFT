@@ -109,6 +109,19 @@ ParseCircuitLineError read_arg(std::istream &istream, Qid &arg) {
 }
 
 static
+ParseCircuitLineError read_arg(std::istream &istream, Flt &arg) {
+    skip_whitespace(istream);
+    if (istream.bad()) return ParseCircuitLineError::IOError;
+    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+
+    istream >> arg;
+    if (istream.bad()) return ParseCircuitLineError::IOError;
+    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+
+    return ParseCircuitLineError::Success;
+}
+
+static
 ParseCircuitLineError read_arg(std::istream &istream, Bit &arg) {
     skip_whitespace(istream);
     if (istream.bad()) return ParseCircuitLineError::IOError;
@@ -210,6 +223,14 @@ ParseCircuitLineError execute_line(
         return execute_op(istream, std::function([simulator](const Qid target) {
             simulator.apply_assign(target, false);
         }));
+    if (match(name, "XERR"))
+        return execute_op(istream, simulator, &Simulator::apply_noise_x);
+    if (match(name, "ZERR"))
+        return execute_op(istream, simulator, &Simulator::apply_noise_z);
+    if (match(name, "DEP1"))
+        return execute_op(istream, simulator, &Simulator::apply_noise_depo1);
+    if (match(name, "DEP2"))
+        return execute_op(istream, simulator, &Simulator::apply_noise_depo2);
 
     return ParseCircuitLineError::IllegalOp;
 }
