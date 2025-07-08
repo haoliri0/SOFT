@@ -1,33 +1,14 @@
 #include <ctime>
 #include <cstdio>
+#include <iostream>
 #include <functional>
+
 #include "./datatype.cuh"
 #include "./simulator.hpp"
 #include "./print.hpp"
+#include "./read.hpp"
 
 using namespace StnCuda;
-
-// common utils
-
-static
-bool match(const char *str, const char *seg) {
-    while (true) {
-        if (*str != *seg) return false;
-        if (*seg == '\0') return true;
-        str++;
-        seg++;
-    }
-}
-
-static
-const char *match_head(const char *str, const char *seg) {
-    while (true) {
-        if (*seg == '\0') return str;
-        if (*str != *seg) return nullptr;
-        str++;
-        seg++;
-    }
-}
 
 // cli args
 
@@ -107,232 +88,133 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
 
 // circuit ops
 
-void read_word(
-    FILE *const file,
-    size_t const limit,
-    char *const word,
-    size_t &count,
-    bool &eol,
-    bool &eof
-) noexcept {
-    count = 0;
-    if (limit == 0) return;
-
-    eol = false;
-    eof = false;
-
-    while (true) {
-        const int c = fgetc(file);
-        if (c == EOF) {
-            eof = true;
-            return;
-        }
-        if (c == '\n') {
-            eol = true;
-            return;
-        }
-        if (c == ' ') {
-            continue;
-        }
-        word[0] = static_cast<char>(c);
-        count = 1;
-        break;
-    }
-
-    while (count < limit) {
-        const int c = fgetc(file);
-        if (c == EOF) {
-            eof = true;
-            break;
-        }
-        if (c == '\n') {
-            eol = true;
-            break;
-        }
-        if (c == ' ') {
-            break;
-        }
-        word[count] = static_cast<char>(c);
-        count++;
-    }
-
-    if (count < limit)
-        word[count] = '\0';
-}
-
-void read_uint(
-    FILE *const file,
-    size_t const limit,
-    unsigned int &value,
-    size_t &count,
-    bool &eol,
-    bool &eof
-) noexcept {
-    count = 0;
-    if (limit == 0) return;
-
-    eol = false;
-    eof = false;
-
-    while (true) {
-        const int c = fgetc(file);
-        if (c == EOF) {
-            eof = true;
-            return;
-        }
-        if (c == '\n') {
-            eol = true;
-            return;
-        }
-        if (!('0' <= c && c <= '9'))
-            continue;
-        value = c - '0';
-        count = 1;
-        break;
-    }
-
-    while (count < limit) {
-        const int c = fgetc(file);
-        if (c == EOF) {
-            eof = true;
-            break;
-        }
-        if (c == '\n') {
-            eol = true;
-            break;
-        }
-        if (!('0' <= c && c <= '9'))
-            break;
-        value = value * 10 + (c - '0');
-        count++;
-    }
-}
-
-void next_line(
-    FILE *const file,
-    size_t &count,
-    bool &eof
-) noexcept {
-    for (count = 0;; count++) {
-        const int c = fgetc(file);
-        if (c == EOF) {
-            eof = true;
-            return;
-        }
-        if (c == '\n') {
-            return;
-        }
-    }
-}
-
 enum class ParseCircuitLineError {
     Success,
-    FullBuffer,
-    IllegalFormat,
+    IOError,
     IllegalOp,
     IllegalArg
 };
 
-ParseCircuitLineError read_arg(Qid &qid, FILE *file, bool &eol, bool &eof) {
-    size_t count;
-    constexpr size_t limit = 16;
-    read_uint(file, limit, qid, count, eol, eof);
-    if (count == 0) return ParseCircuitLineError::IllegalArg;
-    if (count > limit) return ParseCircuitLineError::FullBuffer;
+static
+ParseCircuitLineError read_arg(std::istream &istream, Qid &arg) {
+    skip_whitespace(istream);
+    if (istream.bad()) return ParseCircuitLineError::IOError;
+    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+
+    istream >> arg;
+    if (istream.bad()) return ParseCircuitLineError::IOError;
+    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+
     return ParseCircuitLineError::Success;
 }
 
-ParseCircuitLineError read_arg(Bit &arg, FILE *file, bool &eol, bool &eof) {
-    size_t count;
-    constexpr size_t limit = 16;
+static
+ParseCircuitLineError read_arg(std::istream &istream, Bit &arg) {
+    skip_whitespace(istream);
+    if (istream.bad()) return ParseCircuitLineError::IOError;
+    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+
     unsigned int value;
-    read_uint(file, limit, value, count, eol, eof);
-    if (count == 0) return ParseCircuitLineError::IllegalArg;
-    if (count > limit) return ParseCircuitLineError::FullBuffer;
-    if (value != 0 && value != 1) return ParseCircuitLineError::IllegalArg;
+    istream >> value;
+    if (istream.bad()) return ParseCircuitLineError::IOError;
+    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+
+    if (value != 0 && value != 1) {
+        istream.setstate(std::istream::failbit);
+        return ParseCircuitLineError::IllegalArg;
+    }
+
     arg = value;
     return ParseCircuitLineError::Success;
 }
 
+static
 ParseCircuitLineError execute_op(
-    const std::function<void()> &op,
-    FILE *, bool &, bool &
+    std::istream &istream,
+    const std::function<void()> &op
 ) noexcept {
     op();
+
+    skip_whitespace_line(istream);
+    if (istream.bad()) return ParseCircuitLineError::IOError;
+    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+
     return ParseCircuitLineError::Success;
 }
 
 template<typename Arg0, typename... Args>
+static
 ParseCircuitLineError execute_op(
-    const std::function<void(Arg0, Args...)> &op,
-    FILE *file, bool &eol, bool &eof
+    std::istream &istream,
+    const std::function<void(Arg0, Args...)> &op
 ) noexcept {
     Arg0 arg0;
-    if (eol || eof) return ParseCircuitLineError::IllegalFormat;
-    if (const ParseCircuitLineError err = read_arg(arg0, file, eol, eof);
-        err != ParseCircuitLineError::Success) { return err; }
+    const ParseCircuitLineError error = read_arg(istream, arg0);
+    if (error != ParseCircuitLineError::Success) return error;
+
     const std::function wrapped = [op, arg0](Args... args) { op(arg0, args...); };
-    return execute_op(wrapped, file, eol, eof);
+    return execute_op(istream, wrapped);
 }
 
 template<typename Receiver, typename... Args>
+static
 ParseCircuitLineError execute_op(
-    void (Receiver::*op)(Args...) const noexcept,
-    Receiver receiver,
-    FILE *file, bool &eol, bool &eof
+    std::istream &istream,
+    const Receiver receiver,
+    void (Receiver::*op)(Args...) const noexcept
 ) noexcept {
-    std::function wrapped = [receiver,op](Args... args) { (receiver.*op)(args...); };
-    return execute_op(wrapped, file, eol, eof);
+    std::function wrapped = [receiver, op](Args... args) { (receiver.*op)(args...); };
+    return execute_op(istream, wrapped);
 }
 
-
+static
 ParseCircuitLineError execute_line(
     const Simulator &simulator,
-    bool &hasResult,
-    FILE *file,
-    bool &eol,
-    bool &eof
+    std::istream &istream,
+    bool &hasResult
 ) noexcept {
     constexpr size_t name_limit = 16;
     char name[name_limit];
-    size_t count;
-    read_word(file, name_limit, name, count, eol, eof);
-    if (count == 0) return ParseCircuitLineError::Success;
-    if (count >= name_limit) return ParseCircuitLineError::FullBuffer;
+    read_word(istream, name_limit, name);
+    if (istream.bad()) return ParseCircuitLineError::IOError;
+    if (istream.eof()) return ParseCircuitLineError::Success;
 
     hasResult = false;
+    if (match(name, ""))
+        return execute_op(istream, [] {});
     if (match(name, "X"))
-        return execute_op(&Simulator::apply_x, simulator, file, eol, eof);
+        return execute_op(istream, simulator, &Simulator::apply_x);
     if (match(name, "Y"))
-        return execute_op(&Simulator::apply_y, simulator, file, eol, eof);
+        return execute_op(istream, simulator, &Simulator::apply_y);
     if (match(name, "Z"))
-        return execute_op(&Simulator::apply_z, simulator, file, eol, eof);
+        return execute_op(istream, simulator, &Simulator::apply_z);
     if (match(name, "H"))
-        return execute_op(&Simulator::apply_h, simulator, file, eol, eof);
+        return execute_op(istream, simulator, &Simulator::apply_h);
     if (match(name, "S"))
-        return execute_op(&Simulator::apply_s, simulator, file, eol, eof);
+        return execute_op(istream, simulator, &Simulator::apply_s);
     if (match(name, "SDG"))
-        return execute_op(&Simulator::apply_sdg, simulator, file, eol, eof);
+        return execute_op(istream, simulator, &Simulator::apply_sdg);
     if (match(name, "T"))
-        return execute_op(&Simulator::apply_t, simulator, file, eol, eof);
+        return execute_op(istream, simulator, &Simulator::apply_t);
     if (match(name, "TDG"))
-        return execute_op(&Simulator::apply_tdg, simulator, file, eol, eof);
+        return execute_op(istream, simulator, &Simulator::apply_tdg);
     if (match(name, "CX"))
-        return execute_op(&Simulator::apply_cx, simulator, file, eol, eof);
+        return execute_op(istream, simulator, &Simulator::apply_cx);
 
     hasResult = true;
     if (match(name, "M"))
-        return execute_op(&Simulator::apply_measure, simulator, file, eol, eof);
+        return execute_op(istream, simulator, &Simulator::apply_measure);
     if (match(name, "D"))
-        return execute_op(&Simulator::apply_desire, simulator, file, eol, eof);
+        return execute_op(istream, simulator, &Simulator::apply_desire);
     if (match(name, "R"))
-        return execute_op(
-            std::function([simulator](const Qid target) { simulator.apply_assign(target, false); }),
-            file, eol, eof);
+        return execute_op(istream, std::function([simulator](const Qid target) {
+            simulator.apply_assign(target, false);
+        }));
 
     return ParseCircuitLineError::IllegalOp;
 }
 
+static
 cudaError flush_results(
     const CliArgs &args,
     const Simulator &simulator,
@@ -429,21 +311,15 @@ int main(const int argc, const char **argv) {
         size_t lines_n_flushed = 0;
         Rid results_n = 0;
         Rid results_n_flushed = 0;
-        while (true) {
-            bool eof = false;
-            bool eol = false;
+        std::istream &istream = std::cin;
+        istream >> std::noskipws;
+        while (istream.good()) {
             bool hasResult = false;
-            line_err = execute_line(simulator, hasResult, stdin, eol, eof);
+            line_err = execute_line(simulator, istream, hasResult);
             if (line_err != ParseCircuitLineError::Success) {
                 fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
                 break;
             }
-
-            if (!eol) {
-                size_t count;
-                next_line(stdin, count, eof);
-            }
-            lines_n += 1;
 
             if (hasResult) {
                 results_n += 1;
@@ -461,7 +337,7 @@ int main(const int argc, const char **argv) {
             if (args.mode >= 2)
                 print_simulator(simulator);
 
-            if (eof) break;
+            lines_n += 1;
         }
 
         if (cuda_err != cudaSuccess)
