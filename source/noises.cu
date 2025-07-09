@@ -107,12 +107,12 @@ void cuda_noise_gate(
         (stream, {shots_state_ptr, target}, dimsof(shots_n, rows_n));
 }
 
-void Simulator::apply_noise_x(const Qid target, const Flt prob) const noexcept {
+void Simulator::apply_noise_x(const Flt prob, const Qid target) const noexcept {
     cuda_random_choose(stream, shots_state_ptr, arrayof<Flt>(prob));
     cuda_noise_gate<op_apply_x>(stream, shots_state_ptr, target);
 }
 
-void Simulator::apply_noise_z(const Qid target, const Flt prob) const noexcept {
+void Simulator::apply_noise_z(const Flt prob, const Qid target) const noexcept {
     cuda_random_choose(stream, shots_state_ptr, arrayof<Flt>(prob));
     cuda_noise_gate<op_apply_z>(stream, shots_state_ptr, target);
 }
@@ -145,7 +145,7 @@ void cuda_noise_depo1(
         (stream, {shots_state_ptr, target}, dimsof(shots_n, rows_n));
 }
 
-void Simulator::apply_noise_depo1(const Qid target, const Flt prob) const noexcept {
+void Simulator::apply_noise_depo1(const Flt prob, const Qid target) const noexcept {
     cuda_random_choose(stream, shots_state_ptr, arrayof<Flt>(prob / 3, prob / 3, prob / 3));
     cuda_noise_depo1(stream, shots_state_ptr, target);
 }
@@ -189,7 +189,7 @@ void cuda_noise_depo2(
         (stream, {shots_state_ptr, target0, target1}, dimsof(shots_n, rows_n));
 }
 
-void Simulator::apply_noise_depo2(const Qid target0, const Qid target1, const Flt prob) const noexcept {
+void Simulator::apply_noise_depo2(const Flt prob, const Qid target0, const Qid target1) const noexcept {
     cuda_random_choose(stream, shots_state_ptr, arrayof<Flt>(
         prob / 15, prob / 15, prob / 15, prob / 15, prob / 15,
         prob / 15, prob / 15, prob / 15, prob / 15, prob / 15,
