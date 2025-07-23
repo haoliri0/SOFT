@@ -17,6 +17,7 @@ struct CliArgs {
     Qid qubits_n = 4;
     Kid amps_m = 4;
     Rid results_m = 4;
+    unsigned long long seed = 42;
     unsigned int mode = 1;
 };
 
@@ -65,6 +66,11 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
                 fprintf(stderr, "Illegal value: results_m=%s\n", arg_value);
                 return ParseCliArgsError::IllegalValue;
             }
+            continue;
+        }
+        if (match(arg_key, "--seed")) {
+            const char *arg_value = argv[i++];
+            args.seed = strtoull(arg_value, nullptr, 10);
             continue;
         }
         if (match(arg_key, "--mode")) {
@@ -304,6 +310,7 @@ int main(const int argc, const char **argv) {
     fprintf(stderr, "\tqubits_n=%u\n", args.qubits_n);
     fprintf(stderr, "\tamps_m=%u\n", args.amps_m);
     fprintf(stderr, "\tresults_m=%u\n", args.results_m);
+    fprintf(stderr, "\trseed=%llu\n", args.seed);
 
     Simulator simulator;
     cudaError cuda_err = cudaSuccess;
@@ -311,7 +318,7 @@ int main(const int argc, const char **argv) {
     do {
         fprintf(stderr, "Creating Simulator\n");
 
-        cuda_err = simulator.create(args.shots_n, args.qubits_n, args.amps_m, args.results_m);
+        cuda_err = simulator.create(args.shots_n, args.qubits_n, args.amps_m, args.results_m, args.seed);
         if (cuda_err != cudaSuccess) {
             fprintf(stderr, "Error occurs when creating simulator.\n");
             fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));

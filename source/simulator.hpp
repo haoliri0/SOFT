@@ -12,7 +12,7 @@ struct Simulator {
     ShotsStatePtr shots_state_ptr = {0, 0, 0, 0, nullptr};
 
 
-    cudaError_t create(Sid shots_n, Qid qubits_n, Aid amps_m, Rid results_m) noexcept;
+    cudaError_t create(Sid shots_n, Qid qubits_n, Aid amps_m, Rid results_m, unsigned long long seed) noexcept;
 
     cudaError_t destroy() noexcept;
 
