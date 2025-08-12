@@ -661,6 +661,9 @@ Amp *get_half1_amp_ptr(const Kid amp_i) const {
             ParamSpec(name="results_m", type="Rid"),),
         fields=(
             ItemFieldSpec(
+                name="error",
+                type=ValueTypeSpec(name="Err")),
+            ItemFieldSpec(
                 name="rand_state",
                 type=ValueTypeSpec(name="curandState")),
             ItemFieldSpec(

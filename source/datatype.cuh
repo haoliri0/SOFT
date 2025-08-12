@@ -7,6 +7,7 @@
 
 namespace StnCuda {
 
+using Err = unsigned int;
 using Sid = unsigned int;
 using Qid = unsigned int;
 using Kid = unsigned int;

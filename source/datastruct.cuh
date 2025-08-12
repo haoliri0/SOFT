@@ -832,6 +832,26 @@ struct ResultsArgs {
     Rid results_m;
     
     __device__ __host__
+    size_t get_error_size_bytes_n() const {
+        return sizeof(Err);
+    }
+    
+    __device__ __host__
+    size_t get_error_align_bytes_n() const {
+        return alignof(Err);
+    }
+    
+    __device__ __host__
+    size_t get_error_pad_bytes_n() const {
+        return 0;
+    }
+    
+    __device__ __host__
+    size_t get_error_offset_bytes_n() const {
+        return 0;
+    }
+    
+    __device__ __host__
     size_t get_rand_state_size_bytes_n() const {
         return sizeof(curandState);
     }
@@ -843,12 +863,18 @@ struct ResultsArgs {
     
     __device__ __host__
     size_t get_rand_state_pad_bytes_n() const {
-        return 0;
+        return compute_pad_bytes_n(
+            get_error_offset_bytes_n() +
+            get_error_size_bytes_n(),
+            get_rand_state_align_bytes_n());
     }
     
     __device__ __host__
     size_t get_rand_state_offset_bytes_n() const {
-        return 0;
+        return 
+            get_error_offset_bytes_n() +
+            get_error_size_bytes_n() +
+            get_rand_state_pad_bytes_n();
     }
     
     __device__ __host__
@@ -984,6 +1010,8 @@ struct ResultsArgs {
     __device__ __host__
     size_t get_size_bytes_n() const {
         return 
+            get_error_pad_bytes_n() +
+            get_error_size_bytes_n() +
             get_rand_state_pad_bytes_n() +
             get_rand_state_size_bytes_n() +
             get_results_n_pad_bytes_n() +
@@ -997,6 +1025,7 @@ struct ResultsArgs {
     __device__ __host__
     size_t get_align_bytes_n() const {
         return max(
+            get_error_align_bytes_n(),
             get_rand_state_align_bytes_n(),
             get_results_n_align_bytes_n(),
             get_probs_align_bytes_n(),
@@ -1006,6 +1035,12 @@ struct ResultsArgs {
 
 struct ResultsPtr : ResultsArgs {
     char *ptr;
+    
+    __device__ __host__
+    Err *get_error_ptr() const {
+        const size_t offset = get_error_offset_bytes_n();
+        return reinterpret_cast<Err *>(ptr + offset);
+    }
     
     __device__ __host__
     curandState *get_rand_state_ptr() const {
