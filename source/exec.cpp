@@ -267,11 +267,10 @@ cudaError flush_results(
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
         const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
 
-        Kid amps_n;
-        cuda_err = cudaMemcpy(&amps_n, shot_state_ptr.get_amps_ptr().get_amps_n_ptr(),
-            sizeof(Kid), cudaMemcpyDeviceToHost);
-        if (cuda_err != cudaSuccess)break;
-        const Bit failed = amps_n == 0;
+        Err error;
+        cuda_err = cudaMemcpy(&error, shot_state_ptr.get_results_ptr().get_error_ptr(),
+            sizeof(Err), cudaMemcpyDeviceToHost);
+        if (cuda_err != cudaSuccess) break;
 
         Rvl results_value[results_m];
         cuda_err = cudaMemcpy(results_value, shot_state_ptr.get_results_ptr().get_values_ptr(),
@@ -286,7 +285,7 @@ cudaError flush_results(
         for (Rid result_j = result_i; result_j < results_n; ++result_j) {
             const Rvl value = results_value[result_j % results_m];
             const Flt prob = results_prob[result_j % results_m];
-            printf("%u,%u,%u,%f\n", shot_i, failed, value, prob);
+            printf("%u,%u,%u,%f\n", shot_i, error, value, prob);
         }
     }
 

@@ -15,16 +15,20 @@ void op_update_amps_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
 
-    // check amps_n & amp_i
+    // check error
+    Err &err = *results_ptr.get_error_ptr();
+    if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
+
+    // check amps_m, amps_n, amp_i
     const Kid amps_m = amps_map_ptr.amps_m;
-    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
+    const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
     if (amp_i >= amps_n) return; // 线程超出了 amp_n 的范围，不进行计算
     if (amp_i == 0 && amps_n > amps_m / 2) {
-        // 数量超过一半，无法计算，设置为 0 表示失败
+        // 数量超过一半，无法计算，设置 err 状态
         // 只有一条线程会执行该修改，避免写入冲突
-        amps_n = 0;
+        err = err_map_overflow;
         return;
     }
 
@@ -74,16 +78,20 @@ void op_update_amps_half0(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
 
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
 
-    // check amps_n & amp_i
+    // check error
+    Err &err = *results_ptr.get_error_ptr();
+    if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
+
+    // check amps_m, amps_n, amp_i
     const Kid amps_m = amps_map_ptr.amps_m;
-    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
+    const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
     if (amp_i >= amps_n) return; // 线程超出了 amp_n 的范围，不进行计算
     if (amp_i == 0 && amps_n > amps_m / 2) {
-        // 数量超过一半，无法计算，设置为 0 表示失败
+        // 数量超过一半，无法计算，设置 err 状态
         // 只有一条线程会执行该修改，避免写入冲突
-        amps_n = 0;
+        err = err_map_overflow;
         return;
     }
 
@@ -111,11 +119,14 @@ void op_merge_amps_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> 
     const Sid shot_i = dims_idx.get<0>();
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
 
-    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
+    // check error
+    Err err = *results_ptr.get_error_ptr();
+    if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     Kid entries_add_n = 0;
+    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
     for (Kid src_amp_i = 0; src_amp_i < amps_n; ++src_amp_i) {
         const Kid src_aid = *amps_map_ptr.get_half1_aid_ptr(src_amp_i);
         const Amp src_amp = *amps_map_ptr.get_half1_amp_ptr(src_amp_i);

@@ -83,16 +83,20 @@ void op_compute_measure_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
 
-    // check amps_n & amp_i
+    // check error
+    Err &err = *results_ptr.get_error_ptr();
+    if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
+
+    // check amps_m, amps_n, amp_i
     const Kid amps_m = amps_map_ptr.amps_m;
-    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
+    const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
     if (amp_i >= amps_n) return; // 线程超出了 amp_n 的范围，不进行计算
     if (amp_i == 0 && amps_n > amps_m / 2) {
-        // 数量超过一半，无法计算，设置为 0 表示失败
+        // 数量超过一半，无法计算，设置 err 状态
         // 只有一条线程会执行该修改，避免写入冲突
-        amps_n = 0;
+        err = err_map_overflow;
         return;
     }
 
@@ -180,13 +184,14 @@ void op_compute_measure_probs(const ShotsStatePtr shots_state_ptr, const DimsIdx
     Bit const result = dims_idx.get<1>();
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
 
-    // check amps_n
-    const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
-    const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
+    // check error
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+    Err err = *results_ptr.get_error_ptr();
+    if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // check pivot
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
+    const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
     const Qid pivot = *decomp_ptr.get_pivot_ptr();
     pivot == NullPivot
         ? op_compute_measure_probs_situation0(amps_map_ptr, result)
@@ -216,11 +221,10 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
-    const Rid results_m = results_ptr.results_m;
 
-    // check amps_n
-    const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
+    // check error
+    Err err = *results_ptr.get_error_ptr();
+    if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // normalize probs
     Flt &prob0 = *amps_map_ptr.get_half0_prob_ptr();
@@ -246,6 +250,7 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     }
 
     // save result
+    const Rid results_m = results_ptr.results_m;
     Rid &results_n = *results_ptr.get_results_n_ptr();
     const Rid result_i = results_n % results_m;
     Flt &result_prob = *results_ptr.get_prob_ptr(result_i);
@@ -277,19 +282,20 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
-    const Rid results_m = results_ptr.results_m;
 
-    // check amps_n & amp_i
-    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amps_n == 0) return; // 这个 shot 已经失败，不进行计算
+    // check error
+    Err err = *results_ptr.get_error_ptr();
+    if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // load result
+    const Rid results_m = results_ptr.results_m;
     const Rid results_n = *results_ptr.get_results_n_ptr();
     const Rid result_i = (results_n - 1) % results_m;
     const Bit result_bit = *results_ptr.get_value_ptr(result_i);
     const Flt result_prob = *results_ptr.get_prob_ptr(result_i);
 
     // apply result
+    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
     const Kid amps_n_new = *(!result_bit ? amps_map_ptr.get_half0_amps_n_ptr() : amps_map_ptr.get_half1_amps_n_ptr());
     const Aid *aids_src = !result_bit ? amps_map_ptr.get_half0_aids_ptr() : amps_map_ptr.get_half1_aids_ptr();
     const Amp *amps_src = !result_bit ? amps_map_ptr.get_half0_amps_ptr() : amps_map_ptr.get_half1_amps_ptr();
