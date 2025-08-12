@@ -150,6 +150,18 @@ ParseCircuitLineError read_arg(std::istream &istream, Bit &arg) {
 static
 ParseCircuitLineError execute_op(
     std::istream &istream,
+    const std::function<ParseCircuitLineError()> &op
+) noexcept {
+    const ParseCircuitLineError error = op();
+    skip_whitespace_line(istream);
+    if (istream.bad()) return ParseCircuitLineError::IOError;
+    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+    return error;
+}
+
+static
+ParseCircuitLineError execute_op(
+    std::istream &istream,
     const std::function<void()> &op
 ) noexcept {
     op();
@@ -161,17 +173,17 @@ ParseCircuitLineError execute_op(
     return ParseCircuitLineError::Success;
 }
 
-template<typename Arg0, typename... Args>
+template<typename Ret, typename Arg0, typename... Args>
 static
 ParseCircuitLineError execute_op(
     std::istream &istream,
-    const std::function<void(Arg0, Args...)> &op
+    const std::function<Ret (Arg0, Args...)> &op
 ) noexcept {
     Arg0 arg0;
     const ParseCircuitLineError error = read_arg(istream, arg0);
     if (error != ParseCircuitLineError::Success) return error;
 
-    const std::function wrapped = [op, arg0](Args... args) { op(arg0, args...); };
+    const std::function wrapped = [op, arg0](Args... args) { return op(arg0, args...); };
     return execute_op(istream, wrapped);
 }
 
