@@ -102,6 +102,19 @@ enum class ParseCircuitLineError {
 };
 
 static
+ParseCircuitLineError read_arg(std::istream &istream, int &arg) {
+    skip_whitespace(istream);
+    if (istream.bad()) return ParseCircuitLineError::IOError;
+    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+
+    istream >> arg;
+    if (istream.bad()) return ParseCircuitLineError::IOError;
+    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+
+    return ParseCircuitLineError::Success;
+}
+
+static
 ParseCircuitLineError read_arg(std::istream &istream, Qid &arg) {
     skip_whitespace(istream);
     if (istream.bad()) return ParseCircuitLineError::IOError;
