@@ -94,7 +94,7 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
 
 // circuit ops
 
-enum class ParseCircuitLineError {
+enum class ExecLineError {
     Success,
     IOError,
     IllegalOp,
@@ -103,99 +103,99 @@ enum class ParseCircuitLineError {
 };
 
 static
-ParseCircuitLineError read_arg(std::istream &istream, int &arg) {
+ExecLineError read_arg(std::istream &istream, int &arg) {
     skip_whitespace(istream);
-    if (istream.bad()) return ParseCircuitLineError::IOError;
-    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+    if (istream.bad()) return ExecLineError::IOError;
+    if (istream.fail()) return ExecLineError::IllegalArg;
 
     istream >> arg;
-    if (istream.bad()) return ParseCircuitLineError::IOError;
-    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+    if (istream.bad()) return ExecLineError::IOError;
+    if (istream.fail()) return ExecLineError::IllegalArg;
 
-    return ParseCircuitLineError::Success;
+    return ExecLineError::Success;
 }
 
 static
-ParseCircuitLineError read_arg(std::istream &istream, Qid &arg) {
+ExecLineError read_arg(std::istream &istream, Qid &arg) {
     skip_whitespace(istream);
-    if (istream.bad()) return ParseCircuitLineError::IOError;
-    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+    if (istream.bad()) return ExecLineError::IOError;
+    if (istream.fail()) return ExecLineError::IllegalArg;
 
     istream >> arg;
-    if (istream.bad()) return ParseCircuitLineError::IOError;
-    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+    if (istream.bad()) return ExecLineError::IOError;
+    if (istream.fail()) return ExecLineError::IllegalArg;
 
-    return ParseCircuitLineError::Success;
+    return ExecLineError::Success;
 }
 
 static
-ParseCircuitLineError read_arg(std::istream &istream, Flt &arg) {
+ExecLineError read_arg(std::istream &istream, Flt &arg) {
     skip_whitespace(istream);
-    if (istream.bad()) return ParseCircuitLineError::IOError;
-    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+    if (istream.bad()) return ExecLineError::IOError;
+    if (istream.fail()) return ExecLineError::IllegalArg;
 
     istream >> arg;
-    if (istream.bad()) return ParseCircuitLineError::IOError;
-    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+    if (istream.bad()) return ExecLineError::IOError;
+    if (istream.fail()) return ExecLineError::IllegalArg;
 
-    return ParseCircuitLineError::Success;
+    return ExecLineError::Success;
 }
 
 static
-ParseCircuitLineError read_arg(std::istream &istream, Bit &arg) {
+ExecLineError read_arg(std::istream &istream, Bit &arg) {
     skip_whitespace(istream);
-    if (istream.bad()) return ParseCircuitLineError::IOError;
-    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+    if (istream.bad()) return ExecLineError::IOError;
+    if (istream.fail()) return ExecLineError::IllegalArg;
 
     unsigned int value;
     istream >> value;
-    if (istream.bad()) return ParseCircuitLineError::IOError;
-    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+    if (istream.bad()) return ExecLineError::IOError;
+    if (istream.fail()) return ExecLineError::IllegalArg;
 
     if (value != 0 && value != 1) {
         istream.setstate(std::istream::failbit);
-        return ParseCircuitLineError::IllegalArg;
+        return ExecLineError::IllegalArg;
     }
 
     arg = value;
-    return ParseCircuitLineError::Success;
+    return ExecLineError::Success;
 }
 
 static
-ParseCircuitLineError execute_op(
+ExecLineError execute_op(
     std::istream &istream,
-    const std::function<ParseCircuitLineError()> &op
+    const std::function<ExecLineError()> &op
 ) noexcept {
-    const ParseCircuitLineError error = op();
+    const ExecLineError error = op();
     skip_whitespace_line(istream);
-    if (istream.bad()) return ParseCircuitLineError::IOError;
-    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+    if (istream.bad()) return ExecLineError::IOError;
+    if (istream.fail()) return ExecLineError::IllegalArg;
     return error;
 }
 
 static
-ParseCircuitLineError execute_op(
+ExecLineError execute_op(
     std::istream &istream,
     const std::function<void()> &op
 ) noexcept {
     op();
 
     skip_whitespace_line(istream);
-    if (istream.bad()) return ParseCircuitLineError::IOError;
-    if (istream.fail()) return ParseCircuitLineError::IllegalArg;
+    if (istream.bad()) return ExecLineError::IOError;
+    if (istream.fail()) return ExecLineError::IllegalArg;
 
-    return ParseCircuitLineError::Success;
+    return ExecLineError::Success;
 }
 
 template<typename Ret, typename Arg0, typename... Args>
 static
-ParseCircuitLineError execute_op(
+ExecLineError execute_op(
     std::istream &istream,
     const std::function<Ret (Arg0, Args...)> &op
 ) noexcept {
     Arg0 arg0;
-    const ParseCircuitLineError error = read_arg(istream, arg0);
-    if (error != ParseCircuitLineError::Success) return error;
+    const ExecLineError error = read_arg(istream, arg0);
+    if (error != ExecLineError::Success) return error;
 
     const std::function wrapped = [op, arg0](Args... args) { return op(arg0, args...); };
     return execute_op(istream, wrapped);
@@ -203,7 +203,7 @@ ParseCircuitLineError execute_op(
 
 template<typename Receiver, typename... Args>
 static
-ParseCircuitLineError execute_op(
+ExecLineError execute_op(
     std::istream &istream,
     const Receiver receiver,
     void (Receiver::*op)(Args...) const noexcept
@@ -212,7 +212,7 @@ ParseCircuitLineError execute_op(
     return execute_op(istream, wrapped);
 }
 
-ParseCircuitLineError perform_read_op(
+ExecLineError perform_read_op(
     const Simulator &simulator,
     const int result_i
 ) {
@@ -224,7 +224,7 @@ ParseCircuitLineError perform_read_op(
     if (cuda_err != cudaSuccess) {
         fprintf(stderr, "Error occurs when executing previous operations!\n");
         fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
-        return ParseCircuitLineError::ExecFailed;
+        return ExecLineError::ExecFailed;
     }
 
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
@@ -264,22 +264,22 @@ ParseCircuitLineError perform_read_op(
     if (cuda_err != cudaSuccess) {
         fprintf(stderr, "Error occurs when reading result %d!\n", result_i);
         fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
-        return ParseCircuitLineError::ExecFailed;
+        return ExecLineError::ExecFailed;
     }
 
-    return ParseCircuitLineError::Success;
+    return ExecLineError::Success;
 }
 
 static
-ParseCircuitLineError execute_line(
+ExecLineError execute_line(
     const Simulator &simulator,
     std::istream &istream
 ) noexcept {
     constexpr size_t name_limit = 16;
     char name[name_limit];
     read_word(istream, name_limit, name);
-    if (istream.bad()) return ParseCircuitLineError::IOError;
-    if (istream.eof()) return ParseCircuitLineError::Success;
+    if (istream.bad()) return ExecLineError::IOError;
+    if (istream.eof()) return ExecLineError::Success;
 
     if (match(name, ""))
         return execute_op(istream, [] {});
@@ -324,7 +324,7 @@ ParseCircuitLineError execute_line(
             return perform_read_op(simulator, result_i);
         }));
 
-    return ParseCircuitLineError::IllegalOp;
+    return ExecLineError::IllegalOp;
 }
 
 // main
@@ -342,7 +342,7 @@ int main(const int argc, const char **argv) {
 
     Simulator simulator;
     cudaError cuda_err = cudaSuccess;
-    auto line_err = ParseCircuitLineError::Success;
+    auto line_err = ExecLineError::Success;
     do {
         fprintf(stderr, "Creating Simulator\n");
 
@@ -368,7 +368,7 @@ int main(const int argc, const char **argv) {
         istream >> std::noskipws;
         while (istream.good()) {
             line_err = execute_line(simulator, istream);
-            if (line_err != ParseCircuitLineError::Success) {
+            if (line_err != ExecLineError::Success) {
                 fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
                 break;
             }
@@ -379,7 +379,7 @@ int main(const int argc, const char **argv) {
             lines_n += 1;
         }
 
-        if (line_err != ParseCircuitLineError::Success)
+        if (line_err != ExecLineError::Success)
             break;
 
         const clock_t time_end = clock();
@@ -394,7 +394,7 @@ int main(const int argc, const char **argv) {
 
     simulator.destroy();
 
-    if (line_err != ParseCircuitLineError::Success)
+    if (line_err != ExecLineError::Success)
         return -2;
 
     if (cuda_err != cudaSuccess)
