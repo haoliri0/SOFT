@@ -270,6 +270,49 @@ ExecLineError perform_read_op(
     return ExecLineError::Success;
 }
 
+ExecLineError perform_state_op(
+    const Simulator &simulator
+) {
+    cudaError cuda_err = cudaStreamSynchronize(simulator.stream);
+    if (cuda_err != cudaSuccess) {
+        fprintf(stderr, "Error occurs when executing previous operations!\n");
+        fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
+        return ExecLineError::ExecFailed;
+    }
+
+    const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
+    for (Sid shot_i = 0; shot_i < shots_state_ptr.shots_n; ++shot_i) {
+        const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+
+        Err error;
+        cuda_err = cudaMemcpy(&error, shot_state_ptr.get_results_ptr().get_error_ptr(),
+            sizeof(Err), cudaMemcpyDeviceToHost);
+        if (cuda_err != cudaSuccess) break;
+
+        const TablePtr table_ptr = shot_state_ptr.get_table_ptr();
+        char table_buffer_cpu[table_ptr.get_size_bytes_n()];
+        cuda_err = cudaMemcpy(table_buffer_cpu, table_ptr.ptr,
+            table_ptr.get_size_bytes_n(), cudaMemcpyDeviceToHost);
+        if (cuda_err != cudaSuccess) break;
+        print_table({table_ptr.qubits_n, table_buffer_cpu});
+
+        const AmpsMapPtr amps_ptr = shot_state_ptr.get_amps_ptr();
+        char amps_buffer_cpu[amps_ptr.get_size_bytes_n()];
+        cuda_err = cudaMemcpy(amps_buffer_cpu, amps_ptr.ptr,
+            amps_ptr.get_size_bytes_n(), cudaMemcpyDeviceToHost);
+        if (cuda_err != cudaSuccess) break;
+        print_amps({table_ptr.qubits_n, amps_ptr.amps_m, amps_buffer_cpu});
+    }
+
+    if (cuda_err != cudaSuccess) {
+        fprintf(stderr, "Error occurs when reading state!\n");
+        fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
+        return ExecLineError::ExecFailed;
+    }
+
+    return ExecLineError::Success;
+}
+
 static
 ExecLineError execute_line(
     const Simulator &simulator,
@@ -322,6 +365,10 @@ ExecLineError execute_line(
     if (match(name, "READ"))
         return execute_op(istream, std::function([simulator](const int result_i) {
             return perform_read_op(simulator, result_i);
+        }));
+    if (match(name, "STATE"))
+        return execute_op(istream, std::function([simulator] {
+            return perform_state_op(simulator);
         }));
 
     return ExecLineError::IllegalOp;
