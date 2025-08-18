@@ -421,7 +421,7 @@ int main(const int argc, const char **argv) {
             }
 
             if (args.mode >= 2)
-                print_simulator(simulator);
+                sync_and_print_simulator(simulator);
 
             lines_n += 1;
         }

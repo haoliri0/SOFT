@@ -248,26 +248,6 @@ void print_simulator_args(const Simulator &simulator, const unsigned int indent)
 }
 
 static
-void print_simulator(const Simulator &simulator) {
-    const Sid shots_n = simulator.shots_state_ptr.shots_n;
-    const Qid qubits_n = simulator.shots_state_ptr.qubits_n;
-    const Kid amps_m = simulator.shots_state_ptr.amps_m;
-    const Rid results_m = simulator.shots_state_ptr.results_m;
-    const char *ptr = simulator.shots_state_ptr.ptr;
-
-
-    cudaDeviceSynchronize();
-
-    const size_t state_bytes_n = simulator.shots_state_ptr.get_size_bytes_n();
-    const auto buffer_ptr = static_cast<char *>(malloc(state_bytes_n));
-    cudaMemcpy(buffer_ptr, ptr, state_bytes_n, cudaMemcpyDeviceToHost);
-
-    print_shots_state({shots_n, qubits_n, amps_m, results_m, buffer_ptr});
-
-    free(buffer_ptr);
-}
-
-static
 void sync_and_print_simulator(const Simulator &simulator, const unsigned int indent) {
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
@@ -282,6 +262,11 @@ void sync_and_print_simulator(const Simulator &simulator, const unsigned int ind
     printf("\n");
     print_shots_state(shots_state_ptr);
     printf("\n");
+}
+
+static
+void sync_and_print_simulator(const Simulator &simulator) {
+    sync_and_print_simulator(simulator,0);
 }
 
 #endif

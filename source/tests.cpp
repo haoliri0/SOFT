@@ -15,7 +15,7 @@ void test_simulator() {
         err = simulator.create(1, 2, 4, 4, 42);
         if (err != cudaSuccess) break;
 
-        print_simulator(simulator);
+        sync_and_print_simulator(simulator);
     } while (false);
 
     if (err != cudaSuccess)
@@ -43,7 +43,7 @@ void test_gates() {
         simulator.apply_sdg(0);
         simulator.apply_cx(0, 1);
 
-        print_simulator(simulator);
+        sync_and_print_simulator(simulator);
     } while (false);
 
     if (err != cudaSuccess)
@@ -73,7 +73,7 @@ void test_decompose() {
             simulator.stream,
             simulator.shots_state_ptr);
 
-        print_simulator(simulator);
+        sync_and_print_simulator(simulator);
     } while (false);
 
     if (err != cudaSuccess)
@@ -97,7 +97,7 @@ void test_gates_t() {
         simulator.apply_t(0);
         simulator.apply_tdg(0);
 
-        print_simulator(simulator);
+        sync_and_print_simulator(simulator);
     } while (false);
 
     if (err != cudaSuccess)
@@ -122,7 +122,7 @@ void test_measure() {
         // simulator.apply_desire(0, false);
         // simulator.apply_assign(0, false);
 
-        print_simulator(simulator);
+        sync_and_print_simulator(simulator);
     } while (false);
 
     if (err != cudaSuccess)
