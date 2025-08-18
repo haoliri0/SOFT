@@ -230,6 +230,23 @@ void print_shots_state(const ShotsStatePtr ptr) {
 }
 
 static
+void print_simulator_args(const Simulator &simulator, const unsigned int indent) {
+    const Sid shots_n = simulator.shots_state_ptr.shots_n;
+    const Qid qubits_n = simulator.shots_state_ptr.qubits_n;
+    const Kid amps_m = simulator.shots_state_ptr.amps_m;
+    const Rid results_m = simulator.shots_state_ptr.results_m;
+
+    print_indent(indent);
+    printf("shots_n:%u\n", shots_n);
+    print_indent(indent);
+    printf("qubits_n:%u\n", qubits_n);
+    print_indent(indent);
+    printf("amps_m:%u\n", amps_m);
+    print_indent(indent);
+    printf("results_m:%u\n", results_m);
+}
+
+static
 void print_simulator(const Simulator &simulator) {
     const Sid shots_n = simulator.shots_state_ptr.shots_n;
     const Qid qubits_n = simulator.shots_state_ptr.qubits_n;
@@ -238,10 +255,8 @@ void print_simulator(const Simulator &simulator) {
     const char *ptr = simulator.shots_state_ptr.ptr;
 
     printf("\nSimulator:\n");
-    printf("\tshots_n:%u\n", shots_n);
-    printf("\tqubits_n:%u\n", qubits_n);
-    printf("\tamps_m:%u\n", amps_m);
-    printf("\tresults_m:%u\n", results_m);
+
+    print_simulator_args(simulator, 0);
     printf("\n");
 
     cudaDeviceSynchronize();
