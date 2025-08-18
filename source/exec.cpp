@@ -112,163 +112,134 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
 
 // circuit ops
 
-enum class ExecLineError {
-    Success,
-    IOError,
-    IllegalOp,
-    IllegalArg,
-    ExecFailed,
-};
-
 static
-ExecLineError read_arg(std::istream &istream, int &arg) {
+void read_arg(std::istream &istream, int &arg) {
     skip_whitespace(istream);
-    if (istream.bad()) return ExecLineError::IOError;
-    if (istream.fail()) return ExecLineError::IllegalArg;
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
 
     istream >> arg;
-    if (istream.bad()) return ExecLineError::IOError;
-    if (istream.fail()) return ExecLineError::IllegalArg;
-
-    return ExecLineError::Success;
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
 }
 
 static
-ExecLineError read_arg(std::istream &istream, Qid &arg) {
+void read_arg(std::istream &istream, Qid &arg) {
     skip_whitespace(istream);
-    if (istream.bad()) return ExecLineError::IOError;
-    if (istream.fail()) return ExecLineError::IllegalArg;
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
 
     istream >> arg;
-    if (istream.bad()) return ExecLineError::IOError;
-    if (istream.fail()) return ExecLineError::IllegalArg;
-
-    return ExecLineError::Success;
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
 }
 
 static
-ExecLineError read_arg(std::istream &istream, Flt &arg) {
+void read_arg(std::istream &istream, Flt &arg) {
     skip_whitespace(istream);
-    if (istream.bad()) return ExecLineError::IOError;
-    if (istream.fail()) return ExecLineError::IllegalArg;
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
 
     istream >> arg;
-    if (istream.bad()) return ExecLineError::IOError;
-    if (istream.fail()) return ExecLineError::IllegalArg;
-
-    return ExecLineError::Success;
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
 }
 
 static
-ExecLineError read_arg(std::istream &istream, Bit &arg) {
+void read_arg(std::istream &istream, Bit &arg) {
     skip_whitespace(istream);
-    if (istream.bad()) return ExecLineError::IOError;
-    if (istream.fail()) return ExecLineError::IllegalArg;
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
 
     unsigned int value;
     istream >> value;
-    if (istream.bad()) return ExecLineError::IOError;
-    if (istream.fail()) return ExecLineError::IllegalArg;
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
 
     if (value != 0 && value != 1) {
         istream.setstate(std::istream::failbit);
-        return ExecLineError::IllegalArg;
+        throw ExecException(ExecError::IllegalArg);
     }
 
     arg = value;
-    return ExecLineError::Success;
 }
 
 static
-ExecLineError execute_op(
-    std::istream &istream,
-    const std::function<ExecLineError()> &op
-) noexcept {
-    const ExecLineError error = op();
-    skip_whitespace_line(istream);
-    if (istream.bad()) return ExecLineError::IOError;
-    if (istream.fail()) return ExecLineError::IllegalArg;
-    return error;
-}
-
-static
-ExecLineError execute_op(
+void execute_op(
     std::istream &istream,
     const std::function<void()> &op
-) noexcept {
+) {
     op();
-
     skip_whitespace_line(istream);
-    if (istream.bad()) return ExecLineError::IOError;
-    if (istream.fail()) return ExecLineError::IllegalArg;
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
+}
 
-    return ExecLineError::Success;
+template<typename Ret>
+static
+Ret execute_op(
+    std::istream &istream,
+    const std::function<Ret()> &op
+) {
+    const Ret ret = op();
+    skip_whitespace_line(istream);
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
+    return ret;
 }
 
 template<typename Ret, typename Arg0, typename... Args>
 static
-ExecLineError execute_op(
+Ret execute_op(
     std::istream &istream,
     const std::function<Ret (Arg0, Args...)> &op
-) noexcept {
+) {
     Arg0 arg0;
-    const ExecLineError error = read_arg(istream, arg0);
-    if (error != ExecLineError::Success) return error;
-
+    read_arg(istream, arg0);
     const std::function wrapped = [op, arg0](Args... args) { return op(arg0, args...); };
     return execute_op(istream, wrapped);
 }
 
 template<typename Receiver, typename... Args>
 static
-ExecLineError execute_op(
+void execute_op(
     std::istream &istream,
     const Receiver receiver,
-    void (Receiver::*op)(Args...) const noexcept
-) noexcept {
+    void (Receiver::*op)(Args...) const
+) {
     std::function wrapped = [receiver, op](Args... args) { (receiver.*op)(args...); };
     return execute_op(istream, wrapped);
 }
 
-ExecLineError perform_read_op(
+void perform_read_op(
     const Simulator &simulator,
     const int result_i
 ) {
+    cuda_check(cudaStreamSynchronize(simulator.stream));
+
     const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
     const Kid results_m = shots_state_ptr.results_m;
     const Sid shots_n = shots_state_ptr.shots_n;
-
-    cudaError cuda_err = cudaStreamSynchronize(simulator.stream);
-    if (cuda_err != cudaSuccess) {
-        fprintf(stderr, "Error occurs when executing previous operations!\n");
-        fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
-        return ExecLineError::ExecFailed;
-    }
-
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
         const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
 
         Err error;
-        cuda_err = cudaMemcpy(&error, shot_state_ptr.get_results_ptr().get_error_ptr(),
-            sizeof(Err), cudaMemcpyDeviceToHost);
-        if (cuda_err != cudaSuccess) break;
+        cuda_check(cudaMemcpy(&error, shot_state_ptr.get_results_ptr().get_error_ptr(),
+            sizeof(Err), cudaMemcpyDeviceToHost));
 
         Rvl results_value[results_m];
-        cuda_err = cudaMemcpy(results_value, shot_state_ptr.get_results_ptr().get_values_ptr(),
-            results_m * sizeof(Rvl), cudaMemcpyDeviceToHost);
-        if (cuda_err != cudaSuccess) break;
+        cuda_check(cudaMemcpy(results_value, shot_state_ptr.get_results_ptr().get_values_ptr(),
+            results_m * sizeof(Rvl), cudaMemcpyDeviceToHost));
 
         Flt results_prob[results_m];
-        cuda_err = cudaMemcpy(results_prob, shot_state_ptr.get_results_ptr().get_probs_ptr(),
-            results_m * sizeof(Flt), cudaMemcpyDeviceToHost);
-        if (cuda_err != cudaSuccess) break;
+        cuda_check(cudaMemcpy(results_prob, shot_state_ptr.get_results_ptr().get_probs_ptr(),
+            results_m * sizeof(Flt), cudaMemcpyDeviceToHost));
 
         Rid result_j;
         if (result_i < 0) {
             Rid results_n;
-            cuda_err = cudaMemcpy(&results_n, shot_state_ptr.get_results_ptr().get_results_n_ptr(),
-                sizeof(Rid), cudaMemcpyDeviceToHost);
-            if (cuda_err != cudaSuccess) break;
+            cuda_check(cudaMemcpy(&results_n, shot_state_ptr.get_results_ptr().get_results_n_ptr(),
+                sizeof(Rid), cudaMemcpyDeviceToHost));
             result_j = (results_n + result_i) % results_m;
         } else {
             result_j = result_i % results_m;
@@ -278,48 +249,24 @@ ExecLineError perform_read_op(
         const Flt prob = results_prob[result_j];
         printf("%u,%u,%u,%f\n", shot_i, error, value, prob);
     }
-
-    if (cuda_err != cudaSuccess) {
-        fprintf(stderr, "Error occurs when reading result %d!\n", result_i);
-        fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
-        return ExecLineError::ExecFailed;
-    }
-
-    return ExecLineError::Success;
 }
 
-ExecLineError perform_state_op(
+void perform_state_op(
     const Simulator &simulator
 ) {
-    cudaError cuda_err = cudaStreamSynchronize(simulator.stream);
-    if (cuda_err != cudaSuccess) {
-        fprintf(stderr, "Error occurs when executing previous operations!\n");
-        fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
-        return ExecLineError::ExecFailed;
-    }
-
-    try {
-        sync_and_print_simulator(simulator);
-    } catch (CudaException &exception) {
-        cuda_err = exception.error;
-        fprintf(stderr, "Error occurs when reading state!\n");
-        fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
-        return ExecLineError::ExecFailed;
-    }
-
-    return ExecLineError::Success;
+    sync_and_print_simulator(simulator);
 }
 
 static
-ExecLineError execute_line(
+void execute_line(
     const Simulator &simulator,
     std::istream &istream
-) noexcept {
+) {
     constexpr size_t name_limit = 16;
     char name[name_limit];
     read_word(istream, name_limit, name);
-    if (istream.bad()) return ExecLineError::IOError;
-    if (istream.eof()) return ExecLineError::Success;
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.eof()) throw ExecException(ExecError::Success);
 
     if (match(name, ""))
         return execute_op(istream, [] {});
@@ -368,7 +315,7 @@ ExecLineError execute_line(
             return perform_state_op(simulator);
         }));
 
-    return ExecLineError::IllegalOp;
+    throw ExecException(ExecError::IllegalOp);
 }
 
 // main
