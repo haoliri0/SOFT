@@ -22,12 +22,38 @@ struct CliArgs {
 };
 
 static
+unsigned long parse_cli_ul(const char *s) {
+    char *ptr;
+    const unsigned long v = strtoul(s, &ptr, 10);
+
+    if (errno != 0 || ptr == s || *ptr != '\0') {
+        fprintf(stderr, "Failed to parse '%s' with errno=%d", s,errno);
+        throw CliArgsException(CliArgsError::IllegalValue);
+    }
+
+    return v;
+}
+
+static
+unsigned long long parse_cli_ull(const char *s) {
+    char *ptr;
+    const unsigned long long v = strtoull(s, &ptr, 10);
+
+    if (errno != 0 || ptr == s || *ptr != '\0') {
+        fprintf(stderr, "Failed to parse '%s' with errno=%d", s,errno);
+        throw CliArgsException(CliArgsError::IllegalValue);
+    }
+
+    return v;
+}
+
+static
 void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
     for (unsigned int i = 1; i < argc;) {
         const char *arg_key = argv[i++];
         if (match(arg_key, "--shots_n")) {
             const char *arg_value = argv[i++];
-            args.shots_n = strtoul(arg_value, nullptr, 10);
+            args.shots_n = parse_cli_ul(arg_value);
             if (args.shots_n == 0) {
                 fprintf(stderr, "Illegal value: shots_n=%s\n", arg_value);
                 throw CliArgsException(CliArgsError::IllegalValue);
@@ -36,7 +62,7 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
         }
         if (match(arg_key, "--qubits_n")) {
             const char *arg_value = argv[i++];
-            args.qubits_n = strtoul(arg_value, nullptr, 10);
+            args.qubits_n = parse_cli_ul(arg_value);
             if (args.qubits_n == 0) {
                 fprintf(stderr, "Illegal value: qubits_n=%s\n", arg_value);
                 throw CliArgsException(CliArgsError::IllegalValue);
@@ -45,7 +71,7 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
         }
         if (match(arg_key, "--amps_m")) {
             const char *arg_value = argv[i++];
-            args.amps_m = strtoul(arg_value, nullptr, 10);
+            args.amps_m = parse_cli_ul(arg_value);
             if (args.amps_m == 0) {
                 fprintf(stderr, "Illegal value: amps_m=%s\n", arg_value);
                 throw CliArgsException(CliArgsError::IllegalValue);
@@ -54,7 +80,7 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
         }
         if (match(arg_key, "--results_m")) {
             const char *arg_value = argv[i++];
-            args.results_m = strtoul(arg_value, nullptr, 10);
+            args.results_m = parse_cli_ul(arg_value);
             if (args.results_m == 0) {
                 fprintf(stderr, "Illegal value: results_m=%s\n", arg_value);
                 throw CliArgsException(CliArgsError::IllegalValue);
@@ -63,12 +89,12 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
         }
         if (match(arg_key, "--seed")) {
             const char *arg_value = argv[i++];
-            args.seed = strtoull(arg_value, nullptr, 10);
+            args.seed = parse_cli_ull(arg_value);
             continue;
         }
         if (match(arg_key, "--mode")) {
             const char *arg_value = argv[i++];
-            args.mode = strtoul(arg_value, nullptr, 10);
+            args.mode = parse_cli_ul(arg_value);
             if (args.mode > 2) {
                 fprintf(stderr, "Illegal value: mode=%s\n", arg_value);
                 throw CliArgsError::IllegalValue;
