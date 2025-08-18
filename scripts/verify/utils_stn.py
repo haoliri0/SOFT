@@ -96,7 +96,7 @@ def parse_stn_stdout_amps_entry(s: str):
 
 def parse_stn_stdout_amps(amps_str: str):
     lines = split_and_clean_lines(amps_str)
-    matching = re.match(r'\(amps_n = ([0-9]+)\)', lines[0])
+    matching = re.match(r'amps_n=([0-9]+)', lines[0])
     amps_n = int(matching.group(1))
     entries = map(parse_stn_stdout_amps_entry, lines[1:1 + amps_n])
     return tuple(entries)
