@@ -94,33 +94,34 @@ void print_pivot(const Qid pivot) {
 
 
 static
-void print_table_row(const TableRowPtr ptr) {
+void print_table_row(const TableRowPtr ptr, const unsigned int indent) {
+    print_indent(indent);
     print_sign(*ptr.get_sign_ptr());
     print_pauli_row(ptr.get_pauli_ptr());
+    printf("\n");
 }
 
 static
-void print_table(const TablePtr ptr) {
-    printf("\t\ttable:\n");
+void print_table(const TablePtr ptr, const unsigned int indent) {
+    print_indent(indent);
+    printf("table:\n");
     const Qid qubits_n = ptr.qubits_n;
     const Qid rows_n = 2 * qubits_n;
-    for (Qid row_i = 0; row_i < rows_n; ++row_i) {
-        printf("\t\t\t");
-        print_table_row(ptr.get_row_ptr(row_i));
-        printf("\n");
-    }
+    for (Qid row_i = 0; row_i < rows_n; ++row_i)
+        print_table_row(ptr.get_row_ptr(row_i), indent + 1);
 }
 
 static
-void print_decomp(const DecompPtr ptr) {
-    printf("\t\tdecomposed:\n");
+void print_decomp(const DecompPtr ptr, const unsigned int indent) {
+    print_indent(indent);
+    printf("decomposed:\n");
 
-    printf("\t\t\t");
+    print_indent(indent + 1);
     print_bits(ptr.get_bits_ptr(), 2 * ptr.qubits_n);
     print_pivot(*ptr.get_pivot_ptr());
     printf("\n");
 
-    printf("\t\t\t");
+    print_indent(indent + 1);
     print_pauli_row(ptr.get_pauli_ptr());
     printf(" ");
     print_phase(*ptr.get_phase_ptr());
@@ -128,97 +129,58 @@ void print_decomp(const DecompPtr ptr) {
 }
 
 static
-void print_amps(const AmpsMapPtr ptr) {
-    printf("\t\tamplitudes:\n");
-    const Kid amps_n = *ptr.get_amps_n_ptr();
-    printf("\t\t\t(amps_n = %u)\n", amps_n);
-    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Aid aid = *ptr.get_aid_ptr(amp_i);
-        const Amp amp = *ptr.get_amp_ptr(amp_i);
-        printf("\t\t\t");
-        print_int_bits(aid, ptr.qubits_n);
-        printf(" : ");
-        print_amplitude(amp);
-        printf("\n");
-    }
+void print_amp_entry(const AmpsMapPtr ptr, const Kid amp_i, const unsigned int indent) {
+    const Aid aid = *ptr.get_aid_ptr(amp_i);
+    const Amp amp = *ptr.get_amp_ptr(amp_i);
+    print_indent(indent);
+    print_int_bits(aid, ptr.qubits_n);
+    printf(" : ");
+    print_amplitude(amp);
     printf("\n");
 }
 
 static
-void print_amps_full(const AmpsMapPtr ptr) {
-    printf("\t\tamplitudes:\n");
+void print_amps(const AmpsMapPtr ptr, const bool full, const unsigned int indent) {
     const Kid amps_m = ptr.amps_m;
     const Kid amps_n = *ptr.get_amps_n_ptr();
-    printf("\t\t\t(amps_n = %u)\n", amps_n);
-    for (Kid amp_i = 0; amp_i < amps_m; ++amp_i) {
-        const Aid aid = *ptr.get_aid_ptr(amp_i);
-        const Amp amp = *ptr.get_amp_ptr(amp_i);
-        printf("\t\t\t");
-        print_int_bits(aid, ptr.qubits_n);
-        printf(" : ");
-        print_amplitude(amp);
-        printf("\n");
-    }
-    printf("\n");
+    print_indent(indent);
+    printf("amplitudes:\n");
+    print_indent(indent + 1);
+    printf("amps_n=%u\n", amps_n);
+    for (Kid amp_i = 0; amp_i < (full ? amps_m : amps_n); ++amp_i)
+        print_amp_entry(ptr, amp_i, indent + 1);
 }
 
 static
-void print_amps_halves(const AmpsMapPtr ptr) {
-    printf("\t\tamplitudes:\n");
-    const Kid amps_m = ptr.amps_m;
-    const Kid amps_n = *ptr.get_amps_n_ptr();
-    printf("\t\t\t(amps_n = %u)\n", amps_n);
-    if (amps_n > amps_m / 2) {
-        printf("\t\t\tToo Large!");
-        return;
-    }
-
-    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Aid aid = *ptr.get_half0_aid_ptr(amp_i);
-        const Amp amp = *ptr.get_half0_amp_ptr(amp_i);
-        printf("\t\t\t");
-        print_int_bits(aid, ptr.qubits_n);
-        printf(" : ");
-        print_amplitude(amp);
-        printf("\n");
-    }
-
-    printf("\t\t\t----------------\n");
-
-    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Aid aid = *ptr.get_half1_aid_ptr(amp_i);
-        const Amp amp = *ptr.get_half1_amp_ptr(amp_i);
-        printf("\t\t\t");
-        print_int_bits(aid, ptr.qubits_n);
-        printf(" : ");
-        print_amplitude(amp);
-        printf("\n");
-    }
+void print_result_item(const ResultsPtr ptr, const Rid result_idx, const unsigned int indent) {
+    const Rid results_m = ptr.results_m;
+    const Rid result_i = result_idx % results_m;
+    const Rvl result_value = *ptr.get_value_ptr(result_i);
+    const Flt result_prob = *ptr.get_prob_ptr(result_i);
+    print_indent(indent + 1);
+    printf("idx=%04u,value=%u,prob=%f\n", result_idx, result_value, result_prob);
 }
 
 static
-void print_results(const ResultsPtr ptr) {
+void print_results(const ResultsPtr ptr, const unsigned int indent) {
     const Rid results_m = ptr.results_m;
     const Rid results_n = *ptr.get_results_n_ptr();
     const Rid results_idx0 = results_n > results_m ? results_n - results_m : 0;
     if (results_n == 0) return;
 
-    printf("\t\tresults:\n");
-    for (Rid result_idx = results_idx0; result_idx < results_n; ++result_idx) {
-        const Rid result_i = result_idx % results_m;
-        const Rvl result_value = *ptr.get_value_ptr(result_i);
-        const Flt result_prob = *ptr.get_prob_ptr(result_i);
-        printf("\t\t\tidx=%04u value=%u prob=%f\n", result_idx, result_value, result_prob);
-    }
+    print_indent(indent);
+    printf("results:\n");
+    for (Rid result_idx = results_idx0; result_idx < results_n; ++result_idx)
+        print_result_item(ptr, result_idx, indent + 1);
 }
 
 
 static
 void print_shot_state(const ShotStatePtr &ptr, const unsigned int indent) {
-    print_table(ptr.get_table_ptr());
-    print_decomp(ptr.get_decomp_ptr());
-    print_amps_full(ptr.get_amps_ptr());
-    print_results(ptr.get_results_ptr());
+    print_table(ptr.get_table_ptr(), indent + 1);
+    print_decomp(ptr.get_decomp_ptr(), indent + 1);
+    print_amps(ptr.get_amps_ptr(), true, indent + 1);
+    print_results(ptr.get_results_ptr(), indent + 1);
 }
 
 static
@@ -240,13 +202,13 @@ void print_simulator_args(const Simulator &simulator, const unsigned int indent)
     const Rid results_m = simulator.shots_state_ptr.results_m;
 
     print_indent(indent);
-    printf("shots_n:%u\n", shots_n);
+    printf("shots_n=%u\n", shots_n);
     print_indent(indent);
-    printf("qubits_n:%u\n", qubits_n);
+    printf("qubits_n=%u\n", qubits_n);
     print_indent(indent);
-    printf("amps_m:%u\n", amps_m);
+    printf("amps_m=%u\n", amps_m);
     print_indent(indent);
-    printf("results_m:%u\n", results_m);
+    printf("results_m=%u\n", results_m);
 }
 
 static
