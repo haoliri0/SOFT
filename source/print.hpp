@@ -2,11 +2,12 @@
 #define STN_CUDA_PRINT_HPP
 
 #include "./simulator.hpp"
+#include "./exceptions.hpp"
 
 using namespace StnCuda;
 
 static
-void print_cuda_error(const cudaError_t error) {
+void print_cuda_error(const cudaError error) {
     printf("%s\n%s", cudaGetErrorName(error), cudaGetErrorString(error));
 }
 
@@ -254,10 +255,6 @@ void print_simulator(const Simulator &simulator) {
     const Rid results_m = simulator.shots_state_ptr.results_m;
     const char *ptr = simulator.shots_state_ptr.ptr;
 
-    printf("\nSimulator:\n");
-
-    print_simulator_args(simulator, 0);
-    printf("\n");
 
     cudaDeviceSynchronize();
 
@@ -268,6 +265,23 @@ void print_simulator(const Simulator &simulator) {
     print_shots_state({shots_n, qubits_n, amps_m, results_m, buffer_ptr});
 
     free(buffer_ptr);
+}
+
+static
+void sync_and_print_simulator(const Simulator &simulator, const unsigned int indent) {
+    cuda_check(cudaStreamSynchronize(simulator.stream));
+
+    char buffer[simulator.shots_state_ptr.get_size_bytes_n()];
+    cuda_check(cudaMemcpy(buffer, simulator.shots_state_ptr.ptr,
+        simulator.shots_state_ptr.get_size_bytes_n(), cudaMemcpyDeviceToHost));
+    ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
+    shots_state_ptr.ptr = buffer;
+
+    printf("Simulator:\n");
+    print_simulator_args(simulator, indent + 1);
+    printf("\n");
+    print_shots_state(shots_state_ptr);
+    printf("\n");
 }
 
 #endif
