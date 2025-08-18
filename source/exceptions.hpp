@@ -29,4 +29,18 @@ public:
     explicit CliArgsException(const CliArgsError error) : error(error) {}
 };
 
+
+enum class ExecError {
+    Success,
+    IOError,
+    IllegalOp,
+    IllegalArg,
+};
+
+class ExecException final : public std::exception {
+public:
+    const ExecError error;
+    explicit ExecException(const ExecError error) : error(error) {}
+};
+
 #endif
