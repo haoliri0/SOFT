@@ -5,6 +5,7 @@
 
 #include "./datatype.cuh"
 #include "./simulator.hpp"
+#include "./autofree.hpp"
 #include "./print.hpp"
 #include "./read.hpp"
 
@@ -331,64 +332,57 @@ int main(const int argc, const char **argv) {
     fprintf(stderr, "\trseed=%llu\n", args.seed);
 
     Simulator simulator;
+    AutoFree([&simulator] { simulator.destroy(); });
+
+    fprintf(stderr, "Creating Simulator\n");
     cudaError cuda_err = cudaSuccess;
-    auto line_err = ExecLineError::Success;
-    do {
-        fprintf(stderr, "Creating Simulator\n");
 
-        cuda_err = simulator.create(args.shots_n, args.qubits_n, args.amps_m, args.results_m, args.seed);
-        if (cuda_err != cudaSuccess) {
-            fprintf(stderr, "Error occurs when creating simulator.\n");
-            fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
-            break;
+    cuda_err = simulator.create(args.shots_n, args.qubits_n, args.amps_m, args.results_m, args.seed);
+    if (cuda_err != cudaSuccess) {
+        fprintf(stderr, "Error occurs when creating simulator.\n");
+        fprint_cuda_error(stderr, cuda_err);
+        throw CudaException(cuda_err);
+    }
+
+    cuda_err = cudaStreamSynchronize(simulator.stream);
+    if (cuda_err != cudaSuccess) {
+        fprintf(stderr, "Error occurs when creating simulator.\n");
+        fprint_cuda_error(stderr, cuda_err);
+        throw CudaException(cuda_err);
+    }
+
+    fprintf(stderr, "Executing Circuit\n");
+    const clock_t time_start = clock();
+
+    size_t lines_n = 0;
+    std::istream &istream = std::cin;
+    istream >> std::noskipws;
+    while (istream.good()) {
+        try {
+            execute_line(simulator, istream);
+        } catch (CudaException exception) {
+            fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
+            fprint_cuda_error(stderr, exception.error);
+            throw;
+        } catch (ExecException exception) {
+            fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
+            fprint_exec_error(stderr, exception.error);
+            throw;
         }
 
-        cuda_err = cudaStreamSynchronize(simulator.stream);
-        if (cuda_err != cudaSuccess) {
-            fprintf(stderr, "Error occurs when creating simulator.\n");
-            fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
-            break;
-        }
+        if (args.mode >= 2)
+            sync_and_print_simulator(simulator);
 
-        fprintf(stderr, "Executing Circuit\n");
-        const clock_t time_start = clock();
+        lines_n += 1;
+    }
 
-        size_t lines_n = 0;
-        std::istream &istream = std::cin;
-        istream >> std::noskipws;
-        while (istream.good()) {
-            line_err = execute_line(simulator, istream);
-            if (line_err != ExecLineError::Success) {
-                fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
-                break;
-            }
+    const clock_t time_end = clock();
+    const clock_t time_span = time_end - time_start;
+    const float time_span_seconds = static_cast<float>(time_span) / CLOCKS_PER_SEC;
+    const float shots_per_second = static_cast<float>(args.shots_n) / time_span_seconds;
 
-            if (args.mode >= 2)
-                sync_and_print_simulator(simulator);
-
-            lines_n += 1;
-        }
-
-        if (line_err != ExecLineError::Success)
-            break;
-
-        const clock_t time_end = clock();
-        const clock_t time_span = time_end - time_start;
-        const float time_span_seconds = static_cast<float>(time_span) / CLOCKS_PER_SEC;
-        const float shots_per_second = static_cast<float>(args.shots_n) / time_span_seconds;
-
-        fprintf(stderr, "Finished Circuit\n");
-        fprintf(stderr, "\tspan_time: %f s\n", time_span_seconds);
-        fprintf(stderr, "\tavg_speed: %f shot/s\n", shots_per_second);
-    } while (false);
-
-    simulator.destroy();
-
-    if (line_err != ExecLineError::Success)
-        return -2;
-
-    if (cuda_err != cudaSuccess)
-        return -3;
-
+    fprintf(stderr, "Finished Circuit\n");
+    fprintf(stderr, "\tspan_time: %f s\n", time_span_seconds);
+    fprintf(stderr, "\tavg_speed: %f shot/s\n", shots_per_second);
     return 0;
 }
