@@ -214,7 +214,7 @@ void print_results(const ResultsPtr ptr) {
 
 
 static
-void print_shot_state(const ShotStatePtr ptr) {
+void print_shot_state(const ShotStatePtr &ptr, const unsigned int indent) {
     print_table(ptr.get_table_ptr());
     print_decomp(ptr.get_decomp_ptr());
     print_amps_full(ptr.get_amps_ptr());
@@ -222,13 +222,15 @@ void print_shot_state(const ShotStatePtr ptr) {
 }
 
 static
-void print_shots_state(const ShotsStatePtr ptr) {
+void print_shots_state(const ShotsStatePtr &ptr, const unsigned int indent) {
     for (Sid shot_i = 0; shot_i < ptr.shots_n; ++shot_i) {
-        printf("\tshot %u:\n", shot_i);
-        print_shot_state(ptr.get_shot_ptr(shot_i));
+        print_indent(indent);
+        printf("shot %u:\n", shot_i);
+        print_shot_state(ptr.get_shot_ptr(shot_i), indent + 1);
         printf("\n");
     }
 }
+
 
 static
 void print_simulator_args(const Simulator &simulator, const unsigned int indent) {
@@ -260,13 +262,13 @@ void sync_and_print_simulator(const Simulator &simulator, const unsigned int ind
     printf("Simulator:\n");
     print_simulator_args(simulator, indent + 1);
     printf("\n");
-    print_shots_state(shots_state_ptr);
+    print_shots_state(shots_state_ptr, indent + 1);
     printf("\n");
 }
 
 static
 void sync_and_print_simulator(const Simulator &simulator) {
-    sync_and_print_simulator(simulator,0);
+    sync_and_print_simulator(simulator, 0);
 }
 
 #endif
