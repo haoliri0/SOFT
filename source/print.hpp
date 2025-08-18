@@ -7,9 +7,32 @@
 using namespace StnCuda;
 
 static
-void print_cuda_error(const cudaError error) {
-    printf("%s\n%s", cudaGetErrorName(error), cudaGetErrorString(error));
+void fprint_cuda_error(FILE *file, const cudaError error) {
+    fprintf(file, "%s: %s\n", cudaGetErrorName(error), cudaGetErrorString(error));
 }
+
+static
+void print_cuda_error(const cudaError error) {
+    fprint_cuda_error(stderr, error);
+}
+
+static
+void fprint_exec_error(FILE *file, const ExecError error) {
+    if (error == ExecError::IllegalArg) {
+        fprintf(file, "Illegal argument\n");
+        return;
+    }
+    if (error == ExecError::IllegalOp) {
+        fprintf(file, "Illegal operation\n");
+        return;
+    }
+    if (error == ExecError::IOError) {
+        fprintf(file, "IO error\n");
+        return;
+    }
+    fprintf(file, "Unknown error\n");
+}
+
 
 static
 void print_indent(const unsigned int indent) {
