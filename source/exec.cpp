@@ -255,7 +255,22 @@ void perform_read_op(
 void perform_state_op(
     const Simulator &simulator
 ) {
-    sync_and_print_simulator(simulator);
+    cuda_check(cudaStreamSynchronize(simulator.stream));
+
+    char buffer[simulator.shots_state_ptr.get_size_bytes_n()];
+    cuda_check(cudaMemcpy(buffer, simulator.shots_state_ptr.ptr,
+        simulator.shots_state_ptr.get_size_bytes_n(), cudaMemcpyDeviceToHost));
+    ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
+    shots_state_ptr.ptr = buffer;
+
+    printf("state:\n");
+    for (Sid shot_i = 0; shot_i < shots_state_ptr.shots_n; ++shot_i) {
+        ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+        print_indent(1);
+        printf("shot %u:\n", shot_i);
+        print_table(shot_state_ptr.get_table_ptr(), 2);
+        print_amps(shot_state_ptr.get_amps_ptr(), false, 2);
+    }
 }
 
 static
