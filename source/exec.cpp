@@ -331,6 +331,7 @@ void execute_line(
             return perform_state_op(simulator);
         }));
 
+    fprintf(stderr, "Unknown op: %s\n", name);
     throw ExecException(ExecError::IllegalOp);
 }
 
