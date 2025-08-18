@@ -15,4 +15,18 @@ void cuda_check(const cudaError error) {
     throw CudaException(error);
 }
 
+
+enum class CliArgsError {
+    Success,
+    IllegalArg,
+    IllegalKey,
+    IllegalValue,
+};
+
+class CliArgsException final : public std::exception {
+public:
+    const CliArgsError error;
+    explicit CliArgsException(const CliArgsError error) : error(error) {}
+};
+
 #endif

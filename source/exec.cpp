@@ -21,15 +21,8 @@ struct CliArgs {
     unsigned int mode = 1;
 };
 
-enum class ParseCliArgsError {
-    Success,
-    IllegalArg,
-    IllegalKey,
-    IllegalValue,
-};
-
 static
-ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &args) {
+void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
     for (unsigned int i = 1; i < argc;) {
         const char *arg_key = argv[i++];
         if (match(arg_key, "--shots_n")) {
@@ -37,7 +30,7 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
             args.shots_n = strtoul(arg_value, nullptr, 10);
             if (args.shots_n == 0) {
                 fprintf(stderr, "Illegal value: shots_n=%s\n", arg_value);
-                return ParseCliArgsError::IllegalValue;
+                throw CliArgsException(CliArgsError::IllegalValue);
             }
             continue;
         }
@@ -46,7 +39,7 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
             args.qubits_n = strtoul(arg_value, nullptr, 10);
             if (args.qubits_n == 0) {
                 fprintf(stderr, "Illegal value: qubits_n=%s\n", arg_value);
-                return ParseCliArgsError::IllegalValue;
+                throw CliArgsException(CliArgsError::IllegalValue);
             }
             continue;
         }
@@ -55,7 +48,7 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
             args.amps_m = strtoul(arg_value, nullptr, 10);
             if (args.amps_m == 0) {
                 fprintf(stderr, "Illegal value: amps_m=%s\n", arg_value);
-                return ParseCliArgsError::IllegalValue;
+                throw CliArgsException(CliArgsError::IllegalValue);
             }
             continue;
         }
@@ -64,7 +57,7 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
             args.results_m = strtoul(arg_value, nullptr, 10);
             if (args.results_m == 0) {
                 fprintf(stderr, "Illegal value: results_m=%s\n", arg_value);
-                return ParseCliArgsError::IllegalValue;
+                throw CliArgsException(CliArgsError::IllegalValue);
             }
             continue;
         }
@@ -78,18 +71,17 @@ ParseCliArgsError parse_cli_args(const int argc, const char **argv, CliArgs &arg
             args.mode = strtoul(arg_value, nullptr, 10);
             if (args.mode > 2) {
                 fprintf(stderr, "Illegal value: mode=%s\n", arg_value);
-                return ParseCliArgsError::IllegalValue;
+                throw CliArgsError::IllegalValue;
             }
             continue;
         }
         if (match_head(arg_key, "-")) {
             fprintf(stderr, "Unrecognized option: %s\n", arg_key);
-            return ParseCliArgsError::IllegalKey;
+            throw CliArgsError::IllegalKey;
         }
         fprintf(stderr, "Unexpected arg: %s\n", arg_key);
-        return ParseCliArgsError::IllegalArg;
+        throw CliArgsError::IllegalArg;
     }
-    return ParseCliArgsError::Success;
 }
 
 // circuit ops
@@ -357,8 +349,7 @@ ExecLineError execute_line(
 
 int main(const int argc, const char **argv) {
     CliArgs args{};
-    ParseCliArgsError const args_err = parse_cli_args(argc, argv, args);
-    if (args_err != ParseCliArgsError::Success) return 1;
+    parse_cli_args(argc, argv, args);
     fprintf(stderr, "Cli Args:\n");
     fprintf(stderr, "\tshots_n=%u\n", args.shots_n);
     fprintf(stderr, "\tqubits_n=%u\n", args.qubits_n);
