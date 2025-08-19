@@ -98,16 +98,16 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
             args.mode = parse_cli_ul(arg_value);
             if (args.mode > 2) {
                 fprintf(stderr, "Illegal value: mode=%s\n", arg_value);
-                throw CliArgsError::IllegalValue;
+                throw CliArgsException(CliArgsError::IllegalValue);
             }
             continue;
         }
         if (match_head(arg_key, "-")) {
             fprintf(stderr, "Unrecognized option: %s\n", arg_key);
-            throw CliArgsError::IllegalKey;
+            throw CliArgsException(CliArgsError::IllegalKey);
         }
         fprintf(stderr, "Unexpected arg: %s\n", arg_key);
-        throw CliArgsError::IllegalArg;
+        throw CliArgsException(CliArgsError::IllegalArg);
     }
 }
 
@@ -348,7 +348,7 @@ int main(const int argc, const char **argv) {
     fprintf(stderr, "\trseed=%llu\n", args.seed);
 
     Simulator simulator;
-    AutoFree([&simulator] { simulator.destroy(); });
+    AutoFree simulator_auto_free([&simulator] { simulator.destroy(); });
 
     fprintf(stderr, "Creating Simulator\n");
     cudaError cuda_err = cudaSuccess;
@@ -376,11 +376,11 @@ int main(const int argc, const char **argv) {
     while (istream.good()) {
         try {
             execute_line(simulator, istream);
-        } catch (CudaException exception) {
+        } catch (CudaException &exception) {
             fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
             fprint_cuda_error(stderr, exception.error);
             throw;
-        } catch (ExecException exception) {
+        } catch (ExecException &exception) {
             fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
             fprint_exec_error(stderr, exception.error);
             throw;
