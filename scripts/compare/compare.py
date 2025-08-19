@@ -154,12 +154,30 @@ def main(
                 if message is None:
                     exhausted = True
                     break
-                table, amps = message
+                gate, table, amps = message
+                if gate is not None:
+                    print(f"gate: {gate}")
+
+                print(f"table:")
+                for line in table:
+                    print(f"  {line}")
+                print(f"amps:")
+                for key, value in amps.items():
+                    value=complex(value)
+                    print(f"  {key}: {value.real:+f} {value.imag:+f} i")
 
                 read_specified_label(process.stdout, "state")
                 read_specified_label(process.stdout, "shot 0")
                 error = read_error(process.stdout)
                 table2, amps2 = read_shot_state_content(process.stdout, args)
+
+                print(f"table2:")
+                for line in table2:
+                    print(f"  {line}")
+                print(f"amps2:")
+                for key, value in amps2.items():
+                    value = complex(value)
+                    print(f"  {key}: {value.real:+f} {value.imag:+f} i")
 
                 if error:
                     error = ValueError(f"Found error: {error}")
@@ -193,22 +211,24 @@ def main(
         thread = Thread(target=thread_func, daemon=True)
         thread.start()
 
+        last_gate = None
         while True:
             try:
                 match read_label(fp):
                     case "gate", gate:
                         process.stdin.write(gate)
                         process.stdin.write("\n")
-                        pass
+                        last_gate = gate
                     case "state", _:
                         table, amps = read_shot_state_content(fp, args)
                         process.stdin.write("STATE")
                         process.stdin.write("\n")
-                        queue.put((table, amps))
+                        queue.put((last_gate, table, amps))
+                        last_gate = None
+                process.stdin.flush()
             except StopIteration:
                 break
 
-        process.stdin.flush()
         queue.put(None)
         thread.join()
 
@@ -218,7 +238,7 @@ def main(
 
 if __name__ == '__main__':
     exec_file_path = os.path.join(project_dir_path, "cmake-build-release/stn_cuda_exec")
-    logs_file_path = os.path.join(project_dir_path, "scripts/compare/compare.logs.txt")
+    logs_file_path = os.path.join(project_dir_path, "scripts/compare/test_0.logs.txt")
     main(
         exec_file_path=exec_file_path,
         logs_file_path=logs_file_path)
