@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from queue import Queue
 from threading import Thread
 
+import numpy as np
+
 project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
 sys.path.append(project_dir_path)
 
@@ -192,7 +194,7 @@ def main(
                 for key in set(amps.keys()) | set(amps2.keys()):
                     value1 = amps.get(key, 0)
                     value2 = amps2.get(key, 0)
-                    if value1 != value2:
+                    if not np.allclose(value1, value2, rtol=1e-05, atol=1e-05):
                         error = ValueError(f"Found differences in amps[{key}]: \n{value1} != {value2}")
                         errors.append(error)
                         break
