@@ -175,6 +175,13 @@ void print_amps(const AmpsMapPtr ptr, const bool full, const unsigned int indent
 }
 
 static
+void print_error(const ResultsPtr ptr, const unsigned int indent) {
+    const Err error = *ptr.get_error_ptr();
+    print_indent(indent);
+    printf("error=%u\n", error);
+}
+
+static
 void print_result_item(const ResultsPtr ptr, const Rid result_idx, const unsigned int indent) {
     const Rid results_m = ptr.results_m;
     const Rid result_i = result_idx % results_m;
@@ -193,6 +200,7 @@ void print_results(const ResultsPtr ptr, const unsigned int indent) {
 
     print_indent(indent);
     printf("results:\n");
+    print_error(ptr, indent + 1);
     for (Rid result_idx = results_idx0; result_idx < results_n; ++result_idx)
         print_result_item(ptr, result_idx, indent + 1);
 }

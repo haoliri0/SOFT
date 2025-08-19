@@ -268,6 +268,7 @@ void perform_state_op(
         ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
         print_indent(1);
         printf("shot %u:\n", shot_i);
+        print_error(shot_state_ptr.get_results_ptr(), 2);
         print_table(shot_state_ptr.get_table_ptr(), 2);
         print_amps(shot_state_ptr.get_amps_ptr(), false, 2);
     }
