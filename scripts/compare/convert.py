@@ -99,6 +99,17 @@ def iter_convert_lines(lines: Iterable[str]) -> Iterator[str]:
                 raise ValueError(f"Unexpected result {result}")
             result = int(match.group(1))
             yield f"gate: D {target} {result}"
+        elif gate.startswith("R "):
+            target = gate[gate.index(" ") + 1:]
+            result = next(lines)
+            result = result.strip()
+            if not result.startswith("result: "):
+                raise ValueError(f"Unexpected line {result}")
+            result = result[len("result: "):]
+            result = int(result)
+            yield f"gate: D {target} {result}"
+            if result:
+                yield f"gate: X {target}"
         else:
             yield "gate: " + gate
 
