@@ -1080,7 +1080,7 @@ struct ResultsPtr : ResultsArgs {
 struct ShotStateArgs {
     Qid qubits_n;
     Kid amps_m;
-    Kid results_m;
+    Rid results_m;
     
     __device__ __host__
     size_t get_table_size_bytes_n() const {
@@ -1235,7 +1235,7 @@ struct ShotsStateArgs {
     Sid shots_n;
     Qid qubits_n;
     Kid amps_m;
-    Kid results_m;
+    Rid results_m;
     
     __device__ __host__
     size_t get_shot_size_bytes_n() const {

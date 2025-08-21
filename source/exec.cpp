@@ -219,7 +219,7 @@ void perform_read_op(
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
     const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
-    const Kid results_m = shots_state_ptr.results_m;
+    const Rid results_m = shots_state_ptr.results_m;
     const Sid shots_n = shots_state_ptr.shots_n;
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
         const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);

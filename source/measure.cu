@@ -8,7 +8,7 @@
 using namespace StnCuda;
 
 static __device__
-void compute_measure_amps_situation0(const ShotStatePtr shot_state_ptr, const Aid amp_i) {
+void compute_measure_amps_situation0(const ShotStatePtr shot_state_ptr, const Kid amp_i) {
     const Qid qubits_n = shot_state_ptr.qubits_n;
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const Bit *stab = decomp_ptr.get_stab_bits_ptr();
@@ -37,7 +37,7 @@ void compute_measure_amps_situation0(const ShotStatePtr shot_state_ptr, const Ai
 }
 
 static __device__
-void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Aid amp_i, const Qid pivot) {
+void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Kid amp_i, const Qid pivot) {
     const Qid qubits_n = shot_state_ptr.qubits_n;
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const Bit *stab = decomp_ptr.get_stab_bits_ptr();

@@ -689,7 +689,7 @@ Amp *get_half1_amp_ptr(const Kid amp_i) const {
         params=(
             ParamSpec(name="qubits_n", type="Qid"),
             ParamSpec(name="amps_m", type="Kid"),
-            ParamSpec(name="results_m", type="Kid")),
+            ParamSpec(name="results_m", type="Rid")),
         fields=(
             ItemFieldSpec(
                 name="table",
@@ -718,7 +718,7 @@ Amp *get_half1_amp_ptr(const Kid amp_i) const {
             ParamSpec(name="shots_n", type="Sid"),
             ParamSpec(name="qubits_n", type="Qid"),
             ParamSpec(name="amps_m", type="Kid"),
-            ParamSpec(name="results_m", type="Kid")),
+            ParamSpec(name="results_m", type="Rid")),
         fields=(
             ListFieldSpec(
                 name="shots",
