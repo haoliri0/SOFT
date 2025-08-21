@@ -283,7 +283,7 @@ void execute_line(
     char name[name_limit];
     read_word(istream, name_limit, name);
     if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.eof()) throw ExecException(ExecError::Success);
+    if (istream.eof()) return;
 
     if (match(name, ""))
         return execute_op(istream, [] {});
