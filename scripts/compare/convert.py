@@ -137,17 +137,17 @@ def iter_convert_lines(lines: Iterable[str]) -> Iterator[str]:
                     letters.append("I")
             yield "    " + sign + "".join(letters)
 
-        yield "  amplitudes:"
+        yield "  entries:"
         next(lines)  # map header
-        amplitudes = next(lines)
-        amplitudes = amplitudes.strip()
-        amplitudes = amplitudes.replace("np.complex128", "")
-        amplitudes = eval(amplitudes)
-        yield f"    entries_n={len(amplitudes)}"
-        for key, value in amplitudes.items():
-            key = int(key)
-            value = complex(value)
-            yield f"    {key:042b} : {value.real:+f} {value.imag:+f} i"
+        entries = next(lines)
+        entries = entries.strip()
+        entries = entries.replace("np.complex128", "")
+        entries = eval(entries)
+        yield f"    entries_n={len(entries)}"
+        for bst, amp in entries.items():
+            bst = int(bst)
+            amp = complex(amp)
+            yield f"    {bst:042b} : {amp.real:+f} {amp.imag:+f} i"
 
 
 def main(

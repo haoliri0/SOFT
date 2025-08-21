@@ -98,33 +98,33 @@ def read_table_content(lines: Iterator[str], args: StnArgs) -> tuple[str, ...]:
     return tuple(read_nonempty_line(lines) for _ in range(args.qubits_n * 2))
 
 
-def read_amps_content(lines: Iterator[str]) -> dict[str, complex]:
+def read_entries_content(lines: Iterator[str]) -> dict[str, complex]:
     line = read_nonempty_line(lines)
     entries_n_pattern = re.compile(f"entries_n=(.*)")
     entries_n_str = entries_n_pattern.match(line).group(1)
     entries_n = int(entries_n_str)
 
-    amps = {}
-    amp_entry_pattern = re.compile(f"(.*):(.*)")
+    entries = {}
+    entry_pattern = re.compile(f"(.*):(.*)")
     for _ in range(entries_n):
         line = read_nonempty_line(lines)
-        match = amp_entry_pattern.match(line)
-        key = match.group(1)
-        key = key.strip()
-        value = match.group(2)
-        value = value.replace("i", "j")
-        value = value.replace(" ", "")
-        value = complex(value)
-        amps[key] = value
-    return amps
+        match = entry_pattern.match(line)
+        bst = match.group(1)
+        bst = bst.strip()
+        amp = match.group(2)
+        amp = amp.replace("i", "j")
+        amp = amp.replace(" ", "")
+        amp = complex(amp)
+        entries[bst] = amp
+    return entries
 
 
 def read_shot_state_content(lines: Iterator[str], args: StnArgs):
     read_specified_label(lines, "table")
     table = read_table_content(lines, args)
-    read_specified_label(lines, "amplitudes")
-    amps = read_amps_content(lines)
-    return table, amps
+    read_specified_label(lines, "entries")
+    entries = read_entries_content(lines)
+    return table, entries
 
 
 def main(
@@ -156,28 +156,28 @@ def main(
                 if message is None:
                     exhausted = True
                     break
-                gate, table, amps = message
+                gate, table, entries = message
                 if gate is not None:
                     print(f"gate: {gate}")
 
                 print(f"table:")
                 for line in table:
                     print(f"  {line}")
-                print(f"amps:")
-                for key, value in amps.items():
+                print(f"entries:")
+                for key, value in entries.items():
                     value=complex(value)
                     print(f"  {key}: {value.real:+f} {value.imag:+f} i")
 
                 read_specified_label(process.stdout, "state")
                 read_specified_label(process.stdout, "shot 0")
                 error = read_error(process.stdout)
-                table2, amps2 = read_shot_state_content(process.stdout, args)
+                table2, entries2 = read_shot_state_content(process.stdout, args)
 
                 print(f"table2:")
                 for line in table2:
                     print(f"  {line}")
-                print(f"amps2:")
-                for key, value in amps2.items():
+                print(f"entries2:")
+                for key, value in entries2.items():
                     value = complex(value)
                     print(f"  {key}: {value.real:+f} {value.imag:+f} i")
 
@@ -191,11 +191,11 @@ def main(
                     errors.append(error)
                     break
 
-                for key in set(amps.keys()) | set(amps2.keys()):
-                    value1 = amps.get(key, 0)
-                    value2 = amps2.get(key, 0)
+                for key in set(entries.keys()) | set(entries2.keys()):
+                    value1 = entries.get(key, 0)
+                    value2 = entries2.get(key, 0)
                     if not np.allclose(value1, value2, rtol=1e-05, atol=1e-05):
-                        error = ValueError(f"Found differences in amps[{key}]: \n{value1} != {value2}")
+                        error = ValueError(f"Found differences in entries[{key}]: \n{value1} != {value2}")
                         errors.append(error)
                         break
                 if errors:
@@ -222,10 +222,10 @@ def main(
                         process.stdin.write("\n")
                         last_gate = gate
                     case "state", _:
-                        table, amps = read_shot_state_content(fp, args)
+                        table, entries = read_shot_state_content(fp, args)
                         process.stdin.write("STATE")
                         process.stdin.write("\n")
-                        queue.put((last_gate, table, amps))
+                        queue.put((last_gate, table, entries))
                         last_gate = None
                 process.stdin.flush()
             except StopIteration:

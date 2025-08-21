@@ -82,7 +82,7 @@ def parse_stn_stdout_table(table_str: str) -> Clifford:
     return Clifford(lines)
 
 
-def parse_stn_stdout_amps_entry(s: str):
+def parse_stn_stdout_entry(s: str):
     bst, amp = s.split(':')
     bst = bst.strip()
     bst = map(int, bst)
@@ -94,34 +94,34 @@ def parse_stn_stdout_amps_entry(s: str):
     return bst, amp
 
 
-def parse_stn_stdout_amps(amps_str: str):
-    lines = split_and_clean_lines(amps_str)
+def parse_stn_stdout_entries(entries_str: str):
+    lines = split_and_clean_lines(entries_str)
     matching = re.match(r'entries_n=([0-9]+)', lines[0])
     entries_n = int(matching.group(1))
-    entries = map(parse_stn_stdout_amps_entry, lines[1:1 + entries_n])
+    entries = map(parse_stn_stdout_entry, lines[1:1 + entries_n])
     return tuple(entries)
 
 
 def parse_stn_stdout_state(s: str):
     table_title = 'table:'
     decomp_title = 'decomposed:'
-    amps_title = 'amplitudes:'
+    entries_title = 'entries:'
     results_title = 'results:'
 
     table_head = s.find(table_title, 0, len(s))
     table_tail = s.find(decomp_title, table_head, len(s))
-    amps_head = s.find(amps_title, table_tail, len(s))
-    amps_tail = s.find(results_title, amps_head, len(s))
-    amps_tail = s.find("\n\n", amps_head, len(s)) \
-        if amps_tail == -1 else amps_tail
-    if -1 in (table_head, table_tail, amps_head, amps_tail):
+    entries_head = s.find(entries_title, table_tail, len(s))
+    entries_tail = s.find(results_title, entries_head, len(s))
+    entries_tail = s.find("\n\n", entries_head, len(s)) \
+        if entries_tail == -1 else entries_tail
+    if -1 in (table_head, table_tail, entries_head, entries_tail):
         raise ValueError
 
     table_str = s[table_head + len(table_title):table_tail]
-    amps_str = s[amps_head + len(amps_title):amps_tail]
+    entries_str = s[entries_head + len(entries_title):entries_tail]
     clifford = parse_stn_stdout_table(table_str)
-    amps = parse_stn_stdout_amps(amps_str)
-    return compute_clifford_state(clifford, amps)
+    entries = parse_stn_stdout_entries(entries_str)
+    return compute_clifford_state(clifford, entries)
 
 
 def parse_stn_mode2_stdout(stdout: str):

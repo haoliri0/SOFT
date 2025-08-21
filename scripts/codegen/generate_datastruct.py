@@ -580,8 +580,8 @@ __device__ __host__
 Bit *get_stab_bit_ptr(const Qid qubit_i) const {
     return get_stab_bits_ptr() + qubit_i;
 }\n""")
-    amps_spec = DynamicStructSpec(
-        name="AmpsMap",
+    entries_spec = DynamicStructSpec(
+        name="Entries",
         params=(
             ParamSpec(name="qubits_n", type="Qid"),
             ParamSpec(name="entries_m", type="Eid")),
@@ -702,9 +702,9 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
                     spec=decomp_spec,
                     args=("qubits_n",))),
             ItemFieldSpec(
-                name="amps",
+                name="entries",
                 type=DynamicStructTypeSpec(
-                    spec=amps_spec,
+                    spec=entries_spec,
                     args=("qubits_n", "entries_m"))),
             ItemFieldSpec(
                 name="results",

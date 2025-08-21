@@ -270,7 +270,7 @@ void perform_state_op(
         printf("shot %u:\n", shot_i);
         print_error(shot_state_ptr.get_results_ptr(), 2);
         print_table(shot_state_ptr.get_table_ptr(), 2);
-        print_amps(shot_state_ptr.get_amps_ptr(), false, 2);
+        print_entries(shot_state_ptr.get_entries_ptr(), false, 2);
     }
 }
 

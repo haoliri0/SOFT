@@ -29,23 +29,22 @@ void cuda_init_table(cudaStream_t const stream, const ShotsStatePtr shots_state_
 
 
 static __device__
-void op_init_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx) {
+void op_init_entries(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
-    const AmpsMapPtr amps_map_ptr = shots_state_ptr
-        .get_shot_ptr(shot_i)
-        .get_amps_ptr();
-    Bst &bst0 = *amps_map_ptr.get_bst_ptr(0);
-    Amp &amp0 = *amps_map_ptr.get_amp_ptr(0);
-    Eid &entries_n = *amps_map_ptr.get_entries_n_ptr();
+    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+    const EntriesPtr entries_ptr = shot_state_ptr.get_entries_ptr();
+    Bst &bst0 = *entries_ptr.get_bst_ptr(0);
+    Amp &amp0 = *entries_ptr.get_amp_ptr(0);
+    Eid &entries_n = *entries_ptr.get_entries_n_ptr();
     bst0 = 0;
     amp0 = 1;
     entries_n = 1;
 }
 
 static __host__
-void cuda_init_amps(cudaStream_t const stream, const ShotsStatePtr shots_state_ptr) {
+void cuda_init_entries(cudaStream_t const stream, const ShotsStatePtr shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
-    cuda_dims_op<ShotsStatePtr, 1, op_init_amps>
+    cuda_dims_op<ShotsStatePtr, 1, op_init_entries>
         (stream, shots_state_ptr, dimsof(shots_n));
 }
 
@@ -97,7 +96,7 @@ cudaError_t Simulator::create(
         if (err != cudaSuccess) break;
 
         cuda_init_table(this->stream, this->shots_state_ptr);
-        cuda_init_amps(this->stream, this->shots_state_ptr);
+        cuda_init_entries(this->stream, this->shots_state_ptr);
         cuda_init_rand(this->stream, this->shots_state_ptr, seed);
 
         // wait for async operations to complete

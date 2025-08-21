@@ -468,7 +468,7 @@ struct DecompPtr : DecompArgs {
     }
 };
 
-struct AmpsMapArgs {
+struct EntriesArgs {
     Qid qubits_n;
     Eid entries_m;
     
@@ -732,7 +732,7 @@ struct AmpsMapArgs {
     }
 };
 
-struct AmpsMapPtr : AmpsMapArgs {
+struct EntriesPtr : EntriesArgs {
     char *ptr;
     
     __device__ __host__
@@ -1129,29 +1129,29 @@ struct ShotStateArgs {
     }
     
     __device__ __host__
-    size_t get_amps_size_bytes_n() const {
-        return AmpsMapArgs{qubits_n, entries_m}.get_size_bytes_n();
+    size_t get_entries_size_bytes_n() const {
+        return EntriesArgs{qubits_n, entries_m}.get_size_bytes_n();
     }
     
     __device__ __host__
-    size_t get_amps_align_bytes_n() const {
-        return AmpsMapArgs{qubits_n, entries_m}.get_align_bytes_n();
+    size_t get_entries_align_bytes_n() const {
+        return EntriesArgs{qubits_n, entries_m}.get_align_bytes_n();
     }
     
     __device__ __host__
-    size_t get_amps_pad_bytes_n() const {
+    size_t get_entries_pad_bytes_n() const {
         return compute_pad_bytes_n(
             get_decomp_offset_bytes_n() +
             get_decomp_size_bytes_n(),
-            get_amps_align_bytes_n());
+            get_entries_align_bytes_n());
     }
     
     __device__ __host__
-    size_t get_amps_offset_bytes_n() const {
+    size_t get_entries_offset_bytes_n() const {
         return 
             get_decomp_offset_bytes_n() +
             get_decomp_size_bytes_n() +
-            get_amps_pad_bytes_n();
+            get_entries_pad_bytes_n();
     }
     
     __device__ __host__
@@ -1167,16 +1167,16 @@ struct ShotStateArgs {
     __device__ __host__
     size_t get_results_pad_bytes_n() const {
         return compute_pad_bytes_n(
-            get_amps_offset_bytes_n() +
-            get_amps_size_bytes_n(),
+            get_entries_offset_bytes_n() +
+            get_entries_size_bytes_n(),
             get_results_align_bytes_n());
     }
     
     __device__ __host__
     size_t get_results_offset_bytes_n() const {
         return 
-            get_amps_offset_bytes_n() +
-            get_amps_size_bytes_n() +
+            get_entries_offset_bytes_n() +
+            get_entries_size_bytes_n() +
             get_results_pad_bytes_n();
     }
     
@@ -1187,8 +1187,8 @@ struct ShotStateArgs {
             get_table_size_bytes_n() +
             get_decomp_pad_bytes_n() +
             get_decomp_size_bytes_n() +
-            get_amps_pad_bytes_n() +
-            get_amps_size_bytes_n() +
+            get_entries_pad_bytes_n() +
+            get_entries_size_bytes_n() +
             get_results_pad_bytes_n() +
             get_results_size_bytes_n();
     }
@@ -1198,7 +1198,7 @@ struct ShotStateArgs {
         return max(
             get_table_align_bytes_n(),
             get_decomp_align_bytes_n(),
-            get_amps_align_bytes_n(),
+            get_entries_align_bytes_n(),
             get_results_align_bytes_n());
     }
 };
@@ -1219,8 +1219,8 @@ struct ShotStatePtr : ShotStateArgs {
     }
     
     __device__ __host__
-    AmpsMapPtr get_amps_ptr() const {
-        const size_t offset = get_amps_offset_bytes_n();
+    EntriesPtr get_entries_ptr() const {
+        const size_t offset = get_entries_offset_bytes_n();
         return {qubits_n, entries_m, ptr + offset};
     }
     

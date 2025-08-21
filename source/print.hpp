@@ -152,7 +152,7 @@ void print_decomp(const DecompPtr ptr, const unsigned int indent) {
 }
 
 static
-void print_amp_entry(const AmpsMapPtr ptr, const Eid entry_i, const unsigned int indent) {
+void print_entry(const EntriesPtr ptr, const Eid entry_i, const unsigned int indent) {
     const Bst bst = *ptr.get_bst_ptr(entry_i);
     const Amp amp = *ptr.get_amp_ptr(entry_i);
     print_indent(indent);
@@ -163,15 +163,15 @@ void print_amp_entry(const AmpsMapPtr ptr, const Eid entry_i, const unsigned int
 }
 
 static
-void print_amps(const AmpsMapPtr ptr, const bool full, const unsigned int indent) {
+void print_entries(const EntriesPtr ptr, const bool full, const unsigned int indent) {
     const Eid entries_m = ptr.entries_m;
     const Eid entries_n = *ptr.get_entries_n_ptr();
     print_indent(indent);
-    printf("amplitudes:\n");
+    printf("entries:\n");
     print_indent(indent + 1);
     printf("entries_n=%u\n", entries_n);
     for (Eid entry_i = 0; entry_i < (full ? entries_m : entries_n); ++entry_i)
-        print_amp_entry(ptr, entry_i, indent + 1);
+        print_entry(ptr, entry_i, indent + 1);
 }
 
 static
@@ -210,7 +210,7 @@ static
 void print_shot_state(const ShotStatePtr &ptr, const unsigned int indent) {
     print_table(ptr.get_table_ptr(), indent + 1);
     print_decomp(ptr.get_decomp_ptr(), indent + 1);
-    print_amps(ptr.get_amps_ptr(), true, indent + 1);
+    print_entries(ptr.get_entries_ptr(), true, indent + 1);
     print_results(ptr.get_results_ptr(), indent + 1);
 }
 
