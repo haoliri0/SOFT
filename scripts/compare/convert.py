@@ -52,7 +52,7 @@ def iter_convert_lines(lines: Iterable[str]) -> Iterator[str]:
 
     yield "args:"
     yield f"  qubits_n={qubits_n}"
-    yield "  amps_m=4096"
+    yield "  entries_m=4096"
     yield "  results_m=1024"
     yield ""
 
@@ -143,7 +143,7 @@ def iter_convert_lines(lines: Iterable[str]) -> Iterator[str]:
         amplitudes = amplitudes.strip()
         amplitudes = amplitudes.replace("np.complex128", "")
         amplitudes = eval(amplitudes)
-        yield f"    amps_n={len(amplitudes)}"
+        yield f"    entries_n={len(amplitudes)}"
         for key, value in amplitudes.items():
             key = int(key)
             value = complex(value)

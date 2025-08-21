@@ -13,7 +13,7 @@ from scripts.verify.utils_str import split_and_clean_lines
 def make_stn_cmd(
     exec_file_path: str,
     qubits_n: int,
-    amps_m: int,
+    entries_m: int,
     results_n: int,
     mode: int,
 ):
@@ -21,7 +21,7 @@ def make_stn_cmd(
         exec_file_path,
         "--shots_n", "1",
         "--qubits_n", str(qubits_n),
-        "--amps_m", str(amps_m),
+        "--entries_m", str(entries_m),
         "--results_m", str(results_n),
         "--mode", str(mode)]
 
@@ -96,9 +96,9 @@ def parse_stn_stdout_amps_entry(s: str):
 
 def parse_stn_stdout_amps(amps_str: str):
     lines = split_and_clean_lines(amps_str)
-    matching = re.match(r'amps_n=([0-9]+)', lines[0])
-    amps_n = int(matching.group(1))
-    entries = map(parse_stn_stdout_amps_entry, lines[1:1 + amps_n])
+    matching = re.match(r'entries_n=([0-9]+)', lines[0])
+    entries_n = int(matching.group(1))
+    entries = map(parse_stn_stdout_amps_entry, lines[1:1 + entries_n])
     return tuple(entries)
 
 
@@ -135,13 +135,13 @@ def run_stn_mode1(
     ops: Iterable[Op],
     results: Iterable[int],
     qubits_n: int,
-    amps_m: int,
+    entries_m: int,
     results_n: int,
 ):
     cmd = make_stn_cmd(
         exec_file_path=exec_file_path,
         qubits_n=qubits_n,
-        amps_m=amps_m,
+        entries_m=entries_m,
         results_n=results_n,
         mode=1)
     process = subprocess.Popen(cmd,
@@ -164,13 +164,13 @@ def run_stn_mode2(
     ops: Iterable[Op],
     results: Iterable[int],
     qubits_n: int,
-    amps_m: int,
+    entries_m: int,
     results_n: int,
 ):
     cmd = make_stn_cmd(
         exec_file_path=exec_file_path,
         qubits_n=qubits_n,
-        amps_m=amps_m,
+        entries_m=entries_m,
         results_n=results_n,
         mode=2)
     process = subprocess.Popen(cmd,

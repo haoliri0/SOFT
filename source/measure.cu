@@ -8,18 +8,18 @@
 using namespace StnCuda;
 
 static __device__
-void compute_measure_amps_situation0(const ShotStatePtr shot_state_ptr, const Kid amp_i) {
+void compute_measure_amps_situation0(const ShotStatePtr shot_state_ptr, const Eid entry_i) {
     const Qid qubits_n = shot_state_ptr.qubits_n;
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const Bit *stab = decomp_ptr.get_stab_bits_ptr();
     const Phs decomp_phase = *decomp_ptr.get_phase_ptr();
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
-    const Aid aid = *amps_map_ptr.get_aid_ptr(amp_i);
-    const Amp amp = *amps_map_ptr.get_amp_ptr(amp_i);
-    Aid &aid0 = *amps_map_ptr.get_half0_aid_ptr(amp_i);
-    Amp &amp0 = *amps_map_ptr.get_half0_amp_ptr(amp_i);
-    Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(amp_i);
-    Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(amp_i);
+    const Aid aid = *amps_map_ptr.get_aid_ptr(entry_i);
+    const Amp amp = *amps_map_ptr.get_amp_ptr(entry_i);
+    Aid &aid0 = *amps_map_ptr.get_half0_aid_ptr(entry_i);
+    Amp &amp0 = *amps_map_ptr.get_half0_amp_ptr(entry_i);
+    Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(entry_i);
+    Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(entry_i);
 
     const Bit sign_phase = decomp_phase / 2 % 2; // definitely +1 or -1
     const Bit sign_stab = compute_sign(aid, stab, qubits_n);
@@ -37,19 +37,19 @@ void compute_measure_amps_situation0(const ShotStatePtr shot_state_ptr, const Ki
 }
 
 static __device__
-void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Kid amp_i, const Qid pivot) {
+void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Eid entry_i, const Qid pivot) {
     const Qid qubits_n = shot_state_ptr.qubits_n;
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const Bit *stab = decomp_ptr.get_stab_bits_ptr();
     const Bit *destab = decomp_ptr.get_destab_bits_ptr();
     const Phs decomp_phase = *decomp_ptr.get_phase_ptr();
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
-    const Aid aid = *amps_map_ptr.get_aid_ptr(amp_i);
-    const Amp amp = *amps_map_ptr.get_amp_ptr(amp_i);
-    Aid &aid0 = *amps_map_ptr.get_half0_aid_ptr(amp_i);
-    Amp &amp0 = *amps_map_ptr.get_half0_amp_ptr(amp_i);
-    Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(amp_i);
-    Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(amp_i);
+    const Aid aid = *amps_map_ptr.get_aid_ptr(entry_i);
+    const Amp amp = *amps_map_ptr.get_amp_ptr(entry_i);
+    Aid &aid0 = *amps_map_ptr.get_half0_aid_ptr(entry_i);
+    Amp &amp0 = *amps_map_ptr.get_half0_amp_ptr(entry_i);
+    Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(entry_i);
+    Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(entry_i);
     constexpr Flt coef = M_SQRT1_2; // sqrt(1/2);
 
     // 取 aid 中的第 pivot 那个 bit
@@ -78,7 +78,7 @@ void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Ki
 static __device__
 void op_compute_measure_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
-    Aid const amp_i = dims_idx.get<1>();
+    Aid const entry_i = dims_idx.get<1>();
 
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
@@ -89,11 +89,11 @@ void op_compute_measure_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     Err &err = *results_ptr.get_error_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
-    // check amps_m, amps_n, amp_i
-    const Kid amps_m = amps_map_ptr.amps_m;
-    const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
-    if (amp_i >= amps_n) return; // 线程超出了 amp_n 的范围，不进行计算
-    if (amp_i == 0 && amps_n > amps_m / 2) {
+    // check entries_m, entries_n, entry_i
+    const Eid entries_m = amps_map_ptr.entries_m;
+    const Eid entries_n = *amps_map_ptr.get_entries_n_ptr();
+    if (entry_i >= entries_n) return; // 线程超出了 amp_n 的范围，不进行计算
+    if (entry_i == 0 && entries_n > entries_m / 2) {
         // 数量超过一半，无法计算，设置 err 状态
         // 只有一条线程会执行该修改，避免写入冲突
         err = err_map_overflow;
@@ -103,77 +103,77 @@ void op_compute_measure_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     // check pivot
     const Qid pivot = *decomp_ptr.get_pivot_ptr();
     if (pivot == NullPivot) {
-        compute_measure_amps_situation0(shot_state_ptr, amp_i);
+        compute_measure_amps_situation0(shot_state_ptr, entry_i);
     } else {
-        compute_measure_amps_situation1(shot_state_ptr, amp_i, pivot);
+        compute_measure_amps_situation1(shot_state_ptr, entry_i, pivot);
     }
 }
 
 static __host__
 void cuda_compute_measure_amps(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
-    const Kid amps_m = shots_state_ptr.amps_m;
+    const Eid entries_m = shots_state_ptr.entries_m;
     cuda_dims_op<ShotsStatePtr, 2, op_compute_measure_amps>
-        (stream, shots_state_ptr, dimsof(shots_n, amps_m / 2));
+        (stream, shots_state_ptr, dimsof(shots_n, entries_m / 2));
 }
 
 
 static __device__
 void op_compute_measure_probs_situation0(const AmpsMapPtr amps_map_ptr, const Bit result) {
-    const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
-    Kid &amps_n_new = *(!result ? amps_map_ptr.get_half0_amps_n_ptr() : amps_map_ptr.get_half1_amps_n_ptr());
+    const Eid entries_n = *amps_map_ptr.get_entries_n_ptr();
+    Eid &entries_n_new = *(!result ? amps_map_ptr.get_half0_entries_n_ptr() : amps_map_ptr.get_half1_entries_n_ptr());
     Flt &prob = *(!result ? amps_map_ptr.get_half0_prob_ptr() : amps_map_ptr.get_half1_prob_ptr());
     Aid *aids = !result ? amps_map_ptr.get_half0_aids_ptr() : amps_map_ptr.get_half1_aids_ptr();
     Amp *amps = !result ? amps_map_ptr.get_half0_amps_ptr() : amps_map_ptr.get_half1_amps_ptr();
 
     prob = 0;
-    amps_n_new = 0;
-    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Aid aid = aids[amp_i];
-        const Amp amp = amps[amp_i];
+    entries_n_new = 0;
+    for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
+        const Aid aid = aids[entry_i];
+        const Amp amp = amps[entry_i];
 
         constexpr Amp amp_zero = 0;
         if (amp == amp_zero) continue;
 
-        const Kid amp_j = amps_n_new;
+        const Eid amp_j = entries_n_new;
         aids[amp_j] = aid;
         amps[amp_j] = amp;
         prob += norm(amp);
-        amps_n_new++;
+        entries_n_new++;
     }
 }
 
 static __device__
 void op_compute_measure_probs_situation1(const AmpsMapPtr amps_map_ptr, const Bit result) {
-    const Kid amps_n = *amps_map_ptr.get_amps_n_ptr();
-    Kid &amps_n_new = *(!result ? amps_map_ptr.get_half0_amps_n_ptr() : amps_map_ptr.get_half1_amps_n_ptr());
+    const Eid entries_n = *amps_map_ptr.get_entries_n_ptr();
+    Eid &entries_n_new = *(!result ? amps_map_ptr.get_half0_entries_n_ptr() : amps_map_ptr.get_half1_entries_n_ptr());
     Flt &prob = *(!result ? amps_map_ptr.get_half0_prob_ptr() : amps_map_ptr.get_half1_prob_ptr());
     Aid *aids = !result ? amps_map_ptr.get_half0_aids_ptr() : amps_map_ptr.get_half1_aids_ptr();
     Amp *amps = !result ? amps_map_ptr.get_half0_amps_ptr() : amps_map_ptr.get_half1_amps_ptr();
 
-    amps_n_new = 0;
-    for (Kid amp_i = 0; amp_i < amps_n; ++amp_i) {
-        const Aid aid = aids[amp_i];
-        const Amp amp = amps[amp_i];
+    entries_n_new = 0;
+    for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
+        const Aid aid = aids[entry_i];
+        const Amp amp = amps[entry_i];
 
-        Kid amp_j = 0;
-        for (; amp_j < amps_n_new; ++amp_j) {
+        Eid amp_j = 0;
+        for (; amp_j < entries_n_new; ++amp_j) {
             if (aids[amp_j] == aid) {
                 amps[amp_j] += amp;
                 break;
             }
         }
 
-        if (amp_j == amps_n_new) {
+        if (amp_j == entries_n_new) {
             aids[amp_j] = aid;
             amps[amp_j] = amp;
-            amps_n_new++;
+            entries_n_new++;
         }
     }
 
     prob = 0;
-    for (int amp_i = 0; amp_i < amps_n_new; ++amp_i) {
-        const Amp amp = amps[amp_i];
+    for (int entry_i = 0; entry_i < entries_n_new; ++entry_i) {
+        const Amp amp = amps[entry_i];
         prob += norm(amp);
     }
 }
@@ -278,7 +278,7 @@ void cuda_compute_measure_result(cudaStream_t const stream, ShotsStatePtr const 
 static __device__
 void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
-    Kid const amp_i = dims_idx.get<1>();
+    Eid const entry_i = dims_idx.get<1>();
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
@@ -295,26 +295,32 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const Flt result_prob = *results_ptr.get_prob_ptr(result_i);
 
     // apply result
-    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
-    const Kid amps_n_new = *(!result_bit ? amps_map_ptr.get_half0_amps_n_ptr() : amps_map_ptr.get_half1_amps_n_ptr());
-    const Aid *aids_src = !result_bit ? amps_map_ptr.get_half0_aids_ptr() : amps_map_ptr.get_half1_aids_ptr();
-    const Amp *amps_src = !result_bit ? amps_map_ptr.get_half0_amps_ptr() : amps_map_ptr.get_half1_amps_ptr();
+    Eid &entries_n = *amps_map_ptr.get_entries_n_ptr();
+    const Eid entries_n_new = *(!result_bit
+        ? amps_map_ptr.get_half0_entries_n_ptr()
+        : amps_map_ptr.get_half1_entries_n_ptr());
+    const Aid *aids_src = !result_bit
+        ? amps_map_ptr.get_half0_aids_ptr()
+        : amps_map_ptr.get_half1_aids_ptr();
+    const Amp *amps_src = !result_bit
+        ? amps_map_ptr.get_half0_amps_ptr()
+        : amps_map_ptr.get_half1_amps_ptr();
     Aid *aids_dst = amps_map_ptr.get_aids_ptr();
     Amp *amps_dst = amps_map_ptr.get_amps_ptr();
 
-    if (amp_i == 0) amps_n = amps_n_new; // 更新 amps_n（仅线程 0 更新，避免写入冲突）
-    if (amp_i >= amps_n_new) return; // 线程超出了 amp_n 的范围，不进行计算
+    if (entry_i == 0) entries_n = entries_n_new; // 更新 entries_n（仅线程 0 更新，避免写入冲突）
+    if (entry_i >= entries_n_new) return; // 线程超出了 amp_n 的范围，不进行计算
 
-    aids_dst[amp_i] = aids_src[amp_i];
-    amps_dst[amp_i] = amps_src[amp_i] / sqrt(result_prob);
+    aids_dst[entry_i] = aids_src[entry_i];
+    amps_dst[entry_i] = amps_src[entry_i] / sqrt(result_prob);
 }
 
 static __host__
 void cuda_apply_measure_result(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
-    const Kid amps_m = shots_state_ptr.amps_m;
+    const Eid entries_m = shots_state_ptr.entries_m;
     cuda_dims_op<ShotsStatePtr, 2, op_apply_measure_result>
-        (stream, shots_state_ptr, dimsof(shots_n, amps_m / 2));
+        (stream, shots_state_ptr, dimsof(shots_n, entries_m / 2));
 }
 
 

@@ -584,31 +584,31 @@ Bit *get_stab_bit_ptr(const Qid qubit_i) const {
         name="AmpsMap",
         params=(
             ParamSpec(name="qubits_n", type="Qid"),
-            ParamSpec(name="amps_m", type="Kid")),
+            ParamSpec(name="entries_m", type="Eid")),
         fields=(
             ItemFieldSpec(
-                name="amps_n",
-                type=ValueTypeSpec(name="Kid")),
+                name="entries_n",
+                type=ValueTypeSpec(name="Eid")),
             ListFieldSpec(
                 name="aids",
                 item_name="aid",
                 item_type=ValueTypeSpec(name="Aid"),
-                index_name="amp_i",
-                index_type="Kid",
-                count="amps_m"),
+                index_name="entry_i",
+                index_type="Eid",
+                count="entries_m"),
             ListFieldSpec(
                 name="amps",
                 item_name="amp",
                 item_type=ValueTypeSpec(name="Amp"),
-                index_name="amp_i",
-                index_type="Kid",
-                count="amps_m"),
+                index_name="entry_i",
+                index_type="Eid",
+                count="entries_m"),
             ItemFieldSpec(
-                name="half0_amps_n",
-                type=ValueTypeSpec(name="Kid")),
+                name="half0_entries_n",
+                type=ValueTypeSpec(name="Eid")),
             ItemFieldSpec(
-                name="half1_amps_n",
-                type=ValueTypeSpec(name="Kid")),
+                name="half1_entries_n",
+                type=ValueTypeSpec(name="Eid")),
             ItemFieldSpec(
                 name="half0_prob",
                 type=ValueTypeSpec(name="Flt")),
@@ -622,8 +622,8 @@ Aid *get_half0_aids_ptr() const {
 }
 
 __device__ __host__
-Aid *get_half0_aid_ptr(const Kid amp_i) const {
-    return get_half0_aids_ptr() + amp_i;
+Aid *get_half0_aid_ptr(const Eid entry_i) const {
+    return get_half0_aids_ptr() + entry_i;
 }
 
 __device__ __host__
@@ -632,28 +632,28 @@ Amp *get_half0_amps_ptr() const {
 }
 
 __device__ __host__
-Amp *get_half0_amp_ptr(const Kid amp_i) const {
-    return get_half0_amps_ptr() + amp_i;
+Amp *get_half0_amp_ptr(const Eid entry_i) const {
+    return get_half0_amps_ptr() + entry_i;
 }
 
 __device__ __host__
 Aid *get_half1_aids_ptr() const {
-    return get_aids_ptr() + amps_m / 2;
+    return get_aids_ptr() + entries_m / 2;
 }
 
 __device__ __host__
-Aid *get_half1_aid_ptr(const Kid amp_i) const {
-    return get_half1_aids_ptr() + amp_i;
+Aid *get_half1_aid_ptr(const Eid entry_i) const {
+    return get_half1_aids_ptr() + entry_i;
 }
 
 __device__ __host__
 Amp *get_half1_amps_ptr() const {
-    return get_amps_ptr() + amps_m / 2;
+    return get_amps_ptr() + entries_m / 2;
 }
 
 __device__ __host__
-Amp *get_half1_amp_ptr(const Kid amp_i) const {
-    return get_half1_amps_ptr() + amp_i;
+Amp *get_half1_amp_ptr(const Eid entry_i) const {
+    return get_half1_amps_ptr() + entry_i;
 }\n""")
     results_spec = DynamicStructSpec(
         name="Results",
@@ -688,7 +688,7 @@ Amp *get_half1_amp_ptr(const Kid amp_i) const {
         name="ShotState",
         params=(
             ParamSpec(name="qubits_n", type="Qid"),
-            ParamSpec(name="amps_m", type="Kid"),
+            ParamSpec(name="entries_m", type="Eid"),
             ParamSpec(name="results_m", type="Rid")),
         fields=(
             ItemFieldSpec(
@@ -705,7 +705,7 @@ Amp *get_half1_amp_ptr(const Kid amp_i) const {
                 name="amps",
                 type=DynamicStructTypeSpec(
                     spec=amps_spec,
-                    args=("qubits_n", "amps_m"))),
+                    args=("qubits_n", "entries_m"))),
             ItemFieldSpec(
                 name="results",
                 type=DynamicStructTypeSpec(
@@ -717,7 +717,7 @@ Amp *get_half1_amp_ptr(const Kid amp_i) const {
         params=(
             ParamSpec(name="shots_n", type="Sid"),
             ParamSpec(name="qubits_n", type="Qid"),
-            ParamSpec(name="amps_m", type="Kid"),
+            ParamSpec(name="entries_m", type="Eid"),
             ParamSpec(name="results_m", type="Rid")),
         fields=(
             ListFieldSpec(
@@ -725,7 +725,7 @@ Amp *get_half1_amp_ptr(const Kid amp_i) const {
                 item_name="shot",
                 item_type=DynamicStructTypeSpec(
                     spec=shot_state_spec,
-                    args=("qubits_n", "amps_m", "results_m")),
+                    args=("qubits_n", "entries_m", "results_m")),
                 index_name="shot_i",
                 index_type="Sid",
                 count="shots_n"),

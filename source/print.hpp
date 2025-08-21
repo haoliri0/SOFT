@@ -152,9 +152,9 @@ void print_decomp(const DecompPtr ptr, const unsigned int indent) {
 }
 
 static
-void print_amp_entry(const AmpsMapPtr ptr, const Kid amp_i, const unsigned int indent) {
-    const Aid aid = *ptr.get_aid_ptr(amp_i);
-    const Amp amp = *ptr.get_amp_ptr(amp_i);
+void print_amp_entry(const AmpsMapPtr ptr, const Eid entry_i, const unsigned int indent) {
+    const Aid aid = *ptr.get_aid_ptr(entry_i);
+    const Amp amp = *ptr.get_amp_ptr(entry_i);
     print_indent(indent);
     print_int_bits(aid, ptr.qubits_n);
     printf(" : ");
@@ -164,14 +164,14 @@ void print_amp_entry(const AmpsMapPtr ptr, const Kid amp_i, const unsigned int i
 
 static
 void print_amps(const AmpsMapPtr ptr, const bool full, const unsigned int indent) {
-    const Kid amps_m = ptr.amps_m;
-    const Kid amps_n = *ptr.get_amps_n_ptr();
+    const Eid entries_m = ptr.entries_m;
+    const Eid entries_n = *ptr.get_entries_n_ptr();
     print_indent(indent);
     printf("amplitudes:\n");
     print_indent(indent + 1);
-    printf("amps_n=%u\n", amps_n);
-    for (Kid amp_i = 0; amp_i < (full ? amps_m : amps_n); ++amp_i)
-        print_amp_entry(ptr, amp_i, indent + 1);
+    printf("entries_n=%u\n", entries_n);
+    for (Eid entry_i = 0; entry_i < (full ? entries_m : entries_n); ++entry_i)
+        print_amp_entry(ptr, entry_i, indent + 1);
 }
 
 static
@@ -229,7 +229,7 @@ static
 void print_simulator_args(const Simulator &simulator, const unsigned int indent) {
     const Sid shots_n = simulator.shots_state_ptr.shots_n;
     const Qid qubits_n = simulator.shots_state_ptr.qubits_n;
-    const Kid amps_m = simulator.shots_state_ptr.amps_m;
+    const Eid entries_m = simulator.shots_state_ptr.entries_m;
     const Rid results_m = simulator.shots_state_ptr.results_m;
 
     print_indent(indent);
@@ -237,7 +237,7 @@ void print_simulator_args(const Simulator &simulator, const unsigned int indent)
     print_indent(indent);
     printf("qubits_n=%u\n", qubits_n);
     print_indent(indent);
-    printf("amps_m=%u\n", amps_m);
+    printf("entries_m=%u\n", entries_m);
     print_indent(indent);
     printf("results_m=%u\n", results_m);
 }

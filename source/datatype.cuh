@@ -13,7 +13,7 @@ constexpr Err err_map_overflow = 1;
 
 using Sid = unsigned int;
 using Qid = unsigned int;
-using Kid = unsigned int;
+using Eid = unsigned int;
 using Aid = unsigned long long;
 using Rid = unsigned int;
 using Rvl = unsigned int;

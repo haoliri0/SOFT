@@ -36,10 +36,10 @@ void op_init_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx
         .get_amps_ptr();
     Aid &aid0 = *amps_map_ptr.get_aid_ptr(0);
     Amp &amp0 = *amps_map_ptr.get_amp_ptr(0);
-    Kid &amps_n = *amps_map_ptr.get_amps_n_ptr();
+    Eid &entries_n = *amps_map_ptr.get_entries_n_ptr();
     aid0 = 0;
     amp0 = 1;
-    amps_n = 1;
+    entries_n = 1;
 }
 
 static __host__
@@ -76,7 +76,7 @@ void cuda_init_rand(cudaStream_t const stream, const ShotsStatePtr shots_state_p
 cudaError_t Simulator::create(
     Sid const shots_n,
     Qid const qubits_n,
-    Kid const amps_m,
+    Eid const entries_m,
     Rid const results_m,
     unsigned long long const seed
 ) noexcept {
@@ -87,7 +87,7 @@ cudaError_t Simulator::create(
         if (err != cudaSuccess) break;
 
         // allocate state
-        this->shots_state_ptr = {shots_n, qubits_n, amps_m, results_m};
+        this->shots_state_ptr = {shots_n, qubits_n, entries_m, results_m};
         const size_t state_bytes_n = this->shots_state_ptr.get_size_bytes_n();
         err = cudaMallocAsync(&this->shots_state_ptr.ptr, state_bytes_n, this->stream);
         if (err != cudaSuccess) break;

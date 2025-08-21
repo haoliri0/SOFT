@@ -29,7 +29,7 @@ def verify_ops(*,
     label: str | None = None,
     exec_file_path: str,
     qubits_n: int,
-    amps_m: int,
+    entries_m: int,
     ops: Iterable[Op],
 ):
     ops = tuple(ops)
@@ -40,7 +40,7 @@ def verify_ops(*,
 
     states_stn = run_stn_mode2(
         exec_file_path, ops, results,
-        qubits_n, amps_m, max(results_n, 1))
+        qubits_n, entries_m, max(results_n, 1))
 
     fail_step_i = None
     for step_i, step_state_stn in enumerate(states_stn):
@@ -72,7 +72,7 @@ def verify_ops(*,
         cmd = make_stn_cmd(
             exec_file_path=exec_file_path,
             qubits_n=qubits_n,
-            amps_m=amps_m,
+            entries_m=entries_m,
             results_n=results_n,
             mode=2)
         print("command=" + " ".join(cmd))
@@ -89,21 +89,21 @@ def verify_ops(*,
 def verify_custom(*,
     exec_file_path: str,
     qubits_n: int,
-    amps_m: int,
+    entries_m: int,
     ops_str: str,
 ):
     ops = parse_ops(ops_str)
     verify_ops(
         exec_file_path=exec_file_path,
         qubits_n=qubits_n,
-        amps_m=amps_m,
+        entries_m=entries_m,
         ops=ops)
 
 
 def verify_random(*,
     exec_file_path: str,
     qubits_n: int,
-    amps_m: int,
+    entries_m: int,
     ops_n: int,
     seed_head: int = 0,
     seed_tail: int | None = None,
@@ -117,7 +117,7 @@ def verify_random(*,
             label=f"seed_{seed}",
             exec_file_path=exec_file_path,
             qubits_n=qubits_n,
-            amps_m=amps_m,
+            entries_m=entries_m,
             ops=ops)
         if not verified:
             break
@@ -128,5 +128,5 @@ if __name__ == "__main__":
     verify_random(
         exec_file_path=exec_file_path,
         qubits_n=8,
-        amps_m=1024,
+        entries_m=1024,
         ops_n=1024)

@@ -16,7 +16,7 @@ sys.path.append(project_dir_path)
 @dataclass(kw_only=True)
 class StnArgs:
     qubits_n: int
-    amps_m: int
+    entries_m: int
     results_m: int
 
 
@@ -52,7 +52,7 @@ def read_args(lines: Iterator[str]) -> StnArgs:
     read_specified_label(lines, "args")
 
     qubits_n_pattern = re.compile(f"qubits_n=(.*)")
-    amps_m_pattern = re.compile(f"amps_m=(.*)")
+    entries_m_pattern = re.compile(f"entries_m=(.*)")
     results_m_pattern = re.compile(f"results_m=(.*)")
 
     line = next(lines)
@@ -64,10 +64,10 @@ def read_args(lines: Iterator[str]) -> StnArgs:
 
     line = next(lines)
     line = line.strip()
-    amps_m_match = amps_m_pattern.match(line)
-    if amps_m_match is None:
+    entries_m_match = entries_m_pattern.match(line)
+    if entries_m_match is None:
         raise ValueError
-    amps_m = int(amps_m_match.group(1))
+    entries_m = int(entries_m_match.group(1))
 
     line = next(lines)
     line = line.strip()
@@ -78,7 +78,7 @@ def read_args(lines: Iterator[str]) -> StnArgs:
 
     return StnArgs(
         qubits_n=qubits_n,
-        amps_m=amps_m,
+        entries_m=entries_m,
         results_m=results_m)
 
 
@@ -100,13 +100,13 @@ def read_table_content(lines: Iterator[str], args: StnArgs) -> tuple[str, ...]:
 
 def read_amps_content(lines: Iterator[str]) -> dict[str, complex]:
     line = read_nonempty_line(lines)
-    amps_n_pattern = re.compile(f"amps_n=(.*)")
-    amps_n_str = amps_n_pattern.match(line).group(1)
-    amps_n = int(amps_n_str)
+    entries_n_pattern = re.compile(f"entries_n=(.*)")
+    entries_n_str = entries_n_pattern.match(line).group(1)
+    entries_n = int(entries_n_str)
 
     amps = {}
     amp_entry_pattern = re.compile(f"(.*):(.*)")
-    for _ in range(amps_n):
+    for _ in range(entries_n):
         line = read_nonempty_line(lines)
         match = amp_entry_pattern.match(line)
         key = match.group(1)
@@ -137,7 +137,7 @@ def main(
             exec_file_path,
             "--shots_n", "1",
             "--qubits_n", str(args.qubits_n),
-            "--amps_m", str(args.amps_m),
+            "--entries_m", str(args.entries_m),
             "--results_m", str(args.results_m)]
         print(f"{cmd=}")
         process = subprocess.Popen(cmd,
