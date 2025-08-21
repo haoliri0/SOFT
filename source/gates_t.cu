@@ -54,7 +54,7 @@ void op_update_entries_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const Phs decomp_phase_inv = -decomp_phase; // 这是 DDD 乘起来的系数，要取反得到 Z 分解的系数！
     const Amp decomp_phase_amp = phase_to_amp(decomp_phase_inv);
 
-    dst_bst = src_bst ^ bits_to_int(destab_bits, qubits_n);
+    dst_bst = src_bst ^ bits_to_bst(destab_bits, qubits_n);
     dst_amp = src_amp * coef * dagger_sign_amp * bst_sign_amp * decomp_phase_amp;
 }
 

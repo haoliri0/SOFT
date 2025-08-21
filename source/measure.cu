@@ -65,8 +65,8 @@ void compute_measure_entries_situation1(const ShotStatePtr shot_state_ptr, const
 
         amp0 = amp * coef * decomp_phase_amp * stab_sign_amp * result0_amp;
         amp1 = amp * coef * decomp_phase_amp * stab_sign_amp * result1_amp;
-        bst0 = bst ^ bits_to_int(destab, qubits_n);
-        bst1 = bst ^ bits_to_int(destab, qubits_n);
+        bst0 = bst ^ bits_to_bst(destab, qubits_n);
+        bst1 = bst ^ bits_to_bst(destab, qubits_n);
     } else {
         amp0 = amp * coef;
         amp1 = amp * coef;

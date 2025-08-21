@@ -6,16 +6,6 @@
 using namespace StnCuda;
 
 static __device__
-Bst bits_to_int(const Bit *bits, const unsigned int n) {
-    Bst v = 0;
-    for (unsigned int i = 0; i < n; i++) {
-        const Bst bit = !bits[i] ? 0 : 1;
-        v |= bit << i;
-    }
-    return v;
-}
-
-static __device__
 Bit compute_sign(Bst key, const Bit *stab_bits, const Qid qubits_n) {
     Bit sign = false;
     for (Qid qubit_i = 0; qubit_i < qubits_n; ++qubit_i) {
