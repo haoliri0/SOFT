@@ -1,6 +1,7 @@
 #ifndef STN_CUDA_EXCEPTIONS_HPP
 #define STN_CUDA_EXCEPTIONS_HPP
 
+#include<exception>
 #include<cuda_runtime.h>
 
 class CudaException final : public std::exception {
