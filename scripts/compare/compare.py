@@ -160,26 +160,10 @@ def main(
                 if gate is not None:
                     print(f"gate: {gate}")
 
-                print(f"table:")
-                for line in table:
-                    print(f"  {line}")
-                print(f"entries:")
-                for key, value in entries.items():
-                    value=complex(value)
-                    print(f"  {key}: {value.real:+f} {value.imag:+f} i")
-
                 read_specified_label(process.stdout, "state")
                 read_specified_label(process.stdout, "shot 0")
                 error = read_error(process.stdout)
                 table2, entries2 = read_shot_state_content(process.stdout, args)
-
-                print(f"table2:")
-                for line in table2:
-                    print(f"  {line}")
-                print(f"entries2:")
-                for key, value in entries2.items():
-                    value = complex(value)
-                    print(f"  {key}: {value.real:+f} {value.imag:+f} i")
 
                 if error:
                     error = ValueError(f"Found error: {error}")
@@ -189,6 +173,12 @@ def main(
                 if table != table2:
                     error = ValueError(f"Found differences in table: \n{table} != {table2}")
                     errors.append(error)
+                    print(f"table (expected):")
+                    for line in table:
+                        print(f"  {line}")
+                    print(f"table (actual):")
+                    for line in table2:
+                        print(f"  {line}")
                     break
 
                 for key in set(entries.keys()) | set(entries2.keys()):
@@ -199,6 +189,18 @@ def main(
                         errors.append(error)
                         break
                 if errors:
+                    print(f"entries (expected):")
+                    for key in sorted(entries.keys()):
+                        value = entries[key]
+                        value = complex(value)
+                        if abs(value) > 1e-6:
+                            print(f"  {key}: {value.real:+f} {value.imag:+f} i")
+                    print(f"entries (actual):")
+                    for key in sorted(entries2.keys()):
+                        value = entries2[key]
+                        value = complex(value)
+                        if abs(value) > 1e-6:
+                            print(f"  {key}: {value.real:+f} {value.imag:+f} i")
                     break
 
                 print("verified")
