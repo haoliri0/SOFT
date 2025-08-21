@@ -590,9 +590,9 @@ Bit *get_stab_bit_ptr(const Qid qubit_i) const {
                 name="entries_n",
                 type=ValueTypeSpec(name="Eid")),
             ListFieldSpec(
-                name="aids",
-                item_name="aid",
-                item_type=ValueTypeSpec(name="Aid"),
+                name="bsts",
+                item_name="bst",
+                item_type=ValueTypeSpec(name="Bst"),
                 index_name="entry_i",
                 index_type="Eid",
                 count="entries_m"),
@@ -617,13 +617,13 @@ Bit *get_stab_bit_ptr(const Qid qubit_i) const {
                 type=ValueTypeSpec(name="Flt"))),
         extra_ptr_body="""
 __device__ __host__
-Aid *get_half0_aids_ptr() const {
-    return get_aids_ptr();
+Bst *get_half0_bsts_ptr() const {
+    return get_bsts_ptr();
 }
 
 __device__ __host__
-Aid *get_half0_aid_ptr(const Eid entry_i) const {
-    return get_half0_aids_ptr() + entry_i;
+Bst *get_half0_bst_ptr(const Eid entry_i) const {
+    return get_half0_bsts_ptr() + entry_i;
 }
 
 __device__ __host__
@@ -637,13 +637,13 @@ Amp *get_half0_amp_ptr(const Eid entry_i) const {
 }
 
 __device__ __host__
-Aid *get_half1_aids_ptr() const {
-    return get_aids_ptr() + entries_m / 2;
+Bst *get_half1_bsts_ptr() const {
+    return get_bsts_ptr() + entries_m / 2;
 }
 
 __device__ __host__
-Aid *get_half1_aid_ptr(const Eid entry_i) const {
-    return get_half1_aids_ptr() + entry_i;
+Bst *get_half1_bst_ptr(const Eid entry_i) const {
+    return get_half1_bsts_ptr() + entry_i;
 }
 
 __device__ __host__

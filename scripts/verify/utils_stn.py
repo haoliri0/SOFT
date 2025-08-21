@@ -83,15 +83,15 @@ def parse_stn_stdout_table(table_str: str) -> Clifford:
 
 
 def parse_stn_stdout_amps_entry(s: str):
-    aid, amp = s.split(':')
-    aid = aid.strip()
-    aid = map(int, aid)
-    aid = map(bool, aid)
-    aid = tuple(aid)
+    bst, amp = s.split(':')
+    bst = bst.strip()
+    bst = map(int, bst)
+    bst = map(bool, bst)
+    bst = tuple(bst)
     amp = amp.strip()
     real, imag, _ = amp.split(' ')
     amp = float(real) + 1j * float(imag)
-    return aid, amp
+    return bst, amp
 
 
 def parse_stn_stdout_amps(amps_str: str):

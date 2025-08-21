@@ -14,19 +14,19 @@ void compute_measure_amps_situation0(const ShotStatePtr shot_state_ptr, const Ei
     const Bit *stab = decomp_ptr.get_stab_bits_ptr();
     const Phs decomp_phase = *decomp_ptr.get_phase_ptr();
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
-    const Aid aid = *amps_map_ptr.get_aid_ptr(entry_i);
+    const Bst bst = *amps_map_ptr.get_bst_ptr(entry_i);
     const Amp amp = *amps_map_ptr.get_amp_ptr(entry_i);
-    Aid &aid0 = *amps_map_ptr.get_half0_aid_ptr(entry_i);
+    Bst &bst0 = *amps_map_ptr.get_half0_bst_ptr(entry_i);
     Amp &amp0 = *amps_map_ptr.get_half0_amp_ptr(entry_i);
-    Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(entry_i);
+    Bst &bst1 = *amps_map_ptr.get_half1_bst_ptr(entry_i);
     Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(entry_i);
 
     const Bit sign_phase = decomp_phase / 2 % 2; // definitely +1 or -1
-    const Bit sign_stab = compute_sign(aid, stab, qubits_n);
+    const Bit sign_stab = compute_sign(bst, stab, qubits_n);
     const Bit sign = sign_phase ^ sign_stab;
 
-    aid0 = aid;
-    aid1 = aid;
+    bst0 = bst;
+    bst1 = bst;
     if (!sign) {
         amp0 = amp;
         amp1 = 0;
@@ -44,41 +44,41 @@ void compute_measure_amps_situation1(const ShotStatePtr shot_state_ptr, const Ei
     const Bit *destab = decomp_ptr.get_destab_bits_ptr();
     const Phs decomp_phase = *decomp_ptr.get_phase_ptr();
     const AmpsMapPtr amps_map_ptr = shot_state_ptr.get_amps_ptr();
-    const Aid aid = *amps_map_ptr.get_aid_ptr(entry_i);
+    const Bst bst = *amps_map_ptr.get_bst_ptr(entry_i);
     const Amp amp = *amps_map_ptr.get_amp_ptr(entry_i);
-    Aid &aid0 = *amps_map_ptr.get_half0_aid_ptr(entry_i);
+    Bst &bst0 = *amps_map_ptr.get_half0_bst_ptr(entry_i);
     Amp &amp0 = *amps_map_ptr.get_half0_amp_ptr(entry_i);
-    Aid &aid1 = *amps_map_ptr.get_half1_aid_ptr(entry_i);
+    Bst &bst1 = *amps_map_ptr.get_half1_bst_ptr(entry_i);
     Amp &amp1 = *amps_map_ptr.get_half1_amp_ptr(entry_i);
     constexpr Flt coef = M_SQRT1_2; // sqrt(1/2);
 
-    // 取 aid 中的第 pivot 那个 bit
-    constexpr Aid aid_one = 1;
-    const Aid aid_mask = aid_one << pivot;
-    if (aid & aid_mask) {
+    // 取 bst 中的第 pivot 那个 bit
+    constexpr Bst bst_one = 1;
+    const Bst bst_mask = bst_one << pivot;
+    if (bst & bst_mask) {
         const Phs decomp_phase_inv = -decomp_phase;
         const Amp decomp_phase_amp = phase_to_amp(decomp_phase_inv);
-        const Bit stab_sign = compute_sign(aid, stab, qubits_n);
+        const Bit stab_sign = compute_sign(bst, stab, qubits_n);
         const Flt stab_sign_amp = sign_to_flt(stab_sign);
         const Flt result0_amp = +1;
         const Flt result1_amp = -1;
 
         amp0 = amp * coef * decomp_phase_amp * stab_sign_amp * result0_amp;
         amp1 = amp * coef * decomp_phase_amp * stab_sign_amp * result1_amp;
-        aid0 = aid ^ bits_to_int(destab, qubits_n);
-        aid1 = aid ^ bits_to_int(destab, qubits_n);
+        bst0 = bst ^ bits_to_int(destab, qubits_n);
+        bst1 = bst ^ bits_to_int(destab, qubits_n);
     } else {
         amp0 = amp * coef;
         amp1 = amp * coef;
-        aid0 = aid;
-        aid1 = aid;
+        bst0 = bst;
+        bst1 = bst;
     }
 }
 
 static __device__
 void op_compute_measure_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
-    Aid const entry_i = dims_idx.get<1>();
+    Bst const entry_i = dims_idx.get<1>();
 
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
@@ -123,20 +123,20 @@ void op_compute_measure_probs_situation0(const AmpsMapPtr amps_map_ptr, const Bi
     const Eid entries_n = *amps_map_ptr.get_entries_n_ptr();
     Eid &entries_n_new = *(!result ? amps_map_ptr.get_half0_entries_n_ptr() : amps_map_ptr.get_half1_entries_n_ptr());
     Flt &prob = *(!result ? amps_map_ptr.get_half0_prob_ptr() : amps_map_ptr.get_half1_prob_ptr());
-    Aid *aids = !result ? amps_map_ptr.get_half0_aids_ptr() : amps_map_ptr.get_half1_aids_ptr();
+    Bst *bsts = !result ? amps_map_ptr.get_half0_bsts_ptr() : amps_map_ptr.get_half1_bsts_ptr();
     Amp *amps = !result ? amps_map_ptr.get_half0_amps_ptr() : amps_map_ptr.get_half1_amps_ptr();
 
     prob = 0;
     entries_n_new = 0;
     for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
-        const Aid aid = aids[entry_i];
+        const Bst bst = bsts[entry_i];
         const Amp amp = amps[entry_i];
 
         constexpr Amp amp_zero = 0;
         if (amp == amp_zero) continue;
 
         const Eid amp_j = entries_n_new;
-        aids[amp_j] = aid;
+        bsts[amp_j] = bst;
         amps[amp_j] = amp;
         prob += norm(amp);
         entries_n_new++;
@@ -148,24 +148,24 @@ void op_compute_measure_probs_situation1(const AmpsMapPtr amps_map_ptr, const Bi
     const Eid entries_n = *amps_map_ptr.get_entries_n_ptr();
     Eid &entries_n_new = *(!result ? amps_map_ptr.get_half0_entries_n_ptr() : amps_map_ptr.get_half1_entries_n_ptr());
     Flt &prob = *(!result ? amps_map_ptr.get_half0_prob_ptr() : amps_map_ptr.get_half1_prob_ptr());
-    Aid *aids = !result ? amps_map_ptr.get_half0_aids_ptr() : amps_map_ptr.get_half1_aids_ptr();
+    Bst *bsts = !result ? amps_map_ptr.get_half0_bsts_ptr() : amps_map_ptr.get_half1_bsts_ptr();
     Amp *amps = !result ? amps_map_ptr.get_half0_amps_ptr() : amps_map_ptr.get_half1_amps_ptr();
 
     entries_n_new = 0;
     for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
-        const Aid aid = aids[entry_i];
+        const Bst bst = bsts[entry_i];
         const Amp amp = amps[entry_i];
 
         Eid amp_j = 0;
         for (; amp_j < entries_n_new; ++amp_j) {
-            if (aids[amp_j] == aid) {
+            if (bsts[amp_j] == bst) {
                 amps[amp_j] += amp;
                 break;
             }
         }
 
         if (amp_j == entries_n_new) {
-            aids[amp_j] = aid;
+            bsts[amp_j] = bst;
             amps[amp_j] = amp;
             entries_n_new++;
         }
@@ -299,19 +299,19 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const Eid entries_n_new = *(!result_bit
         ? amps_map_ptr.get_half0_entries_n_ptr()
         : amps_map_ptr.get_half1_entries_n_ptr());
-    const Aid *aids_src = !result_bit
-        ? amps_map_ptr.get_half0_aids_ptr()
-        : amps_map_ptr.get_half1_aids_ptr();
+    const Bst *bsts_src = !result_bit
+        ? amps_map_ptr.get_half0_bsts_ptr()
+        : amps_map_ptr.get_half1_bsts_ptr();
     const Amp *amps_src = !result_bit
         ? amps_map_ptr.get_half0_amps_ptr()
         : amps_map_ptr.get_half1_amps_ptr();
-    Aid *aids_dst = amps_map_ptr.get_aids_ptr();
+    Bst *bsts_dst = amps_map_ptr.get_bsts_ptr();
     Amp *amps_dst = amps_map_ptr.get_amps_ptr();
 
     if (entry_i == 0) entries_n = entries_n_new; // 更新 entries_n（仅线程 0 更新，避免写入冲突）
     if (entry_i >= entries_n_new) return; // 线程超出了 amp_n 的范围，不进行计算
 
-    aids_dst[entry_i] = aids_src[entry_i];
+    bsts_dst[entry_i] = bsts_src[entry_i];
     amps_dst[entry_i] = amps_src[entry_i] / sqrt(result_prob);
 }
 

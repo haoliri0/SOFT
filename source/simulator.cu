@@ -34,10 +34,10 @@ void op_init_amps(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx
     const AmpsMapPtr amps_map_ptr = shots_state_ptr
         .get_shot_ptr(shot_i)
         .get_amps_ptr();
-    Aid &aid0 = *amps_map_ptr.get_aid_ptr(0);
+    Bst &bst0 = *amps_map_ptr.get_bst_ptr(0);
     Amp &amp0 = *amps_map_ptr.get_amp_ptr(0);
     Eid &entries_n = *amps_map_ptr.get_entries_n_ptr();
-    aid0 = 0;
+    bst0 = 0;
     amp0 = 1;
     entries_n = 1;
 }

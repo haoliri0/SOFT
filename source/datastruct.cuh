@@ -493,55 +493,55 @@ struct AmpsMapArgs {
     }
     
     __device__ __host__
-    size_t get_aid_size_bytes_n() const {
-        return sizeof(Aid);
+    size_t get_bst_size_bytes_n() const {
+        return sizeof(Bst);
     }
     
     __device__ __host__
-    size_t get_aid_align_bytes_n() const {
-        return alignof(Aid);
+    size_t get_bst_align_bytes_n() const {
+        return alignof(Bst);
     }
     
     __device__ __host__
-    size_t get_aid_pad_bytes_n() const {
+    size_t get_bst_pad_bytes_n() const {
         return compute_pad_bytes_n(
-            get_aid_size_bytes_n(),
-            get_aid_align_bytes_n());
+            get_bst_size_bytes_n(),
+            get_bst_align_bytes_n());
     }
     
     __device__ __host__
-    size_t get_aids_size_bytes_n() const {
+    size_t get_bsts_size_bytes_n() const {
         return 
-            entries_m * get_aid_size_bytes_n() +
-            entries_m * get_aid_pad_bytes_n();
+            entries_m * get_bst_size_bytes_n() +
+            entries_m * get_bst_pad_bytes_n();
     }
     
     __device__ __host__
-    size_t get_aids_align_bytes_n() const {
-        return alignof(Aid);
+    size_t get_bsts_align_bytes_n() const {
+        return alignof(Bst);
     }
     
     __device__ __host__
-    size_t get_aids_pad_bytes_n() const {
+    size_t get_bsts_pad_bytes_n() const {
         return compute_pad_bytes_n(
             get_entries_n_offset_bytes_n() +
             get_entries_n_size_bytes_n(),
-            get_aids_align_bytes_n());
+            get_bsts_align_bytes_n());
     }
     
     __device__ __host__
-    size_t get_aids_offset_bytes_n() const {
+    size_t get_bsts_offset_bytes_n() const {
         return 
             get_entries_n_offset_bytes_n() +
             get_entries_n_size_bytes_n() +
-            get_aids_pad_bytes_n();
+            get_bsts_pad_bytes_n();
     }
     
     __device__ __host__
-    size_t get_aid_offset_bytes_n(Eid entry_i) const {
-        return get_aids_offset_bytes_n() +
-            entry_i * get_aid_size_bytes_n() +
-            entry_i * get_aid_pad_bytes_n();
+    size_t get_bst_offset_bytes_n(Eid entry_i) const {
+        return get_bsts_offset_bytes_n() +
+            entry_i * get_bst_size_bytes_n() +
+            entry_i * get_bst_pad_bytes_n();
     }
     
     __device__ __host__
@@ -576,16 +576,16 @@ struct AmpsMapArgs {
     __device__ __host__
     size_t get_amps_pad_bytes_n() const {
         return compute_pad_bytes_n(
-            get_aids_offset_bytes_n() +
-            get_aids_size_bytes_n(),
+            get_bsts_offset_bytes_n() +
+            get_bsts_size_bytes_n(),
             get_amps_align_bytes_n());
     }
     
     __device__ __host__
     size_t get_amps_offset_bytes_n() const {
         return 
-            get_aids_offset_bytes_n() +
-            get_aids_size_bytes_n() +
+            get_bsts_offset_bytes_n() +
+            get_bsts_size_bytes_n() +
             get_amps_pad_bytes_n();
     }
     
@@ -705,8 +705,8 @@ struct AmpsMapArgs {
         return 
             get_entries_n_pad_bytes_n() +
             get_entries_n_size_bytes_n() +
-            get_aids_pad_bytes_n() +
-            get_aids_size_bytes_n() +
+            get_bsts_pad_bytes_n() +
+            get_bsts_size_bytes_n() +
             get_amps_pad_bytes_n() +
             get_amps_size_bytes_n() +
             get_half0_entries_n_pad_bytes_n() +
@@ -723,7 +723,7 @@ struct AmpsMapArgs {
     size_t get_align_bytes_n() const {
         return max(
             get_entries_n_align_bytes_n(),
-            get_aids_align_bytes_n(),
+            get_bsts_align_bytes_n(),
             get_amps_align_bytes_n(),
             get_half0_entries_n_align_bytes_n(),
             get_half1_entries_n_align_bytes_n(),
@@ -742,14 +742,14 @@ struct AmpsMapPtr : AmpsMapArgs {
     }
     
     __device__ __host__
-    Aid *get_aids_ptr() const {
-        const size_t offset = get_aids_offset_bytes_n();
-        return reinterpret_cast<Aid *>(ptr + offset);
+    Bst *get_bsts_ptr() const {
+        const size_t offset = get_bsts_offset_bytes_n();
+        return reinterpret_cast<Bst *>(ptr + offset);
     }
     
     __device__ __host__
-    Aid *get_aid_ptr(const Eid entry_i) const {
-        return get_aids_ptr() + entry_i;
+    Bst *get_bst_ptr(const Eid entry_i) const {
+        return get_bsts_ptr() + entry_i;
     }
     
     __device__ __host__
@@ -788,13 +788,13 @@ struct AmpsMapPtr : AmpsMapArgs {
     }
     
     __device__ __host__
-    Aid *get_half0_aids_ptr() const {
-        return get_aids_ptr();
+    Bst *get_half0_bsts_ptr() const {
+        return get_bsts_ptr();
     }
     
     __device__ __host__
-    Aid *get_half0_aid_ptr(const Eid entry_i) const {
-        return get_half0_aids_ptr() + entry_i;
+    Bst *get_half0_bst_ptr(const Eid entry_i) const {
+        return get_half0_bsts_ptr() + entry_i;
     }
     
     __device__ __host__
@@ -808,13 +808,13 @@ struct AmpsMapPtr : AmpsMapArgs {
     }
     
     __device__ __host__
-    Aid *get_half1_aids_ptr() const {
-        return get_aids_ptr() + entries_m / 2;
+    Bst *get_half1_bsts_ptr() const {
+        return get_bsts_ptr() + entries_m / 2;
     }
     
     __device__ __host__
-    Aid *get_half1_aid_ptr(const Eid entry_i) const {
-        return get_half1_aids_ptr() + entry_i;
+    Bst *get_half1_bst_ptr(const Eid entry_i) const {
+        return get_half1_bsts_ptr() + entry_i;
     }
     
     __device__ __host__

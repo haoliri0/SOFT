@@ -37,9 +37,9 @@ void op_update_amps_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
     const Bit *stab_bits = decomp_ptr.get_stab_bits_ptr();
 
     // 将后半部分当作工作空间存放计算结果
-    const Aid src_aid = *amps_map_ptr.get_half0_aid_ptr(entry_i);
+    const Bst src_bst = *amps_map_ptr.get_half0_bst_ptr(entry_i);
     const Amp src_amp = *amps_map_ptr.get_half0_amp_ptr(entry_i);
-    Aid &dst_aid = *amps_map_ptr.get_half1_aid_ptr(entry_i);
+    Bst &dst_bst = *amps_map_ptr.get_half1_bst_ptr(entry_i);
     Amp &dst_amp = *amps_map_ptr.get_half1_amp_ptr(entry_i);
 
     const Amp coef = {0, -sinf(M_PI / 8)};
@@ -47,15 +47,15 @@ void op_update_amps_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> 
     const Bit dagger_sign = dagger;
     const Flt dagger_sign_amp = sign_to_flt(dagger_sign);
 
-    const Bit aid_sign = compute_sign(src_aid, stab_bits, qubits_n);
-    const Flt aid_sign_amp = sign_to_flt(aid_sign);
+    const Bit bst_sign = compute_sign(src_bst, stab_bits, qubits_n);
+    const Flt bst_sign_amp = sign_to_flt(bst_sign);
 
     const Phs decomp_phase = *decomp_ptr.get_phase_ptr();
     const Phs decomp_phase_inv = -decomp_phase; // 这是 DDD 乘起来的系数，要取反得到 Z 分解的系数！
     const Amp decomp_phase_amp = phase_to_amp(decomp_phase_inv);
 
-    dst_aid = src_aid ^ bits_to_int(destab_bits, qubits_n);
-    dst_amp = src_amp * coef * dagger_sign_amp * aid_sign_amp * decomp_phase_amp;
+    dst_bst = src_bst ^ bits_to_int(destab_bits, qubits_n);
+    dst_amp = src_amp * coef * dagger_sign_amp * bst_sign_amp * decomp_phase_amp;
 }
 
 template<bool dagger>
@@ -128,25 +128,25 @@ void op_merge_amps_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> 
     Eid entries_add_n = 0;
     Eid &entries_n = *amps_map_ptr.get_entries_n_ptr();
     for (Eid src_entry_i = 0; src_entry_i < entries_n; ++src_entry_i) {
-        const Aid src_aid = *amps_map_ptr.get_half1_aid_ptr(src_entry_i);
+        const Bst src_bst = *amps_map_ptr.get_half1_bst_ptr(src_entry_i);
         const Amp src_amp = *amps_map_ptr.get_half1_amp_ptr(src_entry_i);
 
-        // 在 half0 找 aid 对应的条目
+        // 在 half0 找 bst 对应的条目
         Eid dst_entry_i = 0;
         for (; dst_entry_i < entries_n; ++dst_entry_i) {
-            const Aid dst_aid = *amps_map_ptr.get_half0_aid_ptr(dst_entry_i);
+            const Bst dst_bst = *amps_map_ptr.get_half0_bst_ptr(dst_entry_i);
             Amp &dst_amp = *amps_map_ptr.get_half0_amp_ptr(dst_entry_i);
-            if (dst_aid == src_aid) {
+            if (dst_bst == src_bst) {
                 dst_amp += src_amp;
                 break;
             }
         }
 
-        // 在 half0 找不到 aid 对应的条目，就加到的后面
+        // 在 half0 找不到 bst 对应的条目，就加到的后面
         if (dst_entry_i == entries_n) {
-            Aid &dst_aid = *amps_map_ptr.get_half0_aid_ptr(entries_n + entries_add_n);
+            Bst &dst_bst = *amps_map_ptr.get_half0_bst_ptr(entries_n + entries_add_n);
             Amp &dst_amp = *amps_map_ptr.get_half0_amp_ptr(entries_n + entries_add_n);
-            dst_aid = src_aid;
+            dst_bst = src_bst;
             dst_amp = src_amp;
             entries_add_n += 1;
         }

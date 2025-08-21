@@ -56,7 +56,7 @@ void print_bits(const Bit *bits, const unsigned int n) {
 }
 
 static
-void print_int_bits(Aid integer, const unsigned int n) {
+void print_bst(Bst integer, const unsigned int n) {
     for (int i = 0; i < n; ++i) {
         const Bit bit = integer % 2;
         integer >>= 1;
@@ -153,10 +153,10 @@ void print_decomp(const DecompPtr ptr, const unsigned int indent) {
 
 static
 void print_amp_entry(const AmpsMapPtr ptr, const Eid entry_i, const unsigned int indent) {
-    const Aid aid = *ptr.get_aid_ptr(entry_i);
+    const Bst bst = *ptr.get_bst_ptr(entry_i);
     const Amp amp = *ptr.get_amp_ptr(entry_i);
     print_indent(indent);
-    print_int_bits(aid, ptr.qubits_n);
+    print_bst(bst, ptr.qubits_n);
     printf(" : ");
     print_amplitude(amp);
     printf("\n");
