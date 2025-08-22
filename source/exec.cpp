@@ -5,7 +5,7 @@
 
 #include "./datatype.cuh"
 #include "./simulator.hpp"
-#include "./autofree.hpp"
+#include "./cleaner.hpp"
 #include "./print.hpp"
 #include "./read.hpp"
 
@@ -229,12 +229,12 @@ void perform_read_op(
             sizeof(Err), cudaMemcpyDeviceToHost));
 
         auto const results_value = new Rvl[results_m];
-        AutoFree results_value_cleaner([results_value] { delete[] results_value; });
+        Cleaner results_value_cleaner([results_value] { delete[] results_value; });
         cuda_check(cudaMemcpy(results_value, shot_state_ptr.get_results_ptr().get_values_ptr(),
             results_m * sizeof(Rvl), cudaMemcpyDeviceToHost));
 
         auto const results_prob = new Flt[results_m];
-        AutoFree results_prob_cleaner([results_prob] { delete[] results_prob; });
+        Cleaner results_prob_cleaner([results_prob] { delete[] results_prob; });
         cuda_check(cudaMemcpy(results_prob, shot_state_ptr.get_results_ptr().get_probs_ptr(),
             results_m * sizeof(Flt), cudaMemcpyDeviceToHost));
 
@@ -260,7 +260,7 @@ void perform_state_op(
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
     auto const buffer = new char[simulator.shots_state_ptr.get_size_bytes_n()];
-    AutoFree buffer_cleaner([buffer] { delete[] buffer; });
+    Cleaner buffer_cleaner([buffer] { delete[] buffer; });
     cuda_check(cudaMemcpy(buffer, simulator.shots_state_ptr.ptr,
         simulator.shots_state_ptr.get_size_bytes_n(), cudaMemcpyDeviceToHost));
     ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
@@ -353,7 +353,7 @@ int main(const int argc, const char **argv) {
     fprintf(stderr, "\n");
 
     Simulator simulator;
-    AutoFree simulator_auto_free([&simulator] { simulator.destroy(); });
+    Cleaner simulator_cleaner([&simulator] { simulator.destroy(); });
 
     fprintf(stderr, "Creating\n");
     cudaError cuda_err = cudaSuccess;

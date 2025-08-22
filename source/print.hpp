@@ -1,6 +1,7 @@
 #ifndef STN_CUDA_PRINT_HPP
 #define STN_CUDA_PRINT_HPP
 
+#include "./cleaner.hpp"
 #include "./simulator.hpp"
 #include "./exceptions.hpp"
 
@@ -247,7 +248,7 @@ void sync_and_print_simulator(const Simulator &simulator, const unsigned int ind
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
     auto const buffer = new char[simulator.shots_state_ptr.get_size_bytes_n()];
-    AutoFree buffer_cleaner([buffer] { delete[] buffer; });
+    Cleaner buffer_cleaner([buffer] { delete[] buffer; });
     cuda_check(cudaMemcpy(buffer, simulator.shots_state_ptr.ptr,
         simulator.shots_state_ptr.get_size_bytes_n(), cudaMemcpyDeviceToHost));
     ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
