@@ -227,11 +227,11 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // normalize probs
-    Flt &norm0 = *entries_ptr.get_half0_norm_ptr();
-    Flt &norm1 = *entries_ptr.get_half1_norm_ptr();
+    const Flt norm0 = *entries_ptr.get_half0_norm_ptr();
+    const Flt norm1 = *entries_ptr.get_half1_norm_ptr();
     const Flt total = norm0 + norm1;
-    norm0 /= total;
-    norm1 /= total;
+    const Flt prob0 = norm0 / total;
+    const Flt prob1 = norm1 / total;
 
     // random choice
     Bit result;
@@ -243,10 +243,10 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
             result = true;
             break;
         case SampleMode::Maximum:
-            result = norm0 <= norm1;
+            result = prob0 <= prob1;
         default:
             curandState *rand_state_ptr = results_ptr.get_rand_state_ptr();
-            result = curand_uniform(rand_state_ptr) > norm0;
+            result = curand_uniform(rand_state_ptr) > prob0;
     }
 
     // save result
@@ -258,10 +258,10 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
 
     results_n += 1;
     if (!result) {
-        result_prob = norm0;
+        result_prob = prob0;
         result_value = 0;
     } else {
-        result_prob = norm1;
+        result_prob = prob1;
         result_value = 1;
     }
 }
@@ -292,7 +292,9 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const Rid results_n = *results_ptr.get_results_n_ptr();
     const Rid result_i = (results_n - 1) % results_m;
     const Bit result_bit = *results_ptr.get_value_ptr(result_i);
-    const Flt result_prob = *results_ptr.get_prob_ptr(result_i);
+    const Flt result_norm = !result_bit
+        ? *entries_ptr.get_half0_norm_ptr()
+        : *entries_ptr.get_half1_norm_ptr();
 
     // apply result
     Eid &entries_n = *entries_ptr.get_entries_n_ptr();
@@ -312,7 +314,7 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     if (entry_i >= entries_n_new) return; // 线程超出了 amp_n 的范围，不进行计算
 
     bsts_dst[entry_i] = bsts_src[entry_i];
-    amps_dst[entry_i] = amps_src[entry_i] / sqrt(result_prob);
+    amps_dst[entry_i] = amps_src[entry_i] / sqrt(result_norm);
 }
 
 static __host__
