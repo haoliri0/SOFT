@@ -11,7 +11,7 @@ sys.path.append(project_dir_path)
 
 from scripts.verify.utils_ops import Op, generate_random_ops, parse_ops, print_ops
 from scripts.verify.utils_qiskit import make_qiskit_circuit, run_qiskit_circuit
-from scripts.verify.utils_stn import make_stn_cmd, run_stn_mode2
+from scripts.verify.utils_stn import make_stn_cmd, run_stn_states
 
 np.set_printoptions(precision=6, sign='+', floatmode='fixed')
 
@@ -38,7 +38,7 @@ def verify_ops(*,
     circuit = make_qiskit_circuit(ops, qubits_n, results_n)
     states, results, _ = run_qiskit_circuit(circuit)
 
-    states_stn = run_stn_mode2(
+    states_stn = run_stn_states(
         exec_file_path, ops, results,
         qubits_n, entries_m, max(results_n, 1))
 
