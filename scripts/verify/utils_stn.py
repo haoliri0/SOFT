@@ -1,4 +1,3 @@
-import re
 import subprocess
 import sys
 from io import StringIO
@@ -9,7 +8,6 @@ from qiskit.quantum_info import Clifford
 from scripts.compare.compare import StnArgs, read_error, read_shot_state_content, read_specified_label
 from scripts.verify.utils_clifford import compute_clifford_state
 from scripts.verify.utils_ops import Op
-from scripts.verify.utils_str import split_and_clean_lines
 
 
 def make_stn_cmd(
@@ -56,11 +54,6 @@ def make_stn_op(op: Op, results: Iterator[int] | None = None):
             raise ValueError(f"Unsupported operation: {op}")
 
 
-def make_stn_ops(ops: Iterable[Op], results: Iterable[int] | None = None):
-    results = iter(results) if results is not None else None
-    return "\n".join([make_stn_op(op, results) for op in ops])
-
-
 def make_stn_stdin(ops: Iterable[Op], results: Iterable[int] | None = None):
     results = iter(results) if results is not None else None
     stdin_io = StringIO()
@@ -70,75 +63,6 @@ def make_stn_stdin(ops: Iterable[Op], results: Iterable[int] | None = None):
         stdin_io.write("STATE")
         stdin_io.write("\n")
     return stdin_io.getvalue()
-
-
-def parse_stn_mode1_stdout_line(line: str):
-    if not line.startswith("0,"):
-        raise ValueError
-    if line.startswith("0,1"):
-        raise ValueError
-    return float(line[6:])
-
-
-def parse_stn_mode1_stdout(stdout: str) -> tuple[float, ...]:
-    lines = split_and_clean_lines(stdout)
-    probs = map(parse_stn_mode1_stdout_line, lines)
-    return tuple(probs)
-
-
-def parse_stn_stdout_table(table_str: str) -> Clifford:
-    lines = split_and_clean_lines(table_str)
-    lines = map(lambda line: line[0:1] + line[1:][::-1], lines)
-    lines = tuple(lines)
-    return Clifford(lines)
-
-
-def parse_stn_stdout_entry(s: str):
-    bst, amp = s.split(':')
-    bst = bst.strip()
-    bst = map(int, bst)
-    bst = map(bool, bst)
-    bst = tuple(bst)
-    amp = amp.strip()
-    real, imag, _ = amp.split(' ')
-    amp = float(real) + 1j * float(imag)
-    return bst, amp
-
-
-def parse_stn_stdout_entries(entries_str: str):
-    lines = split_and_clean_lines(entries_str)
-    matching = re.match(r'entries_n=([0-9]+)', lines[0])
-    entries_n = int(matching.group(1))
-    entries = map(parse_stn_stdout_entry, lines[1:1 + entries_n])
-    return tuple(entries)
-
-
-def parse_stn_stdout_state(s: str):
-    table_title = 'table:'
-    decomp_title = 'decomposed:'
-    entries_title = 'entries:'
-    results_title = 'results:'
-
-    table_head = s.find(table_title, 0, len(s))
-    table_tail = s.find(decomp_title, table_head, len(s))
-    entries_head = s.find(entries_title, table_tail, len(s))
-    entries_tail = s.find(results_title, entries_head, len(s))
-    entries_tail = s.find("\n\n", entries_head, len(s)) \
-        if entries_tail == -1 else entries_tail
-    if -1 in (table_head, table_tail, entries_head, entries_tail):
-        raise ValueError
-
-    table_str = s[table_head + len(table_title):table_tail]
-    entries_str = s[entries_head + len(entries_title):entries_tail]
-    clifford = parse_stn_stdout_table(table_str)
-    entries = parse_stn_stdout_entries(entries_str)
-    return compute_clifford_state(clifford, entries)
-
-
-def parse_stn_mode2_stdout(stdout: str):
-    states_str = stdout.split('Simulator:')
-    states = map(parse_stn_stdout_state, states_str[1:])
-    return tuple(states)
 
 
 def read_state(lines: Iterator[str], args: StnArgs):
