@@ -17,15 +17,13 @@ def make_stn_cmd(
     qubits_n: int,
     entries_m: int,
     results_n: int,
-    mode: int,
 ):
     return [
         exec_file_path,
         "--shots_n", "1",
         "--qubits_n", str(qubits_n),
         "--entries_m", str(entries_m),
-        "--results_m", str(results_n),
-        "--mode", str(mode)]
+        "--results_m", str(results_n)]
 
 
 def make_stn_op(op: Op, results: Iterator[int] | None = None):
@@ -184,8 +182,7 @@ def run_stn_states(
         exec_file_path=exec_file_path,
         qubits_n=qubits_n,
         entries_m=entries_m,
-        results_n=results_n,
-        mode=1)
+        results_n=results_n)
     process = subprocess.Popen(cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,

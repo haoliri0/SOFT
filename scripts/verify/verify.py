@@ -73,8 +73,7 @@ def verify_ops(*,
             exec_file_path=exec_file_path,
             qubits_n=qubits_n,
             entries_m=entries_m,
-            results_n=results_n,
-            mode=2)
+            results_n=results_n)
         print("command=" + " ".join(cmd))
         print(f"circuit=")
         print_ops(ops, results)
