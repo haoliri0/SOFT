@@ -19,7 +19,6 @@ struct CliArgs {
     Eid entries_m = 4;
     Rid results_m = 4;
     unsigned long long seed = 42;
-    unsigned int mode = 1;
 };
 
 static
@@ -91,15 +90,6 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
         if (match(arg_key, "--seed")) {
             const char *arg_value = argv[i++];
             args.seed = parse_cli_ull(arg_value);
-            continue;
-        }
-        if (match(arg_key, "--mode")) {
-            const char *arg_value = argv[i++];
-            args.mode = parse_cli_ul(arg_value);
-            if (args.mode > 2) {
-                fprintf(stderr, "Illegal value: mode=%s\n", arg_value);
-                throw CliArgsException(CliArgsError::IllegalValue);
-            }
             continue;
         }
         if (match_head(arg_key, "-")) {
@@ -390,10 +380,6 @@ int main(const int argc, const char **argv) {
             fprint_exec_error(stderr, exception.error);
             throw;
         }
-
-        if (args.mode >= 2)
-            sync_and_print_simulator(simulator);
-
         lines_n += 1;
     }
 
