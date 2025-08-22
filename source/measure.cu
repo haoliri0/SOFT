@@ -246,7 +246,7 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
             result = prob0 <= prob1;
         default:
             curandState *rand_state_ptr = results_ptr.get_rand_state_ptr();
-            result = curand_uniform(rand_state_ptr) > prob0;
+            result = prob0 < curand_uniform(rand_state_ptr);
     }
 
     // save result
