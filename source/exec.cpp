@@ -397,6 +397,13 @@ int main(const int argc, const char **argv) {
         lines_n += 1;
     }
 
+    cuda_err = cudaStreamSynchronize(simulator.stream);
+    if (cuda_err != cudaSuccess) {
+        fprintf(stderr, "Error occurs when executing circuit.\n");
+        fprintf(stderr, "%s\n%s\n", cudaGetErrorName(cuda_err), cudaGetErrorString(cuda_err));
+        throw CudaException(cuda_err);
+    }
+
     const clock_t time_end = clock();
     const clock_t time_span = time_end - time_start;
     const float time_span_seconds = static_cast<float>(time_span) / CLOCKS_PER_SEC;
