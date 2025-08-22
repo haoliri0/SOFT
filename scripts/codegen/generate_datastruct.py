@@ -610,10 +610,10 @@ Bit *get_stab_bit_ptr(const Qid qubit_i) const {
                 name="half1_entries_n",
                 type=ValueTypeSpec(name="Eid")),
             ItemFieldSpec(
-                name="half0_prob",
+                name="half0_norm",
                 type=ValueTypeSpec(name="Flt")),
             ItemFieldSpec(
-                name="half1_prob",
+                name="half1_norm",
                 type=ValueTypeSpec(name="Flt"))),
         extra_ptr_body="""
 __device__ __host__

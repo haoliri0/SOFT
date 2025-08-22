@@ -649,55 +649,55 @@ struct EntriesArgs {
     }
     
     __device__ __host__
-    size_t get_half0_prob_size_bytes_n() const {
+    size_t get_half0_norm_size_bytes_n() const {
         return sizeof(Flt);
     }
     
     __device__ __host__
-    size_t get_half0_prob_align_bytes_n() const {
+    size_t get_half0_norm_align_bytes_n() const {
         return alignof(Flt);
     }
     
     __device__ __host__
-    size_t get_half0_prob_pad_bytes_n() const {
+    size_t get_half0_norm_pad_bytes_n() const {
         return compute_pad_bytes_n(
             get_half1_entries_n_offset_bytes_n() +
             get_half1_entries_n_size_bytes_n(),
-            get_half0_prob_align_bytes_n());
+            get_half0_norm_align_bytes_n());
     }
     
     __device__ __host__
-    size_t get_half0_prob_offset_bytes_n() const {
+    size_t get_half0_norm_offset_bytes_n() const {
         return 
             get_half1_entries_n_offset_bytes_n() +
             get_half1_entries_n_size_bytes_n() +
-            get_half0_prob_pad_bytes_n();
+            get_half0_norm_pad_bytes_n();
     }
     
     __device__ __host__
-    size_t get_half1_prob_size_bytes_n() const {
+    size_t get_half1_norm_size_bytes_n() const {
         return sizeof(Flt);
     }
     
     __device__ __host__
-    size_t get_half1_prob_align_bytes_n() const {
+    size_t get_half1_norm_align_bytes_n() const {
         return alignof(Flt);
     }
     
     __device__ __host__
-    size_t get_half1_prob_pad_bytes_n() const {
+    size_t get_half1_norm_pad_bytes_n() const {
         return compute_pad_bytes_n(
-            get_half0_prob_offset_bytes_n() +
-            get_half0_prob_size_bytes_n(),
-            get_half1_prob_align_bytes_n());
+            get_half0_norm_offset_bytes_n() +
+            get_half0_norm_size_bytes_n(),
+            get_half1_norm_align_bytes_n());
     }
     
     __device__ __host__
-    size_t get_half1_prob_offset_bytes_n() const {
+    size_t get_half1_norm_offset_bytes_n() const {
         return 
-            get_half0_prob_offset_bytes_n() +
-            get_half0_prob_size_bytes_n() +
-            get_half1_prob_pad_bytes_n();
+            get_half0_norm_offset_bytes_n() +
+            get_half0_norm_size_bytes_n() +
+            get_half1_norm_pad_bytes_n();
     }
     
     __device__ __host__
@@ -713,10 +713,10 @@ struct EntriesArgs {
             get_half0_entries_n_size_bytes_n() +
             get_half1_entries_n_pad_bytes_n() +
             get_half1_entries_n_size_bytes_n() +
-            get_half0_prob_pad_bytes_n() +
-            get_half0_prob_size_bytes_n() +
-            get_half1_prob_pad_bytes_n() +
-            get_half1_prob_size_bytes_n();
+            get_half0_norm_pad_bytes_n() +
+            get_half0_norm_size_bytes_n() +
+            get_half1_norm_pad_bytes_n() +
+            get_half1_norm_size_bytes_n();
     }
     
     __device__ __host__
@@ -727,8 +727,8 @@ struct EntriesArgs {
             get_amps_align_bytes_n(),
             get_half0_entries_n_align_bytes_n(),
             get_half1_entries_n_align_bytes_n(),
-            get_half0_prob_align_bytes_n(),
-            get_half1_prob_align_bytes_n());
+            get_half0_norm_align_bytes_n(),
+            get_half1_norm_align_bytes_n());
     }
 };
 
@@ -776,14 +776,14 @@ struct EntriesPtr : EntriesArgs {
     }
     
     __device__ __host__
-    Flt *get_half0_prob_ptr() const {
-        const size_t offset = get_half0_prob_offset_bytes_n();
+    Flt *get_half0_norm_ptr() const {
+        const size_t offset = get_half0_norm_offset_bytes_n();
         return reinterpret_cast<Flt *>(ptr + offset);
     }
     
     __device__ __host__
-    Flt *get_half1_prob_ptr() const {
-        const size_t offset = get_half1_prob_offset_bytes_n();
+    Flt *get_half1_norm_ptr() const {
+        const size_t offset = get_half1_norm_offset_bytes_n();
         return reinterpret_cast<Flt *>(ptr + offset);
     }
     

@@ -122,11 +122,11 @@ static __device__
 void op_compute_measure_probs_situation0(const EntriesPtr entries_ptr, const Bit result) {
     const Eid entries_n = *entries_ptr.get_entries_n_ptr();
     Eid &entries_n_new = *(!result ? entries_ptr.get_half0_entries_n_ptr() : entries_ptr.get_half1_entries_n_ptr());
-    Flt &prob = *(!result ? entries_ptr.get_half0_prob_ptr() : entries_ptr.get_half1_prob_ptr());
+    Flt &norm = *(!result ? entries_ptr.get_half0_norm_ptr() : entries_ptr.get_half1_norm_ptr());
     Bst *bsts = !result ? entries_ptr.get_half0_bsts_ptr() : entries_ptr.get_half1_bsts_ptr();
     Amp *amps = !result ? entries_ptr.get_half0_amps_ptr() : entries_ptr.get_half1_amps_ptr();
 
-    prob = 0;
+    norm = 0;
     entries_n_new = 0;
     for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
         const Bst bst = bsts[entry_i];
@@ -138,7 +138,7 @@ void op_compute_measure_probs_situation0(const EntriesPtr entries_ptr, const Bit
         const Eid amp_j = entries_n_new;
         bsts[amp_j] = bst;
         amps[amp_j] = amp;
-        prob += norm(amp);
+        norm += norm(amp);
         entries_n_new++;
     }
 }
@@ -147,7 +147,7 @@ static __device__
 void op_compute_measure_probs_situation1(const EntriesPtr entries_ptr, const Bit result) {
     const Eid entries_n = *entries_ptr.get_entries_n_ptr();
     Eid &entries_n_new = *(!result ? entries_ptr.get_half0_entries_n_ptr() : entries_ptr.get_half1_entries_n_ptr());
-    Flt &prob = *(!result ? entries_ptr.get_half0_prob_ptr() : entries_ptr.get_half1_prob_ptr());
+    Flt &norm = *(!result ? entries_ptr.get_half0_norm_ptr() : entries_ptr.get_half1_norm_ptr());
     Bst *bsts = !result ? entries_ptr.get_half0_bsts_ptr() : entries_ptr.get_half1_bsts_ptr();
     Amp *amps = !result ? entries_ptr.get_half0_amps_ptr() : entries_ptr.get_half1_amps_ptr();
 
@@ -171,10 +171,10 @@ void op_compute_measure_probs_situation1(const EntriesPtr entries_ptr, const Bit
         }
     }
 
-    prob = 0;
+    norm = 0;
     for (int entry_i = 0; entry_i < entries_n_new; ++entry_i) {
         const Amp amp = amps[entry_i];
-        prob += norm(amp);
+        norm += norm(amp);
     }
 }
 
@@ -227,11 +227,11 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // normalize probs
-    Flt &prob0 = *entries_ptr.get_half0_prob_ptr();
-    Flt &prob1 = *entries_ptr.get_half1_prob_ptr();
-    const Flt total = prob0 + prob1;
-    prob0 /= total;
-    prob1 /= total;
+    Flt &norm0 = *entries_ptr.get_half0_norm_ptr();
+    Flt &norm1 = *entries_ptr.get_half1_norm_ptr();
+    const Flt total = norm0 + norm1;
+    norm0 /= total;
+    norm1 /= total;
 
     // random choice
     Bit result;
@@ -243,10 +243,10 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
             result = true;
             break;
         case SampleMode::Maximum:
-            result = prob0 <= prob1;
+            result = norm0 <= norm1;
         default:
             curandState *rand_state_ptr = results_ptr.get_rand_state_ptr();
-            result = curand_uniform(rand_state_ptr) > prob0;
+            result = curand_uniform(rand_state_ptr) > norm0;
     }
 
     // save result
@@ -258,10 +258,10 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
 
     results_n += 1;
     if (!result) {
-        result_prob = prob0;
+        result_prob = norm0;
         result_value = 0;
     } else {
-        result_prob = prob1;
+        result_prob = norm1;
         result_value = 1;
     }
 }
