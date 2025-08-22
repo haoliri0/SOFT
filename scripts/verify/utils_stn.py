@@ -172,65 +172,6 @@ def parse_stn_mode2_stdout2(stdout: str, args: StnArgs):
     return tuple(states)
 
 
-def run_stn_mode1(
-    exec_file_path: str,
-    ops: Iterable[Op],
-    results: Iterable[int],
-    qubits_n: int,
-    entries_m: int,
-    results_n: int,
-):
-    cmd = make_stn_cmd(
-        exec_file_path=exec_file_path,
-        qubits_n=qubits_n,
-        entries_m=entries_m,
-        results_n=results_n,
-        mode=1)
-    process = subprocess.Popen(cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True)
-
-    stdin = make_stn_ops(ops, results)
-    stdout, stderr = process.communicate(stdin)
-    if process.returncode != 0:
-        print(stderr, file=sys.stderr)
-        raise RuntimeError
-
-    return parse_stn_mode1_stdout(stdout)
-
-
-def run_stn_mode2(
-    exec_file_path: str,
-    ops: Iterable[Op],
-    results: Iterable[int],
-    qubits_n: int,
-    entries_m: int,
-    results_n: int,
-):
-    cmd = make_stn_cmd(
-        exec_file_path=exec_file_path,
-        qubits_n=qubits_n,
-        entries_m=entries_m,
-        results_n=results_n,
-        mode=2)
-    process = subprocess.Popen(cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True)
-
-    stdin = make_stn_ops(ops, results)
-    stdout, stderr = process.communicate(stdin)
-
-    if process.returncode != 0:
-        print(stderr, file=sys.stderr)
-        raise RuntimeError
-
-    return parse_stn_mode2_stdout(stdout)
-
-
 def run_stn_states(
     exec_file_path: str,
     ops: Iterable[Op],
