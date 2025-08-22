@@ -181,18 +181,6 @@ void op_merge_entries_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<
 
     // 如果有被清理的 entry 就修改 entries_n
     if (entries_del_n > 0) entries_n -= entries_del_n;
-
-    // 重新归一化
-    Flt prob = 0;
-    for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
-        const Amp amp = *entries_ptr.get_amp_ptr(entry_i);
-        prob += cuda::std::norm(amp);
-    }
-    const Flt scale = 1 / sqrt(prob);
-    for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
-        Amp &amp = *entries_ptr.get_amp_ptr(entry_i);
-        amp *= scale;
-    }
 }
 
 static __host__
