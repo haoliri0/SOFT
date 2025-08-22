@@ -341,17 +341,18 @@ void execute_line(
 int main(const int argc, const char **argv) {
     CliArgs args{};
     parse_cli_args(argc, argv, args);
-    fprintf(stderr, "Cli Args:\n");
-    fprintf(stderr, "\tshots_n=%u\n", args.shots_n);
-    fprintf(stderr, "\tqubits_n=%u\n", args.qubits_n);
-    fprintf(stderr, "\tentries_m=%u\n", args.entries_m);
-    fprintf(stderr, "\tresults_m=%u\n", args.results_m);
-    fprintf(stderr, "\trseed=%llu\n", args.seed);
+    fprintf(stderr, "args:\n");
+    fprintf(stderr, "  shots_n=%u\n", args.shots_n);
+    fprintf(stderr, "  qubits_n=%u\n", args.qubits_n);
+    fprintf(stderr, "  entries_m=%u\n", args.entries_m);
+    fprintf(stderr, "  results_m=%u\n", args.results_m);
+    fprintf(stderr, "  seed=%llu\n", args.seed);
+    fprintf(stderr, "\n");
 
     Simulator simulator;
     AutoFree simulator_auto_free([&simulator] { simulator.destroy(); });
 
-    fprintf(stderr, "Creating Simulator\n");
+    fprintf(stderr, "Creating\n");
     cudaError cuda_err = cudaSuccess;
 
     cuda_err = simulator.create(args.shots_n, args.qubits_n, args.entries_m, args.results_m, args.seed);
@@ -368,7 +369,7 @@ int main(const int argc, const char **argv) {
         throw CudaException(cuda_err);
     }
 
-    fprintf(stderr, "Executing Circuit\n");
+    fprintf(stderr, "Executing\n");
     const clock_t time_start = clock();
 
     size_t lines_n = 0;
@@ -398,8 +399,9 @@ int main(const int argc, const char **argv) {
     const float time_span_seconds = static_cast<float>(time_span) / CLOCKS_PER_SEC;
     const float shots_per_second = static_cast<float>(args.shots_n) / time_span_seconds;
 
-    fprintf(stderr, "Finished Circuit\n");
-    fprintf(stderr, "\tspan_time: %f s\n", time_span_seconds);
-    fprintf(stderr, "\tavg_speed: %f shot/s\n", shots_per_second);
+    fprintf(stderr, "Finished\n");
+    fprintf(stderr, "performance:\n");
+    fprintf(stderr, "  span_time=%f s\n", time_span_seconds);
+    fprintf(stderr, "  avg_speed=%f shot/s\n", shots_per_second);
     return 0;
 }
