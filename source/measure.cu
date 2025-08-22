@@ -138,7 +138,7 @@ void op_compute_measure_probs_situation0(const EntriesPtr entries_ptr, const Bit
         const Eid amp_j = entries_n_new;
         bsts[amp_j] = bst;
         amps[amp_j] = amp;
-        norm += norm(amp);
+        norm += cuda::std::norm(amp);
         entries_n_new++;
     }
 }
@@ -174,7 +174,7 @@ void op_compute_measure_probs_situation1(const EntriesPtr entries_ptr, const Bit
     norm = 0;
     for (int entry_i = 0; entry_i < entries_n_new; ++entry_i) {
         const Amp amp = amps[entry_i];
-        norm += norm(amp);
+        norm += cuda::std::norm(amp);
     }
 }
 
