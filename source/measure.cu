@@ -503,7 +503,7 @@ void Simulator::apply_assign(const Qid target, const Bit value) const noexcept {
 
     cuda_compute_measure_entries(stream, shots_state_ptr);
     cuda_compute_measure_probs(stream, shots_state_ptr);
-    cuda_compute_measure_result<SampleMode::Maximum>(stream, shots_state_ptr);
+    cuda_compute_measure_result(stream, shots_state_ptr);
     cuda_apply_measure_result(stream, shots_state_ptr);
 
     cuda_change_measure_basis_rowsum(stream, shots_state_ptr);
