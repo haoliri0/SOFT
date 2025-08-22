@@ -93,12 +93,14 @@ def iter_convert_lines(lines: Iterable[str]) -> Iterator[str]:
             if not result.startswith("result: "):
                 raise ValueError(f"Unexpected line {result}")
             result = result[len("result: "):]
-            result_pattern = re.compile(r"'reg': ([01])")
-            match = result_pattern.search(result)
-            if not match:
-                raise ValueError(f"Unexpected result {result}")
-            result = int(match.group(1))
-            yield f"gate: D {target} {result}"
+            result = eval(result)
+            result_bit = result['reg']
+            result_bit = int(result_bit)
+            result_prob = result['stats'][result_bit]
+            result_prob = complex(result_prob)
+            result_prob = float(abs(result_prob))
+            yield f"gate: D {target} {result_bit}"
+            yield f"prob: {result_prob}"
         elif gate.startswith("R "):
             target = gate[gate.index(" ") + 1:]
             result = next(lines)
@@ -168,7 +170,7 @@ def main(
 
 if __name__ == '__main__':
     src_file_path = os.path.join(project_dir_path, "scripts/compare/test.txt")
-    dst_file_path_func = lambda shot_i: os.path.join(project_dir_path,f"scripts/compare/test_{shot_i}.logs.txt")
+    dst_file_path_func = lambda shot_i: os.path.join(project_dir_path, f"scripts/compare/test_{shot_i}.logs.txt")
     main(
         src_file_path=src_file_path,
         dst_file_path_func=dst_file_path_func)

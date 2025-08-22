@@ -8,6 +8,7 @@ from queue import Queue
 from threading import Thread
 
 import numpy as np
+from tqdm import tqdm
 
 project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
 sys.path.append(project_dir_path)
@@ -152,58 +153,85 @@ def main(
         def thread_func():
             exhausted = False
             while True:
-                message = queue.get()
-                if message is None:
-                    exhausted = True
-                    break
-                gate, table, entries = message
-                if gate is not None:
-                    print(f"gate: {gate}")
-
-                read_specified_label(process.stdout, "state")
-                read_specified_label(process.stdout, "shot 0")
-                error = read_error(process.stdout)
-                table2, entries2 = read_shot_state_content(process.stdout, args)
-
-                if error:
-                    error = ValueError(f"Found error: {error}")
-                    errors.append(error)
-                    break
-
-                if table != table2:
-                    error = ValueError(f"Found differences in table: \n{table} != {table2}")
-                    errors.append(error)
-                    print(f"table (expected):")
-                    for line in table:
-                        print(f"  {line}")
-                    print(f"table (actual):")
-                    for line in table2:
-                        print(f"  {line}")
-                    break
-
-                for key in set(entries.keys()) | set(entries2.keys()):
-                    value1 = entries.get(key, 0)
-                    value2 = entries2.get(key, 0)
-                    if not np.allclose(value1, value2, rtol=1e-05, atol=1e-05):
-                        error = ValueError(f"Found differences in entries[{key}]: \n{value1} != {value2}")
-                        errors.append(error)
+                match queue.get():
+                    case None:
+                        exhausted = True
                         break
-                if errors:
-                    print(f"entries (expected):")
-                    for key in sorted(entries.keys()):
-                        value = entries[key]
-                        value = complex(value)
-                        if abs(value) > 1e-6:
-                            print(f"  {key}: {value.real:+f} {value.imag:+f} i")
-                    print(f"entries (actual):")
-                    for key in sorted(entries2.keys()):
-                        value = entries2[key]
-                        value = complex(value)
-                        if abs(value) > 1e-6:
-                            print(f"  {key}: {value.real:+f} {value.imag:+f} i")
-                    break
+                    case 'gate', gate:
+                        print(f"gate: {gate}")
+                    case 'prob', prob:
+                        prob = prob.strip()
+                        prob = float(prob)
 
-                print("verified")
+                        line = next(process.stdout)
+                        line = line.strip()
+                        _, _, _, prob2 = line.split(",")
+                        prob2 = prob2.strip()
+                        prob2 = float(prob2)
+
+                        if not np.allclose(prob, prob2, rtol=1e-05, atol=1e-05):
+                            error = ValueError(f"Found differences in prob.")
+                            errors.append(error)
+                            print(f"prob (expected): {prob}")
+                            print(f"prob (actual): {prob2}")
+                            break
+
+                        print(f"prob: {prob}")
+
+                    case 'state', table, entries:
+                        read_specified_label(process.stdout, "state")
+                        read_specified_label(process.stdout, "shot 0")
+                        error = read_error(process.stdout)
+                        table2, entries2 = read_shot_state_content(process.stdout, args)
+
+                        if error:
+                            error = ValueError(f"Found error: {error}")
+                            errors.append(error)
+                            break
+
+                        if table != table2:
+                            error = ValueError(f"Found differences in table.")
+                            errors.append(error)
+                            print(f"table (expected):")
+                            for line in table:
+                                print(f"  {line}")
+                            print(f"table (actual):")
+                            for line in table2:
+                                print(f"  {line}")
+                            break
+
+                        print(f"table:")
+                        for line in table:
+                            print(f"  {line}")
+
+                        for key in set(entries.keys()) | set(entries2.keys()):
+                            value1 = entries.get(key, 0)
+                            value2 = entries2.get(key, 0)
+                            if not np.allclose(value1, value2, rtol=1e-05, atol=1e-05):
+                                error = ValueError(f"Found differences in entries ({key=}).")
+                                errors.append(error)
+                                break
+                        if errors:
+                            print(f"entries (expected):")
+                            for key in sorted(entries.keys()):
+                                value = entries[key]
+                                value = complex(value)
+                                if abs(value) > 1e-6:
+                                    print(f"  {key}: {value.real:+f} {value.imag:+f} i")
+                            print(f"entries (actual):")
+                            for key in sorted(entries2.keys()):
+                                value = entries2[key]
+                                value = complex(value)
+                                if abs(value) > 1e-6:
+                                    print(f"  {key}: {value.real:+f} {value.imag:+f} i")
+                            break
+
+                        print(f"entries:")
+                        for key in sorted(entries.keys()):
+                            value = entries[key]
+                            value = complex(value)
+                            if abs(value) > 1e-6:
+                                print(f"  {key}: {value.real:+f} {value.imag:+f} i")
 
             if not exhausted:
                 while queue.get():
@@ -215,20 +243,22 @@ def main(
         thread = Thread(target=thread_func, daemon=True)
         thread.start()
 
-        last_gate = None
         while True:
             try:
                 match read_label(fp):
                     case "gate", gate:
                         process.stdin.write(gate)
                         process.stdin.write("\n")
-                        last_gate = gate
+                        queue.put(('gate', gate))
+                    case "prob", prob:
+                        process.stdin.write("READ -1")
+                        process.stdin.write("\n")
+                        queue.put(('prob', prob))
                     case "state", _:
                         table, entries = read_shot_state_content(fp, args)
                         process.stdin.write("STATE")
                         process.stdin.write("\n")
-                        queue.put((last_gate, table, entries))
-                        last_gate = None
+                        queue.put(('state', table, entries))
                 process.stdin.flush()
             except StopIteration:
                 break
@@ -241,8 +271,9 @@ def main(
 
 
 if __name__ == '__main__':
-    exec_file_path = os.path.join(project_dir_path, "cmake-build-release/stn_cuda_exec")
-    logs_file_path = os.path.join(project_dir_path, "scripts/compare/test_0.logs.txt")
-    main(
-        exec_file_path=exec_file_path,
-        logs_file_path=logs_file_path)
+    for i in tqdm(range(10)):
+        exec_file_path = os.path.join(project_dir_path, "cmake-build-release/stn_cuda_exec")
+        logs_file_path = os.path.join(project_dir_path, f"scripts/compare/test_{i}.logs.txt")
+        main(
+            exec_file_path=exec_file_path,
+            logs_file_path=logs_file_path)
