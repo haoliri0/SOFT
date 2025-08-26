@@ -312,7 +312,7 @@ void execute_line(
 
     if (match(name, "M"))
         return execute_op(istream, simulator, &Simulator::apply_measure);
-    if (match(name, "D"))
+    if (match(name, "DESIRE"))
         return execute_op(istream, simulator, &Simulator::apply_desire);
     if (match(name, "RESET"))
         return execute_op(istream, simulator, &Simulator::apply_reset);
