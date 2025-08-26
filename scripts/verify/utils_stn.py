@@ -44,12 +44,12 @@ def make_stn_op(op: Op, results: Iterator[int] | None = None):
             return f'T {target}'
         case ('TDG', target):
             return f'TDG {target}'
-        case ('M', target):
+        case ('MEASURE', target):
             if results is not None:
                 result = next(results)
                 return f'DESIRE {target} {result}'
             else:
-                return f'M {target}'
+                return f'MEASURE {target}'
         case _:
             raise ValueError(f"Unsupported operation: {op}")
 

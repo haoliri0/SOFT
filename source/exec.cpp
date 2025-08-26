@@ -310,7 +310,7 @@ void execute_line(
     if (match(name, "CX"))
         return execute_op(istream, simulator, &Simulator::apply_cx);
 
-    if (match(name, "M"))
+    if (match(name, "MEASURE"))
         return execute_op(istream, simulator, &Simulator::apply_measure);
     if (match(name, "DESIRE"))
         return execute_op(istream, simulator, &Simulator::apply_desire);

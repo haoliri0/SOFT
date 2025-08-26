@@ -33,7 +33,7 @@ def verify_ops(*,
     ops: Iterable[Op],
 ):
     ops = tuple(ops)
-    results_n = sum(typ == "M" for typ, _ in ops)
+    results_n = sum(typ == "MEASURE" for typ, _ in ops)
 
     circuit = make_qiskit_circuit(ops, qubits_n, results_n)
     states, results, _ = run_qiskit_circuit(circuit)

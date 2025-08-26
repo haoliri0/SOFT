@@ -31,7 +31,7 @@ def make_qiskit_op(
             qc.t(target)
         case ('TDG', target):
             qc.tdg(target)
-        case ('M', target):
+        case ('MEASURE', target):
             result_i = next(results_i)
             qc.save_probabilities([target], label=f'prob_{result_i}')
             qc.measure(target, result_i)
