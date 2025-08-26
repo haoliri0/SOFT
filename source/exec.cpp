@@ -202,6 +202,17 @@ void execute_op(
     return execute_op(istream, wrapped);
 }
 
+template<typename Receiver, typename... Args>
+static
+void execute_op(
+    std::istream &istream,
+    const Receiver &receiver,
+    void (*op)(const Receiver &, Args...)
+) {
+    std::function wrapped = [&receiver, op](Args... args) { (*op)(receiver, args...); };
+    return execute_op(istream, wrapped);
+}
+
 void perform_read_op(
     const Simulator &simulator,
     const int result_i
@@ -317,13 +328,9 @@ void execute_line(
         return execute_op(istream, simulator, &Simulator::apply_noise_depo2);
 
     if (match(name, "READ"))
-        return execute_op(istream, std::function([simulator](const int result_i) {
-            return perform_read_op(simulator, result_i);
-        }));
+        return execute_op(istream, simulator, perform_read_op);
     if (match(name, "STATE"))
-        return execute_op(istream, std::function([simulator] {
-            return perform_state_op(simulator);
-        }));
+        return execute_op(istream, simulator, perform_state_op);
 
     fprintf(stderr, "Unknown op: %s\n", name);
     throw ExecException(ExecError::IllegalOp);
