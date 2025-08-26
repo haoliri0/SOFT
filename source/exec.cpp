@@ -195,10 +195,10 @@ template<typename Receiver, typename... Args>
 static
 void execute_op(
     std::istream &istream,
-    const Receiver receiver,
+    const Receiver &receiver,
     void (Receiver::*op)(Args...) const
 ) {
-    std::function wrapped = [receiver, op](Args... args) { (receiver.*op)(args...); };
+    std::function wrapped = [&receiver, op](Args... args) { (receiver.*op)(args...); };
     return execute_op(istream, wrapped);
 }
 
