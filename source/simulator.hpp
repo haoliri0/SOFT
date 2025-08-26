@@ -39,7 +39,7 @@ struct Simulator {
 
     void apply_measure(Qid target) const noexcept;
 
-    void apply_desire(Qid target, Bit result) const noexcept;
+    void apply_desire(Qid target, Bit value) const noexcept;
 
     void apply_reset(Qid target, Bit value) const noexcept;
 

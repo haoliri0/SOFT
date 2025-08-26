@@ -478,14 +478,14 @@ void Simulator::apply_measure(const Qid target) const noexcept {
     cuda_change_measure_basis_pivot(stream, shots_state_ptr, target);
 }
 
-void Simulator::apply_desire(const Qid target, const Bit result) const noexcept {
+void Simulator::apply_desire(const Qid target, const Bit value) const noexcept {
     cuda_compute_decomposed_bits(stream, shots_state_ptr, target);
     cuda_compute_decomposed_phase(stream, shots_state_ptr);
     cuda_compute_decomp_pivot(stream, shots_state_ptr);
 
     cuda_compute_measure_entries(stream, shots_state_ptr);
     cuda_compute_measure_probs(stream, shots_state_ptr);
-    !result
+    !value
         ? cuda_compute_measure_result<SampleMode::Desire0>(stream, shots_state_ptr)
         : cuda_compute_measure_result<SampleMode::Desire1>(stream, shots_state_ptr);
     cuda_apply_measure_result(stream, shots_state_ptr);
