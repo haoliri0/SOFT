@@ -99,7 +99,7 @@ def iter_convert_lines(lines: Iterable[str]) -> Iterator[str]:
             result_prob = result['stats'][result_bit]
             result_prob = complex(result_prob)
             result_prob = float(abs(result_prob))
-            yield f"gate: D {target} {result_bit}"
+            yield f"gate: DESIRE {target} {result_bit}"
             yield f"prob: {result_prob}"
         elif gate.startswith("R "):
             target = gate[gate.index(" ") + 1:]
@@ -109,7 +109,7 @@ def iter_convert_lines(lines: Iterable[str]) -> Iterator[str]:
                 raise ValueError(f"Unexpected line {result}")
             result = result[len("result: "):]
             result = int(result)
-            yield f"gate: D {target} {result}"
+            yield f"gate: DESIRE {target} {result}"
             if result:
                 yield f"gate: X {target}"
         else:

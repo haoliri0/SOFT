@@ -47,7 +47,7 @@ def make_stn_op(op: Op, results: Iterator[int] | None = None):
         case ('M', target):
             if results is not None:
                 result = next(results)
-                return f'D {target} {result}'
+                return f'DESIRE {target} {result}'
             else:
                 return f'M {target}'
         case _:
