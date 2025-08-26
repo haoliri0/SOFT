@@ -832,75 +832,49 @@ struct ResultsArgs {
     Rid results_m;
     
     __device__ __host__
-    size_t get_results_n_size_bytes_n() const {
-        return sizeof(Rid);
-    }
-    
-    __device__ __host__
-    size_t get_results_n_align_bytes_n() const {
-        return alignof(Rid);
-    }
-    
-    __device__ __host__
-    size_t get_results_n_pad_bytes_n() const {
-        return 0;
-    }
-    
-    __device__ __host__
-    size_t get_results_n_offset_bytes_n() const {
-        return 0;
-    }
-    
-    __device__ __host__
-    size_t get_prob_size_bytes_n() const {
+    size_t get_work_prob_size_bytes_n() const {
         return sizeof(Flt);
     }
     
     __device__ __host__
-    size_t get_prob_align_bytes_n() const {
+    size_t get_work_prob_align_bytes_n() const {
         return alignof(Flt);
     }
     
     __device__ __host__
-    size_t get_prob_pad_bytes_n() const {
+    size_t get_work_prob_pad_bytes_n() const {
+        return 0;
+    }
+    
+    __device__ __host__
+    size_t get_work_prob_offset_bytes_n() const {
+        return 0;
+    }
+    
+    __device__ __host__
+    size_t get_work_value_size_bytes_n() const {
+        return sizeof(Rvl);
+    }
+    
+    __device__ __host__
+    size_t get_work_value_align_bytes_n() const {
+        return alignof(Rvl);
+    }
+    
+    __device__ __host__
+    size_t get_work_value_pad_bytes_n() const {
         return compute_pad_bytes_n(
-            get_prob_size_bytes_n(),
-            get_prob_align_bytes_n());
+            get_work_prob_offset_bytes_n() +
+            get_work_prob_size_bytes_n(),
+            get_work_value_align_bytes_n());
     }
     
     __device__ __host__
-    size_t get_probs_size_bytes_n() const {
+    size_t get_work_value_offset_bytes_n() const {
         return 
-            results_m * get_prob_size_bytes_n() +
-            results_m * get_prob_pad_bytes_n();
-    }
-    
-    __device__ __host__
-    size_t get_probs_align_bytes_n() const {
-        return alignof(Flt);
-    }
-    
-    __device__ __host__
-    size_t get_probs_pad_bytes_n() const {
-        return compute_pad_bytes_n(
-            get_results_n_offset_bytes_n() +
-            get_results_n_size_bytes_n(),
-            get_probs_align_bytes_n());
-    }
-    
-    __device__ __host__
-    size_t get_probs_offset_bytes_n() const {
-        return 
-            get_results_n_offset_bytes_n() +
-            get_results_n_size_bytes_n() +
-            get_probs_pad_bytes_n();
-    }
-    
-    __device__ __host__
-    size_t get_prob_offset_bytes_n(Rid result_i) const {
-        return get_probs_offset_bytes_n() +
-            result_i * get_prob_size_bytes_n() +
-            result_i * get_prob_pad_bytes_n();
+            get_work_prob_offset_bytes_n() +
+            get_work_prob_size_bytes_n() +
+            get_work_value_pad_bytes_n();
     }
     
     __device__ __host__
@@ -935,16 +909,16 @@ struct ResultsArgs {
     __device__ __host__
     size_t get_values_pad_bytes_n() const {
         return compute_pad_bytes_n(
-            get_probs_offset_bytes_n() +
-            get_probs_size_bytes_n(),
+            get_work_value_offset_bytes_n() +
+            get_work_value_size_bytes_n(),
             get_values_align_bytes_n());
     }
     
     __device__ __host__
     size_t get_values_offset_bytes_n() const {
         return 
-            get_probs_offset_bytes_n() +
-            get_probs_size_bytes_n() +
+            get_work_value_offset_bytes_n() +
+            get_work_value_size_bytes_n() +
             get_values_pad_bytes_n();
     }
     
@@ -958,10 +932,10 @@ struct ResultsArgs {
     __device__ __host__
     size_t get_size_bytes_n() const {
         return 
-            get_results_n_pad_bytes_n() +
-            get_results_n_size_bytes_n() +
-            get_probs_pad_bytes_n() +
-            get_probs_size_bytes_n() +
+            get_work_prob_pad_bytes_n() +
+            get_work_prob_size_bytes_n() +
+            get_work_value_pad_bytes_n() +
+            get_work_value_size_bytes_n() +
             get_values_pad_bytes_n() +
             get_values_size_bytes_n();
     }
@@ -969,8 +943,8 @@ struct ResultsArgs {
     __device__ __host__
     size_t get_align_bytes_n() const {
         return max(
-            get_results_n_align_bytes_n(),
-            get_probs_align_bytes_n(),
+            get_work_prob_align_bytes_n(),
+            get_work_value_align_bytes_n(),
             get_values_align_bytes_n());
     }
 };
@@ -979,20 +953,15 @@ struct ResultsPtr : ResultsArgs {
     char *ptr;
     
     __device__ __host__
-    Rid *get_results_n_ptr() const {
-        const size_t offset = get_results_n_offset_bytes_n();
-        return reinterpret_cast<Rid *>(ptr + offset);
-    }
-    
-    __device__ __host__
-    Flt *get_probs_ptr() const {
-        const size_t offset = get_probs_offset_bytes_n();
+    Flt *get_work_prob_ptr() const {
+        const size_t offset = get_work_prob_offset_bytes_n();
         return reinterpret_cast<Flt *>(ptr + offset);
     }
     
     __device__ __host__
-    Flt *get_prob_ptr(const Rid result_i) const {
-        return get_probs_ptr() + result_i;
+    Rvl *get_work_value_ptr() const {
+        const size_t offset = get_work_value_offset_bytes_n();
+        return reinterpret_cast<Rvl *>(ptr + offset);
     }
     
     __device__ __host__

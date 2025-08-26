@@ -661,15 +661,11 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
             ParamSpec(name="results_m", type="Rid"),),
         fields=(
             ItemFieldSpec(
-                name="results_n",
-                type=ValueTypeSpec(name="Rid")),
-            ListFieldSpec(
-                name="probs",
-                item_name="prob",
-                item_type=ValueTypeSpec(name="Flt"),
-                index_name="result_i",
-                index_type="Rid",
-                count="results_m"),
+                name="work_prob",
+                type=ValueTypeSpec(name="Flt")),
+            ItemFieldSpec(
+                name="work_value",
+                type=ValueTypeSpec(name="Rvl")),
             ListFieldSpec(
                 name="values",
                 item_name="value",

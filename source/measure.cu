@@ -248,13 +248,8 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     }
 
     // save result
-    const Rid results_m = results_ptr.results_m;
-    Rid &results_n = *results_ptr.get_results_n_ptr();
-    const Rid result_i = results_n % results_m;
-    Flt &result_prob = *results_ptr.get_prob_ptr(result_i);
-    Rvl &result_value = *results_ptr.get_value_ptr(result_i);
-
-    results_n += 1;
+    Flt &result_prob = *results_ptr.get_work_prob_ptr();
+    Rvl &result_value = *results_ptr.get_work_value_ptr();
     if (!result) {
         result_prob = prob0;
         result_value = 0;
@@ -286,23 +281,20 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // load result
-    const Rid results_m = results_ptr.results_m;
-    const Rid results_n = *results_ptr.get_results_n_ptr();
-    const Rid result_i = (results_n - 1) % results_m;
-    const Bit result_bit = *results_ptr.get_value_ptr(result_i);
-    const Flt result_norm = !result_bit
+    const Bit result_value = *results_ptr.get_work_value_ptr();
+    const Flt result_norm = !result_value
         ? *entries_ptr.get_half0_norm_ptr()
         : *entries_ptr.get_half1_norm_ptr();
 
     // apply result
     Eid &entries_n = *entries_ptr.get_entries_n_ptr();
-    const Eid entries_n_new = *(!result_bit
+    const Eid entries_n_new = *(!result_value
         ? entries_ptr.get_half0_entries_n_ptr()
         : entries_ptr.get_half1_entries_n_ptr());
-    const Bst *bsts_src = !result_bit
+    const Bst *bsts_src = !result_value
         ? entries_ptr.get_half0_bsts_ptr()
         : entries_ptr.get_half1_bsts_ptr();
-    const Amp *amps_src = !result_bit
+    const Amp *amps_src = !result_value
         ? entries_ptr.get_half0_amps_ptr()
         : entries_ptr.get_half1_amps_ptr();
     Bst *bsts_dst = entries_ptr.get_bsts_ptr();
@@ -391,10 +383,7 @@ void op_change_measure_basis_pivot(const ArgsApplyMeasureBasisPivot args, const 
 
     // load result
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
-    const Rid results_m = results_ptr.results_m;
-    const Rid results_n = *results_ptr.get_results_n_ptr();
-    const Rid result_i = (results_n - 1) % results_m;
-    const Bit result_bit = *results_ptr.get_value_ptr(result_i);
+    const Rvl result_value = *results_ptr.get_work_value_ptr();
 
     // update table
     const TablePtr table_ptr = shot_state_ptr.get_table_ptr();
@@ -414,7 +403,7 @@ void op_change_measure_basis_pivot(const ArgsApplyMeasureBasisPivot args, const 
     for (Qid col_i = 0; col_i < cols_n; ++col_i)
         *stab_pivot_row_ptr.get_pauli_ptr().get_bit_ptr(col_i) = false;
     *stab_pivot_row_ptr.get_pauli_ptr().get_bit_ptr(qubits_n + args.target) = true;
-    *stab_pivot_row_ptr.get_sign_ptr() = result_bit;
+    *stab_pivot_row_ptr.get_sign_ptr() = result_value;
 }
 
 static __host__
@@ -438,15 +427,9 @@ void op_apply_reset(const ArgsAssignOperation args, const DimsIdx<2> dims_idx) {
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
 
-    const Rid results_m = results_ptr.results_m;
-    const Rid results_n = *results_ptr.get_results_n_ptr();
-    if (results_n == 0) return;
-
-    const Rid result_i = (results_n - 1) % results_m;
-    const Bit result_bit = *results_ptr.get_value_ptr(result_i);
-    if (result_bit == args.value) return;
-
-    op_apply_gate1<op_apply_x>({shots_state_ptr, args.target}, dims_idx);
+    const Bit result_value = *results_ptr.get_work_value_ptr();
+    if (result_value != args.value)
+        op_apply_gate1<op_apply_x>({shots_state_ptr, args.target}, dims_idx);
 }
 
 static __host__
