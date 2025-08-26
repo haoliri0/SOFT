@@ -8,12 +8,12 @@ Op = tuple[str, int | tuple[int, int]]
 
 
 def generate_random_op(qubits_n: int, rng: np.random.Generator) -> Op:
-    types = ['X', 'Y', 'Z', 'H', 'S', 'SDG', 'T', 'TDG', 'CX', 'M']
+    types = ['X', 'Y', 'Z', 'H', 'S', 'SDG', 'T', 'TDG', 'CX', 'MEASURE']
     if qubits_n < 2:
         types.remove('CX')
 
     typ = types[rng.choice(len(types))]
-    if typ in ['X', 'Y', 'Z', 'H', 'S', 'SDG', 'T', 'TDG', 'M']:
+    if typ in ['X', 'Y', 'Z', 'H', 'S', 'SDG', 'T', 'TDG', 'MEASURE']:
         target = rng.choice(qubits_n)
         return typ, target
     if typ in ['CX']:
@@ -55,8 +55,8 @@ def print_ops(ops: Iterable[Op], results: Iterable[int] | None = None):
         if typ == 'CX':
             print(f"{typ} {args[0]} {args[1]}")
             continue
-        if typ == "M" and results is not None:
+        if typ == "MEASURE" and results is not None:
             result = next(results)
-            print(f"D {args} {result}")
+            print(f"DESIRE {args} {result}")
         else:
             print(f"{typ} {args}")
