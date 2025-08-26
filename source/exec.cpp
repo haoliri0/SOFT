@@ -83,51 +83,51 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
 
 // custom ops
 
-void perform_read_op(
-    const Simulator &simulator,
-    const int result_i
-) {
+void perform_result_op(const Simulator &simulator) {
+    const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
+    const size_t pitch = shots_state_ptr.get_shot_size_bytes_n() + shots_state_ptr.get_shot_pad_bytes_n();
+    const void *work_prob_ptr = shots_state_ptr.get_shot_ptr(0).get_results_ptr().get_work_prob_ptr();
+    const void *work_value_ptr = shots_state_ptr.get_shot_ptr(0).get_results_ptr().get_work_value_ptr();
+    const Sid shots_n = shots_state_ptr.shots_n;
+
+    auto const shots_result_prob = new Flt[shots_n];
+    Cleaner shots_result_prob_cleaner([shots_result_prob] { delete[] shots_result_prob; });
+    auto const shots_result_value = new Rvl[shots_n];
+    Cleaner shots_result_value_cleaner([shots_result_value] { delete[] shots_result_value; });
+
+    cuda_check(cudaMemcpy2DAsync(
+        shots_result_prob,
+        sizeof(Flt),
+        work_prob_ptr,
+        pitch,
+        sizeof(Flt),
+        shots_n,
+        cudaMemcpyDeviceToHost,
+        simulator.stream));
+
+    cuda_check(cudaMemcpy2DAsync(
+        shots_result_value,
+        sizeof(Rvl),
+        work_value_ptr,
+        pitch,
+        sizeof(Rvl),
+        shots_n,
+        cudaMemcpyDeviceToHost,
+        simulator.stream));
+
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
-    const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
-    const Rid results_m = shots_state_ptr.results_m;
-    const Sid shots_n = shots_state_ptr.shots_n;
+    printf("result:\n");
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
-        const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
-
-        Err error;
-        cuda_check(cudaMemcpy(&error, shot_state_ptr.get_error_ptr(),
-            sizeof(Err), cudaMemcpyDeviceToHost));
-
-        auto const results_value = new Rvl[results_m];
-        Cleaner results_value_cleaner([results_value] { delete[] results_value; });
-        cuda_check(cudaMemcpy(results_value, shot_state_ptr.get_results_ptr().get_values_ptr(),
-            results_m * sizeof(Rvl), cudaMemcpyDeviceToHost));
-
-        auto const results_prob = new Flt[results_m];
-        Cleaner results_prob_cleaner([results_prob] { delete[] results_prob; });
-        cuda_check(cudaMemcpy(results_prob, shot_state_ptr.get_results_ptr().get_probs_ptr(),
-            results_m * sizeof(Flt), cudaMemcpyDeviceToHost));
-
-        Rid result_j;
-        if (result_i < 0) {
-            Rid results_n;
-            cuda_check(cudaMemcpy(&results_n, shot_state_ptr.get_results_ptr().get_results_n_ptr(),
-                sizeof(Rid), cudaMemcpyDeviceToHost));
-            result_j = (results_n + result_i) % results_m;
-        } else {
-            result_j = result_i % results_m;
-        }
-
-        const Rvl value = results_value[result_j];
-        const Flt prob = results_prob[result_j];
-        printf("%u,%u,%u,%f\n", shot_i, error, value, prob);
+        const Flt result_prob = shots_result_prob[shot_i];
+        const Rvl result_value = shots_result_value[shot_i];
+        printf("  shot_%u:\n", shot_i);
+        printf("    prob: %f\n", result_prob);
+        printf("    value: %u\n", result_value);
     }
 }
 
-void perform_state_op(
-    const Simulator &simulator
-) {
+void perform_state_op(const Simulator &simulator) {
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
     auto const buffer = new char[simulator.shots_state_ptr.get_size_bytes_n()];
@@ -245,8 +245,8 @@ void execute_op(
     if (name == "DEP2")
         return execute_op(istream, simulator, &Simulator::apply_noise_depo2);
 
-    if (name == "READ")
-        return execute_op(istream, simulator, perform_read_op);
+    if (name == "RESULT")
+        return execute_op(istream, simulator, perform_result_op);
     if (name == "STATE")
         return execute_op(istream, simulator, perform_state_op);
 
