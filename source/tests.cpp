@@ -120,7 +120,7 @@ void test_measure() {
         simulator.apply_h(0);
         simulator.apply_measure(0);
         // simulator.apply_desire(0, false);
-        // simulator.apply_assign(0, false);
+        // simulator.apply_reset(0, false);
 
         sync_and_print_simulator(simulator);
     } while (false);

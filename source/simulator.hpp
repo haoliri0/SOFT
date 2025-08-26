@@ -41,7 +41,7 @@ struct Simulator {
 
     void apply_desire(Qid target, Bit result) const noexcept;
 
-    void apply_assign(Qid target, Bit value) const noexcept;
+    void apply_reset(Qid target, Bit value) const noexcept;
 
 
     void apply_noise_x(Flt prob, Qid target) const noexcept;

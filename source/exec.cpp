@@ -305,7 +305,7 @@ void execute_line(
         return execute_op(istream, simulator, &Simulator::apply_desire);
     if (match(name, "R"))
         return execute_op(istream, std::function([simulator](const Qid target) {
-            simulator.apply_assign(target, false);
+            simulator.apply_reset(target, false);
         }));
     if (match(name, "XERR"))
         return execute_op(istream, simulator, &Simulator::apply_noise_x);
