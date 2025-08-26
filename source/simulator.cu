@@ -59,7 +59,6 @@ void op_init_rand(const ArgsInitRand args, const DimsIdx<1> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
     curandState *rand_state_ptr = args.shots_state_ptr
         .get_shot_ptr(shot_i)
-        .get_results_ptr()
         .get_rand_state_ptr();
     curand_init(args.seed, shot_i, 0, rand_state_ptr);
 }

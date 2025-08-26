@@ -832,52 +832,6 @@ struct ResultsArgs {
     Rid results_m;
     
     __device__ __host__
-    size_t get_error_size_bytes_n() const {
-        return sizeof(Err);
-    }
-    
-    __device__ __host__
-    size_t get_error_align_bytes_n() const {
-        return alignof(Err);
-    }
-    
-    __device__ __host__
-    size_t get_error_pad_bytes_n() const {
-        return 0;
-    }
-    
-    __device__ __host__
-    size_t get_error_offset_bytes_n() const {
-        return 0;
-    }
-    
-    __device__ __host__
-    size_t get_rand_state_size_bytes_n() const {
-        return sizeof(curandState);
-    }
-    
-    __device__ __host__
-    size_t get_rand_state_align_bytes_n() const {
-        return alignof(curandState);
-    }
-    
-    __device__ __host__
-    size_t get_rand_state_pad_bytes_n() const {
-        return compute_pad_bytes_n(
-            get_error_offset_bytes_n() +
-            get_error_size_bytes_n(),
-            get_rand_state_align_bytes_n());
-    }
-    
-    __device__ __host__
-    size_t get_rand_state_offset_bytes_n() const {
-        return 
-            get_error_offset_bytes_n() +
-            get_error_size_bytes_n() +
-            get_rand_state_pad_bytes_n();
-    }
-    
-    __device__ __host__
     size_t get_results_n_size_bytes_n() const {
         return sizeof(Rid);
     }
@@ -889,18 +843,12 @@ struct ResultsArgs {
     
     __device__ __host__
     size_t get_results_n_pad_bytes_n() const {
-        return compute_pad_bytes_n(
-            get_rand_state_offset_bytes_n() +
-            get_rand_state_size_bytes_n(),
-            get_results_n_align_bytes_n());
+        return 0;
     }
     
     __device__ __host__
     size_t get_results_n_offset_bytes_n() const {
-        return 
-            get_rand_state_offset_bytes_n() +
-            get_rand_state_size_bytes_n() +
-            get_results_n_pad_bytes_n();
+        return 0;
     }
     
     __device__ __host__
@@ -1010,10 +958,6 @@ struct ResultsArgs {
     __device__ __host__
     size_t get_size_bytes_n() const {
         return 
-            get_error_pad_bytes_n() +
-            get_error_size_bytes_n() +
-            get_rand_state_pad_bytes_n() +
-            get_rand_state_size_bytes_n() +
             get_results_n_pad_bytes_n() +
             get_results_n_size_bytes_n() +
             get_probs_pad_bytes_n() +
@@ -1025,8 +969,6 @@ struct ResultsArgs {
     __device__ __host__
     size_t get_align_bytes_n() const {
         return max(
-            get_error_align_bytes_n(),
-            get_rand_state_align_bytes_n(),
             get_results_n_align_bytes_n(),
             get_probs_align_bytes_n(),
             get_values_align_bytes_n());
@@ -1035,18 +977,6 @@ struct ResultsArgs {
 
 struct ResultsPtr : ResultsArgs {
     char *ptr;
-    
-    __device__ __host__
-    Err *get_error_ptr() const {
-        const size_t offset = get_error_offset_bytes_n();
-        return reinterpret_cast<Err *>(ptr + offset);
-    }
-    
-    __device__ __host__
-    curandState *get_rand_state_ptr() const {
-        const size_t offset = get_rand_state_offset_bytes_n();
-        return reinterpret_cast<curandState *>(ptr + offset);
-    }
     
     __device__ __host__
     Rid *get_results_n_ptr() const {
@@ -1083,6 +1013,52 @@ struct ShotStateArgs {
     Rid results_m;
     
     __device__ __host__
+    size_t get_error_size_bytes_n() const {
+        return sizeof(Err);
+    }
+    
+    __device__ __host__
+    size_t get_error_align_bytes_n() const {
+        return alignof(Err);
+    }
+    
+    __device__ __host__
+    size_t get_error_pad_bytes_n() const {
+        return 0;
+    }
+    
+    __device__ __host__
+    size_t get_error_offset_bytes_n() const {
+        return 0;
+    }
+    
+    __device__ __host__
+    size_t get_rand_state_size_bytes_n() const {
+        return sizeof(curandState);
+    }
+    
+    __device__ __host__
+    size_t get_rand_state_align_bytes_n() const {
+        return alignof(curandState);
+    }
+    
+    __device__ __host__
+    size_t get_rand_state_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_error_offset_bytes_n() +
+            get_error_size_bytes_n(),
+            get_rand_state_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_rand_state_offset_bytes_n() const {
+        return 
+            get_error_offset_bytes_n() +
+            get_error_size_bytes_n() +
+            get_rand_state_pad_bytes_n();
+    }
+    
+    __device__ __host__
     size_t get_table_size_bytes_n() const {
         return TableArgs{qubits_n}.get_size_bytes_n();
     }
@@ -1094,12 +1070,18 @@ struct ShotStateArgs {
     
     __device__ __host__
     size_t get_table_pad_bytes_n() const {
-        return 0;
+        return compute_pad_bytes_n(
+            get_rand_state_offset_bytes_n() +
+            get_rand_state_size_bytes_n(),
+            get_table_align_bytes_n());
     }
     
     __device__ __host__
     size_t get_table_offset_bytes_n() const {
-        return 0;
+        return 
+            get_rand_state_offset_bytes_n() +
+            get_rand_state_size_bytes_n() +
+            get_table_pad_bytes_n();
     }
     
     __device__ __host__
@@ -1183,6 +1165,10 @@ struct ShotStateArgs {
     __device__ __host__
     size_t get_size_bytes_n() const {
         return 
+            get_error_pad_bytes_n() +
+            get_error_size_bytes_n() +
+            get_rand_state_pad_bytes_n() +
+            get_rand_state_size_bytes_n() +
             get_table_pad_bytes_n() +
             get_table_size_bytes_n() +
             get_decomp_pad_bytes_n() +
@@ -1196,6 +1182,8 @@ struct ShotStateArgs {
     __device__ __host__
     size_t get_align_bytes_n() const {
         return max(
+            get_error_align_bytes_n(),
+            get_rand_state_align_bytes_n(),
             get_table_align_bytes_n(),
             get_decomp_align_bytes_n(),
             get_entries_align_bytes_n(),
@@ -1205,6 +1193,18 @@ struct ShotStateArgs {
 
 struct ShotStatePtr : ShotStateArgs {
     char *ptr;
+    
+    __device__ __host__
+    Err *get_error_ptr() const {
+        const size_t offset = get_error_offset_bytes_n();
+        return reinterpret_cast<Err *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    curandState *get_rand_state_ptr() const {
+        const size_t offset = get_rand_state_offset_bytes_n();
+        return reinterpret_cast<curandState *>(ptr + offset);
+    }
     
     __device__ __host__
     TablePtr get_table_ptr() const {

@@ -176,8 +176,7 @@ void print_entries(const EntriesPtr ptr, const bool full, const unsigned int ind
 }
 
 static
-void print_error(const ResultsPtr ptr, const unsigned int indent) {
-    const Err error = *ptr.get_error_ptr();
+void print_error(const Err error, const unsigned int indent) {
     print_indent(indent);
     printf("error=%u\n", error);
 }
@@ -201,7 +200,6 @@ void print_results(const ResultsPtr ptr, const unsigned int indent) {
 
     print_indent(indent);
     printf("results:\n");
-    print_error(ptr, indent + 1);
     for (Rid result_idx = results_idx0; result_idx < results_n; ++result_idx)
         print_result_item(ptr, result_idx, indent + 1);
 }
@@ -209,6 +207,7 @@ void print_results(const ResultsPtr ptr, const unsigned int indent) {
 
 static
 void print_shot_state(const ShotStatePtr &ptr, const unsigned int indent) {
+    print_error(*ptr.get_error_ptr(), indent + 1);
     print_table(ptr.get_table_ptr(), indent + 1);
     print_decomp(ptr.get_decomp_ptr(), indent + 1);
     print_entries(ptr.get_entries_ptr(), true, indent + 1);

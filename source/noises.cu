@@ -54,7 +54,7 @@ void op_random_choose(const ArgsRandomSample<probs_n> args, const DimsIdx<1> dim
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
     const Rid results_m = results_ptr.results_m;
 
-    curandState *rand_state_ptr = results_ptr.get_rand_state_ptr();
+    curandState *rand_state_ptr = shot_state_ptr.get_rand_state_ptr();
     const Flt sample = curand_uniform(rand_state_ptr);
 
     Rid &results_n = *results_ptr.get_results_n_ptr();

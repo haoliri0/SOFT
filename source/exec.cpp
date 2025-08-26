@@ -215,7 +215,7 @@ void perform_read_op(
         const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
 
         Err error;
-        cuda_check(cudaMemcpy(&error, shot_state_ptr.get_results_ptr().get_error_ptr(),
+        cuda_check(cudaMemcpy(&error, shot_state_ptr.get_error_ptr(),
             sizeof(Err), cudaMemcpyDeviceToHost));
 
         auto const results_value = new Rvl[results_m];
@@ -261,7 +261,7 @@ void perform_state_op(
         ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
         print_indent(1);
         printf("shot %u:\n", shot_i);
-        print_error(shot_state_ptr.get_results_ptr(), 2);
+        print_error(*shot_state_ptr.get_error_ptr(), 2);
         print_table(shot_state_ptr.get_table_ptr(), 2);
         print_entries(shot_state_ptr.get_entries_ptr(), false, 2);
     }

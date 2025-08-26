@@ -83,10 +83,9 @@ void op_compute_measure_entries(const ShotsStatePtr shots_state_ptr, const DimsI
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const EntriesPtr entries_ptr = shot_state_ptr.get_entries_ptr();
-    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
 
     // check error
-    Err &err = *results_ptr.get_error_ptr();
+    Err &err = *shot_state_ptr.get_error_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // check entries_m, entries_n, entry_i
@@ -185,8 +184,7 @@ void op_compute_measure_probs(const ShotsStatePtr shots_state_ptr, const DimsIdx
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
 
     // check error
-    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
-    Err err = *results_ptr.get_error_ptr();
+    Err err = *shot_state_ptr.get_error_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // check pivot
@@ -223,7 +221,7 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
 
     // check error
-    Err err = *results_ptr.get_error_ptr();
+    Err err = *shot_state_ptr.get_error_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // normalize probs
@@ -245,7 +243,7 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
         case SampleMode::Maximum:
             result = prob0 <= prob1;
         default:
-            curandState *rand_state_ptr = results_ptr.get_rand_state_ptr();
+            curandState *rand_state_ptr = shot_state_ptr.get_rand_state_ptr();
             result = prob0 < curand_uniform(rand_state_ptr);
     }
 
@@ -284,7 +282,7 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
 
     // check error
-    Err err = *results_ptr.get_error_ptr();
+    Err err = *shot_state_ptr.get_error_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // load result

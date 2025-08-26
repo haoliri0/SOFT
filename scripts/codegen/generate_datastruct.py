@@ -661,12 +661,6 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
             ParamSpec(name="results_m", type="Rid"),),
         fields=(
             ItemFieldSpec(
-                name="error",
-                type=ValueTypeSpec(name="Err")),
-            ItemFieldSpec(
-                name="rand_state",
-                type=ValueTypeSpec(name="curandState")),
-            ItemFieldSpec(
                 name="results_n",
                 type=ValueTypeSpec(name="Rid")),
             ListFieldSpec(
@@ -691,6 +685,12 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
             ParamSpec(name="entries_m", type="Eid"),
             ParamSpec(name="results_m", type="Rid")),
         fields=(
+            ItemFieldSpec(
+                name="error",
+                type=ValueTypeSpec(name="Err")),
+            ItemFieldSpec(
+                name="rand_state",
+                type=ValueTypeSpec(name="curandState")),
             ItemFieldSpec(
                 name="table",
                 type=DynamicStructTypeSpec(
