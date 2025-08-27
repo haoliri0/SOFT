@@ -152,25 +152,19 @@ void perform_state_op(
 
 static
 void execute_op(
-    std::istream &istream,
+    std::istream &,
     const std::function<void()> &op
 ) {
     op();
-    skip_whitespace_line(istream);
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
 }
 
 template<typename Ret>
 static
 Ret execute_op(
-    std::istream &istream,
+    std::istream &,
     const std::function<Ret()> &op
 ) {
     const Ret ret = op();
-    skip_whitespace_line(istream);
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
     return ret;
 }
 
@@ -209,14 +203,11 @@ void execute_op(
 }
 
 static
-void execute_line(
+void execute_op(
+    std::istream &istream,
     const Simulator &simulator,
-    std::istream &istream
+    const std::string &name
 ) {
-    std::string name;
-    read_value(istream, name);
-    if (istream.eof()) return;
-
     if (name == "")
         return execute_op(istream, [] {});
     if (name == "X")
@@ -261,6 +252,19 @@ void execute_line(
 
     fprintf(stderr, "Unknown op: %s\n", name.c_str());
     throw ExecException(ExecError::IllegalOp);
+}
+
+static
+void execute_line(
+    const Simulator &simulator,
+    std::istream &istream
+) {
+    std::string name;
+    read_value(istream, name);
+    execute_op(istream, simulator, name);
+
+    skip(istream, is_whitespace);
+    ensure(istream, is_linebreak);
 }
 
 void execute_lines(
