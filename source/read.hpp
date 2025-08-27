@@ -2,6 +2,27 @@
 #define STN_CUDA_READ_HPP
 
 #include <istream>
+#include <charconv>
+#include <exception>
+
+class ParseException final : std::exception {
+public:
+    const std::errc ec;
+    explicit ParseException(const std::errc ec) : ec(ec) {}
+    [[nodiscard]] const char *what() const noexcept override {
+        return std::make_error_code(ec).message().c_str();
+    }
+};
+
+template<typename T>
+static
+void parse_value(const char *chars, T &value) {
+    auto head = chars;
+    auto tail = head + strlen(head);
+    const auto [ptr, ec] = std::from_chars(head, tail, value);
+    if (ec != std::errc{}) throw ParseException(ec);
+    if (ptr != tail) throw ParseException(std::errc::invalid_argument);
+}
 
 static
 unsigned long parse_cli_ul(const char *s) {
