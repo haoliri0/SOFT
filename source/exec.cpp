@@ -255,9 +255,7 @@ void perform_read_op(
     }
 }
 
-void perform_state_op(
-    const Simulator &simulator
-) {
+void perform_state_op(const Simulator &simulator) {
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
     auto const buffer = new char[simulator.shots_state_ptr.get_size_bytes_n()];
