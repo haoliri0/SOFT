@@ -83,6 +83,34 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
 
 // custom ops
 
+void perform_error_op(const Simulator &simulator) {
+    const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
+    const size_t pitch = shots_state_ptr.get_shot_size_bytes_n() + shots_state_ptr.get_shot_pad_bytes_n();
+    const void *error_ptr = shots_state_ptr.get_shot_ptr(0).get_error_ptr();
+    const Sid shots_n = shots_state_ptr.shots_n;
+
+    auto const shots_error = new Err[shots_n];
+    Cleaner shots_error_cleaner([shots_error] { delete[] shots_error; });
+
+    cuda_check(cudaMemcpy2DAsync(
+        shots_error,
+        sizeof(Err),
+        error_ptr,
+        pitch,
+        sizeof(Err),
+        shots_n,
+        cudaMemcpyDeviceToHost,
+        simulator.stream));
+
+    cuda_check(cudaStreamSynchronize(simulator.stream));
+
+    printf("error:\n");
+    for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
+        const Err error = shots_error[shot_i];
+        printf("    value: %u\n", error);
+    }
+}
+
 void perform_result_op(const Simulator &simulator) {
     const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
     const size_t pitch = shots_state_ptr.get_shot_size_bytes_n() + shots_state_ptr.get_shot_pad_bytes_n();
@@ -245,6 +273,8 @@ void execute_op(
     if (name == "DEP2")
         return execute_op(istream, simulator, &Simulator::apply_noise_depo2);
 
+    if (name == "ERROR")
+        return execute_op(istream, simulator, perform_error_op);
     if (name == "RESULT")
         return execute_op(istream, simulator, perform_result_op);
     if (name == "STATE")
