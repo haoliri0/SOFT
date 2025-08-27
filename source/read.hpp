@@ -16,12 +16,18 @@ public:
 
 template<typename T>
 static
-void parse_value(const char *chars, T &value) {
-    auto head = chars;
-    auto tail = head + strlen(head);
+void parse_value(const char *head, const char *tail, T &value) {
     const auto [ptr, ec] = std::from_chars(head, tail, value);
     if (ec != std::errc{}) throw ParseException(ec);
     if (ptr != tail) throw ParseException(std::errc::invalid_argument);
+}
+
+template<typename T>
+static
+void parse_value(const char *chars, T &value) {
+    auto head = chars;
+    auto tail = head + strlen(head);
+    parse_value(head, tail, value);
 }
 
 
