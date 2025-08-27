@@ -1,3 +1,4 @@
+#include <span>
 #include <ctime>
 #include <cstdio>
 #include <iostream>
@@ -48,11 +49,11 @@ unsigned long long parse_cli_ull(const char *s) {
 }
 
 static
-void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
-    for (unsigned int i = 1; i < argc;) {
-        const char *arg_key = argv[i++];
+void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
+    for (auto iter = ++span.begin(); iter != span.end(); ++iter) {
+        const char *arg_key = *iter;
         if (match(arg_key, "--shots_n")) {
-            const char *arg_value = argv[i++];
+            const char *arg_value = *++iter;
             args.shots_n = parse_cli_ul(arg_value);
             if (args.shots_n == 0) {
                 fprintf(stderr, "Illegal value: shots_n=%s\n", arg_value);
@@ -61,7 +62,7 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
             continue;
         }
         if (match(arg_key, "--qubits_n")) {
-            const char *arg_value = argv[i++];
+            const char *arg_value = *++iter;
             args.qubits_n = parse_cli_ul(arg_value);
             if (args.qubits_n == 0) {
                 fprintf(stderr, "Illegal value: qubits_n=%s\n", arg_value);
@@ -70,7 +71,7 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
             continue;
         }
         if (match(arg_key, "--entries_m")) {
-            const char *arg_value = argv[i++];
+            const char *arg_value = *++iter;
             args.entries_m = parse_cli_ul(arg_value);
             if (args.entries_m == 0) {
                 fprintf(stderr, "Illegal value: entries_m=%s\n", arg_value);
@@ -79,7 +80,7 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
             continue;
         }
         if (match(arg_key, "--results_m")) {
-            const char *arg_value = argv[i++];
+            const char *arg_value = *++iter;
             args.results_m = parse_cli_ul(arg_value);
             if (args.results_m == 0) {
                 fprintf(stderr, "Illegal value: results_m=%s\n", arg_value);
@@ -88,7 +89,7 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
             continue;
         }
         if (match(arg_key, "--seed")) {
-            const char *arg_value = argv[i++];
+            const char *arg_value = *++iter;
             args.seed = parse_cli_ull(arg_value);
             continue;
         }
@@ -99,6 +100,11 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
         fprintf(stderr, "Unexpected arg: %s\n", arg_key);
         throw CliArgsException(CliArgsError::IllegalArg);
     }
+}
+
+static
+void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
+    parse_cli_args(std::span(argv, argc), args);
 }
 
 // circuit ops
