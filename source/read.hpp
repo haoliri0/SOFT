@@ -79,31 +79,6 @@ void ensure(std::istream &istream, const std::function<bool(char)> &cond) {
     throw ParseException(std::errc::invalid_argument);
 }
 
-static
-void skip_whitespace(std::istream &istream) {
-    while (istream.good()) {
-        const int c = istream.peek();
-        if (c == EOF) break;
-        if (!is_whitespace(c)) break;
-        istream.ignore();
-    }
-}
-
-static
-void skip_whitespace_line(std::istream &istream) {
-    skip_whitespace(istream);
-    if (!istream.good()) return;
-
-    const int c = istream.peek();
-    if (c == EOF) return;
-    if (!is_linebreak(c)) {
-        istream.setstate(std::istream::failbit);
-        return;
-    }
-
-    istream.ignore();
-}
-
 
 template<typename T>
 static
