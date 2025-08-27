@@ -62,6 +62,16 @@ bool is_whitespace(const int c) {
 }
 
 static
+void skip(std::istream &istream, const std::function<bool(char)> &cond) {
+    while (istream.good()) {
+        const int c = istream.peek();
+        if (c == EOF) break;
+        if (!cond(c)) break;
+        istream.ignore();
+    }
+}
+
+static
 void skip_whitespace(std::istream &istream) {
     while (istream.good()) {
         const int c = istream.peek();
