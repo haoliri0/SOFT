@@ -211,55 +211,53 @@ void execute_line(
     const Simulator &simulator,
     std::istream &istream
 ) {
-    constexpr size_t name_limit = 16;
-    char name[name_limit];
-    read_word(istream, name_limit, name);
-    if (istream.bad()) throw ExecException(ExecError::IOError);
+    std::string name;
+    read_value(istream, name);
     if (istream.eof()) return;
 
-    if (match(name, ""))
+    if (name == "")
         return execute_op(istream, [] {});
-    if (match(name, "X"))
+    if (name == "X")
         return execute_op(istream, simulator, &Simulator::apply_x);
-    if (match(name, "Y"))
+    if (name == "Y")
         return execute_op(istream, simulator, &Simulator::apply_y);
-    if (match(name, "Z"))
+    if (name == "Z")
         return execute_op(istream, simulator, &Simulator::apply_z);
-    if (match(name, "H"))
+    if (name == "H")
         return execute_op(istream, simulator, &Simulator::apply_h);
-    if (match(name, "S"))
+    if (name == "S")
         return execute_op(istream, simulator, &Simulator::apply_s);
-    if (match(name, "SDG"))
+    if (name == "SDG")
         return execute_op(istream, simulator, &Simulator::apply_sdg);
-    if (match(name, "T"))
+    if (name == "T")
         return execute_op(istream, simulator, &Simulator::apply_t);
-    if (match(name, "TDG"))
+    if (name == "TDG")
         return execute_op(istream, simulator, &Simulator::apply_tdg);
-    if (match(name, "CX"))
+    if (name == "CX")
         return execute_op(istream, simulator, &Simulator::apply_cx);
 
-    if (match(name, "MEASURE"))
+    if (name == "MEASURE")
         return execute_op(istream, simulator, &Simulator::apply_measure);
-    if (match(name, "DESIRE"))
+    if (name == "DESIRE")
         return execute_op(istream, simulator, &Simulator::apply_desire);
-    if (match(name, "RESET"))
+    if (name == "RESET")
         return execute_op(istream, simulator, &Simulator::apply_reset);
 
-    if (match(name, "XERR"))
+    if (name == "XERR")
         return execute_op(istream, simulator, &Simulator::apply_noise_x);
-    if (match(name, "ZERR"))
+    if (name == "ZERR")
         return execute_op(istream, simulator, &Simulator::apply_noise_z);
-    if (match(name, "DEP1"))
+    if (name == "DEP1")
         return execute_op(istream, simulator, &Simulator::apply_noise_depo1);
-    if (match(name, "DEP2"))
+    if (name == "DEP2")
         return execute_op(istream, simulator, &Simulator::apply_noise_depo2);
 
-    if (match(name, "READ"))
+    if (name == "READ")
         return execute_op(istream, simulator, perform_read_op);
-    if (match(name, "STATE"))
+    if (name == "STATE")
         return execute_op(istream, simulator, perform_state_op);
 
-    fprintf(stderr, "Unknown op: %s\n", name);
+    fprintf(stderr, "Unknown op: %s\n", name.c_str());
     throw ExecException(ExecError::IllegalOp);
 }
 
