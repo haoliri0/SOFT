@@ -29,4 +29,23 @@ void cuda_shots_op(cudaStream_t stream, ShotsStatePtr shots_state_ptr, Args args
         (stream, {shots_state_ptr, args}, dimsof(shots_n));
 }
 
+struct EmptyArgs {};
+
+template<void (*op)(ShotStatePtr shot_state_ptr)>
+static __device__
+void op_shots_op(const ArgsShotsOp<EmptyArgs> args, const DimsIdx<1> dims_idx) {
+    Sid const shot_i = dims_idx.get<0>();
+    const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
+    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+    op(shot_state_ptr);
+}
+
+template<void (*op)(ShotStatePtr shot_state_ptr)>
+static __host__
+void cuda_shots_op(cudaStream_t stream, ShotsStatePtr shots_state_ptr) {
+    const Sid shots_n = shots_state_ptr.shots_n;
+    cuda_dims_op<ArgsShotsOp<EmptyArgs>, 1, op_shots_op<op>>
+        (stream, {shots_state_ptr, {}}, dimsof(shots_n));
+}
+
 #endif
