@@ -96,6 +96,17 @@ void skip_whitespace_line(std::istream &istream) {
     istream.ignore();
 }
 
+
+template<typename T>
+static
+void read_value(std::istream &istream, T &value) {
+    skip(istream, is_whitespace);
+
+    istream >> value;
+    if (istream.bad()) throw ParseException(std::errc::io_error);
+    if (istream.fail()) throw ParseException(std::errc::invalid_argument);
+}
+
 static
 void read_word(std::istream &istream, size_t limit, char *buffer) {
     // 跳过空白字符（不包括换行符）
