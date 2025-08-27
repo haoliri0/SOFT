@@ -108,6 +108,18 @@ void read_value(std::istream &istream, T &value) {
 }
 
 static
+void read_value(std::istream &istream, std::string &value) {
+    skip(istream, is_whitespace);
+
+    istream >> value;
+    if (istream.bad()) throw ParseException(std::errc::io_error);
+    if (istream.fail()) {
+        istream.clear(istream.rdstate() | std::istream::eofbit);
+        value.clear();
+    }
+}
+
+static
 void read_word(std::istream &istream, size_t limit, char *buffer) {
     // 跳过空白字符（不包括换行符）
     skip_whitespace(istream);
