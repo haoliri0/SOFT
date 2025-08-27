@@ -5,6 +5,27 @@
 #include <charconv>
 #include <exception>
 
+static
+bool match(const char *str, const char *seg) {
+    while (true) {
+        if (*str != *seg) return false;
+        if (*seg == '\0') return true;
+        str++;
+        seg++;
+    }
+}
+
+static
+const char *match_head(const char *str, const char *seg) {
+    while (true) {
+        if (*seg == '\0') return str;
+        if (*str != *seg) return nullptr;
+        str++;
+        seg++;
+    }
+}
+
+
 class ParseException final : std::exception {
 public:
     const std::errc ec;
@@ -30,26 +51,6 @@ void parse_value(const char *chars, T &value) {
     parse_value(head, tail, value);
 }
 
-
-static
-bool match(const char *str, const char *seg) {
-    while (true) {
-        if (*str != *seg) return false;
-        if (*seg == '\0') return true;
-        str++;
-        seg++;
-    }
-}
-
-static
-const char *match_head(const char *str, const char *seg) {
-    while (true) {
-        if (*seg == '\0') return str;
-        if (*str != *seg) return nullptr;
-        str++;
-        seg++;
-    }
-}
 
 static
 bool is_linebreak(const int c) {
@@ -91,18 +92,6 @@ void read_value(std::istream &istream, T &value) {
 }
 
 static
-void read_value(std::istream &istream, std::string &value) {
-    skip(istream, is_whitespace);
-
-    istream >> value;
-    if (istream.bad()) throw ParseException(std::errc::io_error);
-    if (istream.fail()) {
-        istream.clear(istream.rdstate() | std::istream::eofbit);
-        value.clear();
-    }
-}
-
-static
 void read_value(std::istream &istream, Bit &arg) {
     unsigned int value;
     read_value(istream, value);
@@ -112,6 +101,18 @@ void read_value(std::istream &istream, Bit &arg) {
     }
 
     arg = value;
+}
+
+static
+void read_value(std::istream &istream, std::string &value) {
+    skip(istream, is_whitespace);
+
+    istream >> value;
+    if (istream.bad()) throw ParseException(std::errc::io_error);
+    if (istream.fail()) {
+        istream.clear(istream.rdstate() | std::istream::eofbit);
+        value.clear();
+    }
 }
 
 #endif
