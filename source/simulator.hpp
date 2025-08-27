@@ -52,6 +52,11 @@ struct Simulator {
 
     void apply_noise_depo2(Flt prob, Qid target0, Qid target1) const noexcept;
 
+
+    void apply_classical_read(Rid pointer) const noexcept;
+
+    void apply_classical_write(Rid pointer) const noexcept;
+
 };
 
 }

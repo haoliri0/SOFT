@@ -12,6 +12,7 @@ include_directories("${CUDAToolkit_INCLUDE_DIRS}")
 add_library(stn_cuda
     "source/simulator.cu"
     "source/decompose.cu"
+    "source/classical.cu"
     "source/measure.cu"
     "source/noises.cu"
     "source/gates_t.cu"
