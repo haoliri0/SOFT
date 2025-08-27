@@ -72,6 +72,14 @@ void skip(std::istream &istream, const std::function<bool(char)> &cond) {
 }
 
 static
+void ensure(std::istream &istream, const std::function<bool(char)> &cond) {
+    const int c = istream.get();
+    if (istream.bad()) throw ParseException(std::errc::io_error);
+    if (istream.eof() || cond(c)) return;
+    throw ParseException(std::errc::invalid_argument);
+}
+
+static
 void skip_whitespace(std::istream &istream) {
     while (istream.good()) {
         const int c = istream.peek();
