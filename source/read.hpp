@@ -62,6 +62,16 @@ protected:
     }
 };
 
+static
+void skip(std::istream &istream, const std::function<bool(char)> &cond) {
+    while (istream.good()) {
+        const int c = istream.peek();
+        if (c == EOF) break;
+        if (!cond(c)) break;
+        istream.ignore();
+    }
+}
+
 
 static
 bool match(const char *str, const char *seg) {
