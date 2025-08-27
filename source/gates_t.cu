@@ -27,7 +27,7 @@ void op_update_entries_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     if (entry_i == 0 && entries_n > entries_m / 2) {
         // 数量超过一半，无法计算，设置 err 状态
         // 只有一条线程会执行该修改，避免写入冲突
-        err = err_map_overflow;
+        err = err_entries_overflow;
         return;
     }
 
@@ -89,7 +89,7 @@ void op_update_entries_half0(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     if (entry_i == 0 && entries_n > entries_m / 2) {
         // 数量超过一半，无法计算，设置 err 状态
         // 只有一条线程会执行该修改，避免写入冲突
-        err = err_map_overflow;
+        err = err_entries_overflow;
         return;
     }
 
