@@ -163,11 +163,12 @@ def main(
                         prob = prob.strip()
                         prob = float(prob)
 
-                        line = next(process.stdout)
-                        line = line.strip()
-                        _, _, _, prob2 = line.split(",")
+                        read_specified_label(process.stdout, "result")
+                        read_specified_label(process.stdout, "shot_0")
+                        prob2 = read_specified_label(process.stdout, "prob")
                         prob2 = prob2.strip()
                         prob2 = float(prob2)
+                        read_specified_label(process.stdout, "value")
 
                         if not np.allclose(prob, prob2, rtol=1e-05, atol=1e-05):
                             error = ValueError(f"Found differences in prob.")
@@ -251,7 +252,7 @@ def main(
                         process.stdin.write("\n")
                         queue.put(('gate', gate))
                     case "prob", prob:
-                        process.stdin.write("READ -1")
+                        process.stdin.write("RESULT")
                         process.stdin.write("\n")
                         queue.put(('prob', prob))
                     case "state", _:
