@@ -272,13 +272,8 @@ void execute_lines(
     while (istream.good()) {
         try {
             execute_line(simulator, istream);
-        } catch (CudaException &exception) {
+        } catch (...) {
             fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
-            fprint_cuda_error(stderr, exception.error);
-            throw;
-        } catch (ExecException &exception) {
-            fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
-            fprint_exec_error(stderr, exception.error);
             throw;
         }
         lines_n += 1;
