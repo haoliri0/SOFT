@@ -57,6 +57,8 @@ struct Simulator {
 
     void apply_classical_write(Rid pointer) const noexcept;
 
+    void apply_classical_not() const noexcept;
+
 };
 
 }

@@ -38,3 +38,16 @@ void Simulator::apply_classical_read(const Rid pointer) const noexcept {
 void Simulator::apply_classical_write(const Rid pointer) const noexcept {
     cuda_shots_op<Rid, op_classical_write>(stream, shots_state_ptr, pointer);
 }
+
+
+static __device__
+void op_classical_not(const ShotStatePtr shot_state_ptr) {
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+    const Bit src = *results_ptr.get_work_value_ptr();
+    Rvl &dst = *results_ptr.get_work_value_ptr();
+    dst = ~src;
+}
+
+void Simulator::apply_classical_not() const noexcept {
+    cuda_shots_op<op_classical_not>(stream, shots_state_ptr);
+}
