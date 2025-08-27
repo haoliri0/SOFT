@@ -81,65 +81,7 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
     parse_cli_args(std::span(argv, argc), args);
 }
 
-// circuit ops
-
-static
-void execute_op(
-    std::istream &istream,
-    const std::function<void()> &op
-) {
-    op();
-    skip_whitespace_line(istream);
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
-}
-
-template<typename Ret>
-static
-Ret execute_op(
-    std::istream &istream,
-    const std::function<Ret()> &op
-) {
-    const Ret ret = op();
-    skip_whitespace_line(istream);
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
-    return ret;
-}
-
-template<typename Ret, typename Arg0, typename... Args>
-static
-Ret execute_op(
-    std::istream &istream,
-    const std::function<Ret (Arg0, Args...)> &op
-) {
-    Arg0 arg0;
-    read_value(istream, arg0);
-    const std::function wrapped = [op, arg0](Args... args) { return op(arg0, args...); };
-    return execute_op(istream, wrapped);
-}
-
-template<typename Receiver, typename... Args>
-static
-void execute_op(
-    std::istream &istream,
-    const Receiver &receiver,
-    void (Receiver::*op)(Args...) const
-) {
-    std::function wrapped = [&receiver, op](Args... args) { (receiver.*op)(args...); };
-    return execute_op(istream, wrapped);
-}
-
-template<typename Receiver, typename... Args>
-static
-void execute_op(
-    std::istream &istream,
-    const Receiver &receiver,
-    void (*op)(const Receiver &, Args...)
-) {
-    std::function wrapped = [&receiver, op](Args... args) { (*op)(receiver, args...); };
-    return execute_op(istream, wrapped);
-}
+// custom ops
 
 void perform_read_op(
     const Simulator &simulator,
@@ -204,6 +146,66 @@ void perform_state_op(
         print_table(shot_state_ptr.get_table_ptr(), 2);
         print_entries(shot_state_ptr.get_entries_ptr(), false, 2);
     }
+}
+
+// execution
+
+static
+void execute_op(
+    std::istream &istream,
+    const std::function<void()> &op
+) {
+    op();
+    skip_whitespace_line(istream);
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
+}
+
+template<typename Ret>
+static
+Ret execute_op(
+    std::istream &istream,
+    const std::function<Ret()> &op
+) {
+    const Ret ret = op();
+    skip_whitespace_line(istream);
+    if (istream.bad()) throw ExecException(ExecError::IOError);
+    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
+    return ret;
+}
+
+template<typename Ret, typename Arg0, typename... Args>
+static
+Ret execute_op(
+    std::istream &istream,
+    const std::function<Ret (Arg0, Args...)> &op
+) {
+    Arg0 arg0;
+    read_value(istream, arg0);
+    const std::function wrapped = [op, arg0](Args... args) { return op(arg0, args...); };
+    return execute_op(istream, wrapped);
+}
+
+template<typename Receiver, typename... Args>
+static
+void execute_op(
+    std::istream &istream,
+    const Receiver &receiver,
+    void (Receiver::*op)(Args...) const
+) {
+    std::function wrapped = [&receiver, op](Args... args) { (receiver.*op)(args...); };
+    return execute_op(istream, wrapped);
+}
+
+template<typename Receiver, typename... Args>
+static
+void execute_op(
+    std::istream &istream,
+    const Receiver &receiver,
+    void (*op)(const Receiver &, Args...)
+) {
+    std::function wrapped = [&receiver, op](Args... args) { (*op)(receiver, args...); };
+    return execute_op(istream, wrapped);
 }
 
 static
