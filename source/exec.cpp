@@ -263,6 +263,28 @@ void execute_line(
     throw ExecException(ExecError::IllegalOp);
 }
 
+void execute_lines(
+    const Simulator &simulator,
+    std::istream &istream
+) {
+    size_t lines_n = 0;
+    istream >> std::noskipws;
+    while (istream.good()) {
+        try {
+            execute_line(simulator, istream);
+        } catch (CudaException &exception) {
+            fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
+            fprint_cuda_error(stderr, exception.error);
+            throw;
+        } catch (ExecException &exception) {
+            fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
+            fprint_exec_error(stderr, exception.error);
+            throw;
+        }
+        lines_n += 1;
+    }
+}
+
 // main
 
 int main(const int argc, const char **argv) {
@@ -299,23 +321,7 @@ int main(const int argc, const char **argv) {
     fprintf(stderr, "Executing\n");
     const clock_t time_start = clock();
 
-    size_t lines_n = 0;
-    std::istream &istream = std::cin;
-    istream >> std::noskipws;
-    while (istream.good()) {
-        try {
-            execute_line(simulator, istream);
-        } catch (CudaException &exception) {
-            fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
-            fprint_cuda_error(stderr, exception.error);
-            throw;
-        } catch (ExecException &exception) {
-            fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
-            fprint_exec_error(stderr, exception.error);
-            throw;
-        }
-        lines_n += 1;
-    }
+    execute_lines(simulator, std::cin);
 
     cuda_err = cudaStreamSynchronize(simulator.stream);
     if (cuda_err != cudaSuccess) {
