@@ -182,26 +182,22 @@ void print_error(const Err error, const unsigned int indent) {
 }
 
 static
-void print_result_item(const ResultsPtr ptr, const Rid result_idx, const unsigned int indent) {
-    const Rid results_m = ptr.results_m;
-    const Rid result_i = result_idx % results_m;
-    const Rvl result_value = *ptr.get_value_ptr(result_i);
-    const Flt result_prob = *ptr.get_prob_ptr(result_i);
-    print_indent(indent + 1);
-    printf("idx=%04u,value=%u,prob=%f\n", result_idx, result_value, result_prob);
-}
-
-static
 void print_results(const ResultsPtr ptr, const unsigned int indent) {
-    const Rid results_m = ptr.results_m;
-    const Rid results_n = *ptr.get_results_n_ptr();
-    const Rid results_idx0 = results_n > results_m ? results_n - results_m : 0;
-    if (results_n == 0) return;
-
     print_indent(indent);
     printf("results:\n");
-    for (Rid result_idx = results_idx0; result_idx < results_n; ++result_idx)
-        print_result_item(ptr, result_idx, indent + 1);
+
+    print_indent(indent + 1);
+    printf("work_prob: %f\n", *ptr.get_work_prob_ptr());
+
+    print_indent(indent + 1);
+    printf("work_value: %u\n", *ptr.get_work_value_ptr());
+
+    print_indent(indent + 1);
+    printf("values:\n");
+    for (Rid result_i = 0; result_i < ptr.results_m; ++result_i) {
+        print_indent(indent + 2);
+        printf("- %u\n", *ptr.get_value_ptr(result_i));
+    }
 }
 
 
