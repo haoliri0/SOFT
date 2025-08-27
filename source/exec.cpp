@@ -23,32 +23,6 @@ struct CliArgs {
 };
 
 static
-unsigned long parse_cli_ul(const char *s) {
-    char *ptr;
-    const unsigned long v = strtoul(s, &ptr, 10);
-
-    if (errno != 0 || ptr == s || *ptr != '\0') {
-        fprintf(stderr, "Failed to parse '%s' with errno=%d", s,errno);
-        throw CliArgsException(CliArgsError::IllegalValue);
-    }
-
-    return v;
-}
-
-static
-unsigned long long parse_cli_ull(const char *s) {
-    char *ptr;
-    const unsigned long long v = strtoull(s, &ptr, 10);
-
-    if (errno != 0 || ptr == s || *ptr != '\0') {
-        fprintf(stderr, "Failed to parse '%s' with errno=%d", s,errno);
-        throw CliArgsException(CliArgsError::IllegalValue);
-    }
-
-    return v;
-}
-
-static
 void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
     for (auto iter = ++span.begin(); iter != span.end(); ++iter) {
         const char *arg_key = *iter;
