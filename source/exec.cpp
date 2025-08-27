@@ -114,7 +114,7 @@ Ret execute_op(
     const std::function<Ret (Arg0, Args...)> &op
 ) {
     Arg0 arg0;
-    read_arg(istream, arg0);
+    read_value(istream, arg0);
     const std::function wrapped = [op, arg0](Args... args) { return op(arg0, args...); };
     return execute_op(istream, wrapped);
 }

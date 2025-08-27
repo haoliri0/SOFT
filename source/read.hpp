@@ -120,52 +120,12 @@ void read_value(std::istream &istream, std::string &value) {
 }
 
 static
-void read_arg(std::istream &istream, int &arg) {
-    skip_whitespace(istream);
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
-
-    istream >> arg;
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
-}
-
-static
-void read_arg(std::istream &istream, Qid &arg) {
-    skip_whitespace(istream);
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
-
-    istream >> arg;
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
-}
-
-static
-void read_arg(std::istream &istream, Flt &arg) {
-    skip_whitespace(istream);
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
-
-    istream >> arg;
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
-}
-
-static
-void read_arg(std::istream &istream, Bit &arg) {
-    skip_whitespace(istream);
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
-
+void read_value(std::istream &istream, Bit &arg) {
     unsigned int value;
-    istream >> value;
-    if (istream.bad()) throw ExecException(ExecError::IOError);
-    if (istream.fail()) throw ExecException(ExecError::IllegalArg);
-
+    read_value(istream, value);
     if (value != 0 && value != 1) {
         istream.setstate(std::istream::failbit);
-        throw ExecException(ExecError::IllegalArg);
+        throw ParseException(std::errc::invalid_argument);
     }
 
     arg = value;
