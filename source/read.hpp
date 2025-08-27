@@ -4,6 +4,7 @@
 #include <istream>
 #include <charconv>
 #include <exception>
+#include <streambuf>
 
 class ParseException final : std::exception {
 public:
@@ -41,6 +42,27 @@ void parse_value(std::istream &istream, T &value) {
 }
 
 
+class SepStreamBuf final : public std::streambuf {
+public:
+    std::streambuf &src;
+    const std::function<bool(char)> &cond;
+    explicit SepStreamBuf(std::streambuf &src, const std::function<bool(char)> &cond) : src(src), cond(cond) {}
+protected:
+    int_type underflow() override {
+        const int_type c = src.sgetc();
+        if (c == traits_type::eof() || cond(c))
+            return traits_type::eof();
+        return c;
+    }
+    int_type uflow() override {
+        const int_type c = src.sbumpc();
+        if (c == traits_type::eof() || cond(c))
+            return traits_type::eof();
+        return c;
+    }
+};
+
+
 static
 bool match(const char *str, const char *seg) {
     while (true) {
@@ -60,6 +82,7 @@ const char *match_head(const char *str, const char *seg) {
         seg++;
     }
 }
+
 
 static
 bool is_linebreak(const int c) {
