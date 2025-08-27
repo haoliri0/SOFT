@@ -28,7 +28,7 @@ void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
         const char *arg_key = *iter;
         if (match(arg_key, "--shots_n")) {
             const char *arg_value = *++iter;
-            args.shots_n = parse_cli_ul(arg_value);
+            parse_value(arg_value, args.shots_n);
             if (args.shots_n == 0) {
                 fprintf(stderr, "Illegal value: shots_n=%s\n", arg_value);
                 throw CliArgsException(CliArgsError::IllegalValue);
@@ -37,7 +37,7 @@ void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
         }
         if (match(arg_key, "--qubits_n")) {
             const char *arg_value = *++iter;
-            args.qubits_n = parse_cli_ul(arg_value);
+            parse_value(arg_value, args.qubits_n);
             if (args.qubits_n == 0) {
                 fprintf(stderr, "Illegal value: qubits_n=%s\n", arg_value);
                 throw CliArgsException(CliArgsError::IllegalValue);
@@ -46,7 +46,7 @@ void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
         }
         if (match(arg_key, "--entries_m")) {
             const char *arg_value = *++iter;
-            args.entries_m = parse_cli_ul(arg_value);
+            parse_value(arg_value, args.entries_m);
             if (args.entries_m == 0) {
                 fprintf(stderr, "Illegal value: entries_m=%s\n", arg_value);
                 throw CliArgsException(CliArgsError::IllegalValue);
@@ -55,7 +55,7 @@ void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
         }
         if (match(arg_key, "--results_m")) {
             const char *arg_value = *++iter;
-            args.results_m = parse_cli_ul(arg_value);
+            parse_value(arg_value, args.results_m);
             if (args.results_m == 0) {
                 fprintf(stderr, "Illegal value: results_m=%s\n", arg_value);
                 throw CliArgsException(CliArgsError::IllegalValue);
@@ -64,7 +64,7 @@ void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
         }
         if (match(arg_key, "--seed")) {
             const char *arg_value = *++iter;
-            args.seed = parse_cli_ull(arg_value);
+            parse_value(arg_value, args.seed);
             continue;
         }
         if (match_head(arg_key, "-")) {

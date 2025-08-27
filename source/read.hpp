@@ -24,31 +24,6 @@ void parse_value(const char *chars, T &value) {
     if (ptr != tail) throw ParseException(std::errc::invalid_argument);
 }
 
-static
-unsigned long parse_cli_ul(const char *s) {
-    char *ptr;
-    const unsigned long v = strtoul(s, &ptr, 10);
-
-    if (errno != 0 || ptr == s || *ptr != '\0') {
-        fprintf(stderr, "Failed to parse '%s' with errno=%d", s,errno);
-        throw CliArgsException(CliArgsError::IllegalValue);
-    }
-
-    return v;
-}
-
-static
-unsigned long long parse_cli_ull(const char *s) {
-    char *ptr;
-    const unsigned long long v = strtoull(s, &ptr, 10);
-
-    if (errno != 0 || ptr == s || *ptr != '\0') {
-        fprintf(stderr, "Failed to parse '%s' with errno=%d", s,errno);
-        throw CliArgsException(CliArgsError::IllegalValue);
-    }
-
-    return v;
-}
 
 static
 bool match(const char *str, const char *seg) {
