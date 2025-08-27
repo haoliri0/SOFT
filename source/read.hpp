@@ -120,32 +120,6 @@ void read_value(std::istream &istream, std::string &value) {
 }
 
 static
-void read_word(std::istream &istream, size_t limit, char *buffer) {
-    // 跳过空白字符（不包括换行符）
-    skip_whitespace(istream);
-
-    // 读取单词到缓冲区
-    while (istream.good() && limit > 0) {
-        const int c = istream.peek();
-        if (c == EOF) break;
-        if (is_whitespace(c) || is_linebreak(c)) break;
-        *buffer = static_cast<char>(c);
-        istream.ignore();
-        buffer++;
-        limit--;
-    }
-
-    // 检查是否达到缓冲区限制
-    if (limit == 0) {
-        istream.setstate(std::istream::failbit);
-        return;
-    }
-
-    // 确保字符串以空字符结尾
-    *buffer = '\0';
-}
-
-static
 void read_arg(std::istream &istream, int &arg) {
     skip_whitespace(istream);
     if (istream.bad()) throw ExecException(ExecError::IOError);
