@@ -59,6 +59,13 @@ struct Simulator {
 
     void apply_classical_not() const noexcept;
 
+
+    void apply_classical_controlled_x(Qid target) const noexcept;
+
+    void apply_classical_controlled_y(Qid target) const noexcept;
+
+    void apply_classical_controlled_z(Qid target) const noexcept;
+
 };
 
 }
