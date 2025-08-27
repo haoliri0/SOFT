@@ -30,6 +30,16 @@ void parse_value(const char *chars, T &value) {
     parse_value(head, tail, value);
 }
 
+template<typename T>
+static
+void parse_value(std::istream &istream, T &value) {
+    istream >> value;
+    if (istream.bad()) throw ParseException(std::errc::io_error);
+    if (istream.fail()) throw ParseException(std::errc::invalid_argument);
+    if (!istream.eof()) throw ParseException(std::errc::invalid_argument);
+    if (!istream.good()) throw ParseException(std::errc::io_error);
+}
+
 
 static
 bool match(const char *str, const char *seg) {
