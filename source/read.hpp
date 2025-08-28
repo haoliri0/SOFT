@@ -146,26 +146,46 @@ void read_value(std::istream &istream, std::vector<Item> &value) {
     ensure(istream, is_linebreak, false);
 }
 
-template<Rid n>
+template<Rid m>
 static
-void read_value(std::istream &istream, ClassicalReduceArgs<n> &value) {
-    read_value(istream, value.n);
-    if (value.n > n) throw ParseException(std::errc::invalid_argument);
+void read_value(std::istream &istream, ClassicalReduceArgs<m> &value) {
+    std::vector<Rid> pointers;
+    read_value(istream, pointers);
 
-    for (size_t i = 0; i < value.n; ++i)
-        read_value(istream, value.pointers.get(i));
+    const Rid n = pointers.size();
+    if (n > m) throw ParseException(std::errc::invalid_argument);
+
+    value.n = n;
+    for (size_t i = 0; i < n; ++i)
+        value.pointers.get(i) = pointers[i];
 }
 
-template<Rid n>
+template<Rid m>
 static
-void read_value(std::istream &istream, ClassicalLutArgs<n> &value) {
-    read_value(istream, value.n);
-    if (value.n > n) throw ParseException(std::errc::invalid_argument);
+void read_value(std::istream &istream, ClassicalLutArgs<m> &value) {
+    std::vector<unsigned int> items;
+    read_value(istream, items);
 
-    for (size_t i = 0; i < value.n; ++i)
-        read_value(istream, value.pointers.get(i));
-    for (size_t i = 0; i < (1 << value.n); ++i)
-        read_value(istream, value.table.get(i));
+    Rid n = 0;
+    while (true) {
+        if (n > m) throw ParseException(std::errc::invalid_argument);
+        const size_t items_n = n + (1 << n);
+        if (items_n == items.size()) break;
+        if (items_n > items.size()) throw ParseException(std::errc::invalid_argument);
+        ++n;
+    }
+
+    value.n = n;
+    for (size_t i = 0; i < n; ++i) {
+        const Rid pointer = items[i];
+        value.pointers.get(i) = pointer;
+    }
+    for (size_t i = 0; i < (1 << n); ++i) {
+        const unsigned int item = items[n + i];
+        if (item != 0 && item != 1) throw ParseException(std::errc::invalid_argument);
+        const Bit bit = item;
+        value.table.get(i) = bit;
+    }
 }
 
 #endif
