@@ -115,4 +115,17 @@ void read_value(std::istream &istream, std::string &value) {
     }
 }
 
+template<typename Item>
+static
+void read_value(std::istream &, Array<Item, 0> &) {
+    // nothing to do
+}
+
+template<typename Item, unsigned int n>
+static
+void read_value(std::istream &istream, Array<Item, n> &value) {
+    read_value(istream, value.item);
+    read_value(istream, value.tail);
+}
+
 #endif
