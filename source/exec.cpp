@@ -273,6 +273,15 @@ void execute_op(
     if (name == "DEP2")
         return execute_op(istream, simulator, &Simulator::apply_noise_depo2);
 
+    if (name == "OR")
+        return execute_op(istream, simulator, &Simulator::apply_classical_or);
+    if (name == "XOR")
+        return execute_op(istream, simulator, &Simulator::apply_classical_xor);
+    if (name == "AND")
+        return execute_op(istream, simulator, &Simulator::apply_classical_and);
+    if (name == "LUT")
+        return execute_op(istream, simulator, &Simulator::apply_classical_lut);
+
     if (name == "ERROR")
         return execute_op(istream, simulator, perform_error_op);
     if (name == "RESULT")
