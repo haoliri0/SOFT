@@ -4,6 +4,7 @@
 #include <istream>
 #include <charconv>
 #include <exception>
+#include "./simulator.hpp"
 
 static
 bool match(const char *str, const char *seg) {
@@ -126,6 +127,28 @@ static
 void read_value(std::istream &istream, Array<Item, n> &value) {
     read_value(istream, value.item);
     read_value(istream, value.tail);
+}
+
+template<Rid n>
+static
+void read_value(std::istream &istream, ClassicalReduceArgs<n> &value) {
+    read_value(istream, value.n);
+    if (value.n > n) throw ParseException(std::errc::invalid_argument);
+
+    for (size_t i = 0; i < value.n; ++i)
+        read_value(istream, value.pointers.get(i));
+}
+
+template<Rid n>
+static
+void read_value(std::istream &istream, ClassicalLutArgs<n> &value) {
+    read_value(istream, value.n);
+    if (value.n > n) throw ParseException(std::errc::invalid_argument);
+
+    for (size_t i = 0; i < value.n; ++i)
+        read_value(istream, value.pointers.get(i));
+    for (size_t i = 0; i < (1 << value.n); ++i)
+        read_value(istream, value.table.get(i));
 }
 
 #endif
