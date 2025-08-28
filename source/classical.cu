@@ -54,23 +54,20 @@ void Simulator::apply_classical_write(const Rid pointer) const noexcept {
 }
 
 
-template<Rid n, Rvl (*reduction)(Rvl, Rvl)>
+using ArgsClassicalReduce = ClassicalReduceArgs<>;
+
+template<Rvl (*reduction)(Rvl, Rvl), Rvl value0 = 0>
 static __device__
-void op_classical_reduce(const ShotStatePtr shot_state_ptr, const Array<Rid, n> pointers, const Bit value0) {
+void op_classical_reduce(const ShotStatePtr shot_state_ptr, const ArgsClassicalReduce args) {
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
     Rvl &value = *results_ptr.get_work_value_ptr();
-    if constexpr (n > 0) {
-        const Rvl value1 = *results_ptr.get_value_ptr(pointers.template get<0>());
-        value = reduction(value0, value1);
-    } else {
-        value = value0;
-    }
-}
 
-template<Rid n, Rvl (*reduction)(Rvl, Rvl), Rvl value0>
-static __device__
-void op_classical_reduce(const ShotStatePtr shot_state_ptr, const Array<Rid, n> pointers) {
-    op_classical_reduce<n, reduction>(shot_state_ptr, pointers, value0);
+    value = value0;
+    for (Rid i = 0; i < args.n; ++i) {
+        const Rid pointer = args.pointers.get(i);
+        const Rvl value1 = *results_ptr.get_value_ptr(pointer);
+        value = reduction(value, value1);
+    }
 }
 
 static __device__ __host__
@@ -100,55 +97,41 @@ Rvl reduction_logical_and(const Rvl value0, const Rvl value1) {
     return value;
 }
 
-template<Rid n>
-void Simulator::apply_classical_or(Array<Rid, n> pointers) const noexcept {
-    cuda_shots_op<Array<Rid, n>, op_classical_reduce<n, reduction_logical_or, 0>>(stream, shots_state_ptr, pointers);
+void Simulator::apply_classical_or(const ArgsClassicalReduce args) const noexcept {
+    cuda_shots_op<ArgsClassicalReduce, op_classical_reduce<reduction_logical_or>>
+        (stream, shots_state_ptr, args);
 }
 
-template<Rid n>
-void Simulator::apply_classical_xor(Array<Rid, n> pointers) const noexcept {
-    cuda_shots_op<Array<Rid, n>, op_classical_reduce<n, reduction_logical_xor, 0>>(stream, shots_state_ptr, pointers);
+void Simulator::apply_classical_xor(const ArgsClassicalReduce args) const noexcept {
+    cuda_shots_op<ArgsClassicalReduce, op_classical_reduce<reduction_logical_xor>>
+        (stream, shots_state_ptr, args);
 }
 
-template<Rid n>
-void Simulator::apply_classical_and(Array<Rid, n> pointers) const noexcept {
-    cuda_shots_op<Array<Rid, n>, op_classical_reduce<n, reduction_logical_and, 0>>(stream, shots_state_ptr, pointers);
+void Simulator::apply_classical_and(const ArgsClassicalReduce args) const noexcept {
+    cuda_shots_op<ArgsClassicalReduce, op_classical_reduce<reduction_logical_and>>
+        (stream, shots_state_ptr, args);
 }
 
 
-template<Rid n>
-struct ArgsClassicalLut {
-    Array<Rid, n> pointers;
-    Array<Bit, 1 << n> table;
-};
+using ArgsClassicalLut = ClassicalLutArgs<>;
 
-template<Rid n>
-Array<Bit, n> read_bits_array(const Rvl *values, Array<Rid, n> pointers) {
-    if constexpr (n > 0) {
-        auto [head_pointer,tail_pointers] = pointers;
-        return {values[head_pointer], read_bits_array<n - 1>(values, tail_pointers)};
-    } else {
-        return {};
-    }
-}
-
-template<Rid n>
 static __device__
-void op_classical_lut(const ShotStatePtr shot_state_ptr, const ArgsClassicalLut<n> args) {
+void op_classical_lut(const ShotStatePtr shot_state_ptr, const ArgsClassicalLut args) {
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
-    auto [pointers,table] = args;
-    auto values = read_bits_array<n>(results_ptr.get_values_ptr(), pointers);
-    Rvl &value = *results_ptr.get_work_value_ptr();
 
     unsigned int index = 0;
-    for (unsigned int i = 0; i < n; i++)
-        if (values[i]) index |= 1 << i;
-    value = table.get(index);
+    for (unsigned int i = 0; i < args.n; i++) {
+        const Rid pointer = args.pointers.get(i);
+        const Rvl value_i = *results_ptr.get_value_ptr(pointer);
+        if (value_i) index |= 1 << i;
+    }
+
+    Rvl &value = *results_ptr.get_work_value_ptr();
+    value = args.table.get(index);
 }
 
-template<Rid n>
-void Simulator::apply_classical_lut(Array<Rid, n> pointers, Array<Bit, 1 << n> table) const noexcept {
-    cuda_shots_op<ArgsClassicalLut<n>, op_classical_lut<n>>(stream, shots_state_ptr, {pointers, table});
+void Simulator::apply_classical_lut(const ArgsClassicalLut args) const noexcept {
+    cuda_shots_op<ArgsClassicalLut, op_classical_lut>(stream, shots_state_ptr, args);
 }
 
 
