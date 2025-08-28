@@ -129,6 +129,23 @@ void read_value(std::istream &istream, Array<Item, n> &value) {
     read_value(istream, value.tail);
 }
 
+template<typename Item>
+static
+void read_value(std::istream &istream, std::vector<Item> &value) {
+    while (true) {
+        Item item;
+        try {
+            read_value(istream, item);
+        } catch (ParseException exception) {
+            if (exception.ec == std::errc::invalid_argument) break;
+            throw;
+        }
+        value.push_back(item);
+    }
+    skip(istream, is_whitespace);
+    ensure(istream, is_linebreak, false);
+}
+
 template<Rid n>
 static
 void read_value(std::istream &istream, ClassicalReduceArgs<n> &value) {
