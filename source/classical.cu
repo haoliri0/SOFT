@@ -54,6 +54,68 @@ void Simulator::apply_classical_write(const Rid pointer) const noexcept {
 }
 
 
+template<Rid n, Rvl (*reduction)(Rvl, Rvl)>
+static __device__
+void op_classical_reduce(const ShotStatePtr shot_state_ptr, const Array<Rid, n> pointers, const Bit value0) {
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+    Rvl &value = *results_ptr.get_work_value_ptr();
+    if constexpr (n > 0) {
+        const Rvl value1 = *results_ptr.get_value_ptr(pointers.template get<0>());
+        value = reduction(value0, value1);
+    } else {
+        value = value0;
+    }
+}
+
+template<Rid n, Rvl (*reduction)(Rvl, Rvl), Rvl value0>
+static __device__
+void op_classical_reduce(const ShotStatePtr shot_state_ptr, const Array<Rid, n> pointers) {
+    op_classical_reduce<n, reduction>(shot_state_ptr, pointers, value0);
+}
+
+static __device__ __host__
+Rvl reduction_logical_or(const Rvl value0, const Rvl value1) {
+    const Bit bit0 = value0;
+    const Bit bit1 = value1;
+    const Bit bit = bit0 || bit1;
+    const Rvl value = bit;
+    return value;
+}
+
+static __device__ __host__
+Rvl reduction_logical_xor(const Rvl value0, const Rvl value1) {
+    const Bit bit0 = value0;
+    const Bit bit1 = value1;
+    const Bit bit = bit0 ^ bit1;
+    const Rvl value = bit;
+    return value;
+}
+
+static __device__ __host__
+Rvl reduction_logical_and(const Rvl value0, const Rvl value1) {
+    const Bit bit0 = value0;
+    const Bit bit1 = value1;
+    const Bit bit = bit0 && bit1;
+    const Rvl value = bit;
+    return value;
+}
+
+template<Rid n>
+void Simulator::apply_classical_or(Array<Rid, n> pointers) const noexcept {
+    cuda_shots_op<Array<Rid, n>, op_classical_reduce<n, reduction_logical_or, 0>>(stream, shots_state_ptr, pointers);
+}
+
+template<Rid n>
+void Simulator::apply_classical_xor(Array<Rid, n> pointers) const noexcept {
+    cuda_shots_op<Array<Rid, n>, op_classical_reduce<n, reduction_logical_xor, 0>>(stream, shots_state_ptr, pointers);
+}
+
+template<Rid n>
+void Simulator::apply_classical_and(Array<Rid, n> pointers) const noexcept {
+    cuda_shots_op<Array<Rid, n>, op_classical_reduce<n, reduction_logical_and, 0>>(stream, shots_state_ptr, pointers);
+}
+
+
 struct ArgsClassicalControlledGate1 {
     ShotsStatePtr shots_state_ptr;
     Qid target;
