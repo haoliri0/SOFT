@@ -8,6 +8,20 @@
 
 namespace StnCuda {
 
+template<Rid m = 16>
+struct ClassicalReduceArgs {
+    Rid n;
+    Array<Rid, m> pointers;
+};
+
+template<Rid m = 6>
+struct ClassicalLutArgs {
+    Rid n;
+    Array<Rid, m> pointers;
+    Array<Bit, 1 << m> table;
+};
+
+
 struct Simulator {
     cudaStream_t stream = nullptr;
     ShotsStatePtr shots_state_ptr = {0, 0, 0, 0, nullptr};
@@ -61,17 +75,13 @@ struct Simulator {
     void apply_classical_write(Rid pointer) const noexcept;
 
 
-    template<Rid n>
-    void apply_classical_or(Array<Rid, n> pointers) const noexcept;
+    void apply_classical_or(ClassicalReduceArgs<> args) const noexcept;
 
-    template<Rid n>
-    void apply_classical_xor(Array<Rid, n> pointers) const noexcept;
+    void apply_classical_xor(ClassicalReduceArgs<> args) const noexcept;
 
-    template<Rid n>
-    void apply_classical_and(Array<Rid, n> pointers) const noexcept;
+    void apply_classical_and(ClassicalReduceArgs<> args) const noexcept;
 
-    template<Rid n>
-    void apply_classical_lut(Array<Rid, n> pointers, Array<Bit, 1 << n> table) const noexcept;
+    void apply_classical_lut(ClassicalLutArgs<> args) const noexcept;
 
 
     void apply_classical_controlled_x(Qid target) const noexcept;
