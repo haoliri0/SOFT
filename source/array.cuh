@@ -14,7 +14,16 @@ struct Array {
 
     template<unsigned int i>
     __device__ __host__
-    Item get() const {
+    Item &get() {
+        if constexpr (i > 0)
+            return tail.template get<i - 1>();
+        else
+            return item;
+    }
+
+    template<unsigned int i>
+    __device__ __host__
+    const Item &get() const {
         if constexpr (i > 0)
             return tail.template get<i - 1>();
         else
@@ -22,7 +31,12 @@ struct Array {
     }
 
     __device__ __host__
-    Item get(const unsigned int i) const {
+    Item &get(const unsigned int i) {
+        return reinterpret_cast<Item *>(this)[i];
+    }
+
+    __device__ __host__
+    const Item &get(const unsigned int i) const {
         return reinterpret_cast<const Item *>(this)[i];
     }
 };
