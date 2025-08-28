@@ -2,6 +2,7 @@
 #define STN_CUDA_SIMULATOR_HPP
 
 #include<cuda_runtime.h>
+#include "./array.cuh"
 #include "./datatype.cuh"
 #include "./datastruct.cuh"
 
@@ -58,6 +59,16 @@ struct Simulator {
     void apply_classical_read(Rid pointer) const noexcept;
 
     void apply_classical_write(Rid pointer) const noexcept;
+
+
+    template<Rid n>
+    void apply_classical_or(Array<Rid, n> pointers) const noexcept;
+
+    template<Rid n>
+    void apply_classical_xor(Array<Rid, n> pointers) const noexcept;
+
+    template<Rid n>
+    void apply_classical_and(Array<Rid, n> pointers) const noexcept;
 
 
     void apply_classical_controlled_x(Qid target) const noexcept;
