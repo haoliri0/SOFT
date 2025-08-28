@@ -1,39 +1,34 @@
 #ifndef STN_CUDA_ARRAY_CUH
 #define STN_CUDA_ARRAY_CUH
 
-template<typename Item, unsigned int _n>
+template<typename Item, unsigned int n>
 struct Array {
     Item item;
-    Array<Item, _n - 1> tail;
-
-    static __device__ __host__
-    unsigned int n() {
-        return _n;
-    }
-
-    template<unsigned int _i>
-    __device__ __host__
-    Item get() const {
-        if constexpr (_i == 0)
-            return item;
-        else
-            return tail.template get<_i - 1>();
-    }
+    Array<Item, n - 1> tail;
 
     template<typename... Items>
     static __device__ __host__
     Array of(Item _item, Items... _items) {
-        return {_item, Array<Item, _n - 1>::of(_items...)};
+        return {_item, Array<Item, n - 1>::of(_items...)};
+    }
+
+    template<unsigned int i>
+    __device__ __host__
+    Item get() const {
+        if constexpr (i > 0)
+            return tail.template get<i - 1>();
+        else
+            return item;
+    }
+
+    __device__ __host__
+    Item get(const unsigned int i) const {
+        return reinterpret_cast<const Item *>(this)[i];
     }
 };
 
 template<typename Item>
 struct Array<Item, 0u> {
-    static __device__ __host__
-    unsigned int n() {
-        return 0;
-    }
-
     static __device__ __host__
     Array of() {
         return {};
