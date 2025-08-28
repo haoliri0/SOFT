@@ -70,6 +70,9 @@ struct Simulator {
     template<Rid n>
     void apply_classical_and(Array<Rid, n> pointers) const noexcept;
 
+    template<Rid n>
+    void apply_classical_lut(Array<Rid, n> pointers, Array<Bit, 1 << n> table) const noexcept;
+
 
     void apply_classical_controlled_x(Qid target) const noexcept;
 

@@ -116,6 +116,42 @@ void Simulator::apply_classical_and(Array<Rid, n> pointers) const noexcept {
 }
 
 
+template<Rid n>
+struct ArgsClassicalLut {
+    Array<Rid, n> pointers;
+    Array<Bit, 1 << n> table;
+};
+
+template<Rid n>
+Array<Bit, n> read_bits_array(const Rvl *values, Array<Rid, n> pointers) {
+    if constexpr (n > 0) {
+        auto [head_pointer,tail_pointers] = pointers;
+        return {values[head_pointer], read_bits_array<n - 1>(values, tail_pointers)};
+    } else {
+        return {};
+    }
+}
+
+template<Rid n>
+static __device__
+void op_classical_lut(const ShotStatePtr shot_state_ptr, const ArgsClassicalLut<n> args) {
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+    auto [pointers,table] = args;
+    auto values = read_bits_array<n>(results_ptr.get_values_ptr(), pointers);
+    Rvl &value = *results_ptr.get_work_value_ptr();
+
+    unsigned int index = 0;
+    for (unsigned int i = 0; i < n; i++)
+        if (values[i]) index |= 1 << i;
+    value = table.get(index);
+}
+
+template<Rid n>
+void Simulator::apply_classical_lut(Array<Rid, n> pointers, Array<Bit, 1 << n> table) const noexcept {
+    cuda_shots_op<ArgsClassicalLut<n>, op_classical_lut<n>>(stream, shots_state_ptr, {pointers, table});
+}
+
+
 struct ArgsClassicalControlledGate1 {
     ShotsStatePtr shots_state_ptr;
     Qid target;
