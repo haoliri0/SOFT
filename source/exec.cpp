@@ -303,7 +303,7 @@ void execute_line(
     execute_op(istream, simulator, name);
 
     skip(istream, is_whitespace);
-    ensure(istream, is_linebreak);
+    ensure(istream, is_linebreak, true);
 }
 
 void execute_lines(
