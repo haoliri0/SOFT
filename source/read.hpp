@@ -97,7 +97,7 @@ void read_value(std::istream &istream, Bit &arg) {
     unsigned int value;
     read_value(istream, value);
     if (value != 0 && value != 1) {
-        istream.setstate(std::istream::failbit);
+        fprintf(stderr, "Expected 0 or 1 for bits, got %u.", value);
         throw ParseException(std::errc::invalid_argument);
     }
 
@@ -156,7 +156,10 @@ void read_value(std::istream &istream, ClassicalReduceArgs<m> &value) {
     read_value(istream, pointers);
 
     const Rid n = pointers.size();
-    if (n > m) throw ParseException(std::errc::invalid_argument);
+    if (n > m) {
+        fprintf(stderr, "This op can hold at most %u arguments, got %u.", m, n);
+        throw ParseException(std::errc::invalid_argument);
+    }
 
     value.n = n;
     for (size_t i = 0; i < n; ++i)
@@ -171,10 +174,16 @@ void read_value(std::istream &istream, ClassicalLutArgs<m> &value) {
 
     Rid n = 0;
     while (true) {
-        if (n > m) throw ParseException(std::errc::invalid_argument);
+        if (n > m) {
+            fprintf(stderr, "Op Lut can hold at most %u arguments, got %lu.", m + (1 << m), items.size());
+            throw ParseException(std::errc::invalid_argument);
+        }
         const size_t items_n = n + (1 << n);
         if (items_n == items.size()) break;
-        if (items_n > items.size()) throw ParseException(std::errc::invalid_argument);
+        if (items_n > items.size()) {
+            fprintf(stderr, "Op Lut expected (n + 2**n) arguments, got %lu", items.size());
+            throw ParseException(std::errc::invalid_argument);
+        }
         ++n;
     }
 
@@ -185,7 +194,10 @@ void read_value(std::istream &istream, ClassicalLutArgs<m> &value) {
     }
     for (size_t i = 0; i < (1 << n); ++i) {
         const unsigned int item = items[n + i];
-        if (item != 0 && item != 1) throw ParseException(std::errc::invalid_argument);
+        if (item != 0 && item != 1) {
+            fprintf(stderr, "Op Lut expected 0 or 1 for bits, got %u.", item);
+            throw ParseException(std::errc::invalid_argument);
+        }
         const Bit bit = item;
         value.table.get(i) = bit;
     }
