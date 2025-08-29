@@ -74,10 +74,10 @@ void skip(std::istream &istream, const std::function<bool(char)> &cond) {
 }
 
 static
-void ensure(std::istream &istream, const std::function<bool(char)> &cond, bool consume) {
+void ensure(std::istream &istream, const std::function<bool(char)> &cond, const bool consume) {
     const int c = consume ? istream.get() : istream.peek();
     if (istream.bad()) throw ParseException(std::errc::io_error);
-    if (istream.eof() || cond(c)) return;
+    if (c == EOF || cond(c)) return;
     throw ParseException(std::errc::invalid_argument);
 }
 
