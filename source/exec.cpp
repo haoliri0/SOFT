@@ -107,7 +107,8 @@ void perform_print_error(const Simulator &simulator) {
     printf("error:\n");
     for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
         const Err error = shots_error[shot_i];
-        printf("    value: %u\n", error);
+        printf("  shot_%u:\n", shot_i);
+        printf("    error: %u\n", error);
     }
 }
 
