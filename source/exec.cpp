@@ -83,7 +83,7 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
 
 // custom ops
 
-void perform_error_op(const Simulator &simulator) {
+void perform_print_error(const Simulator &simulator) {
     const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
     const size_t pitch = shots_state_ptr.get_shot_size_bytes_n() + shots_state_ptr.get_shot_pad_bytes_n();
     const void *error_ptr = shots_state_ptr.get_shot_ptr(0).get_error_ptr();
@@ -111,7 +111,7 @@ void perform_error_op(const Simulator &simulator) {
     }
 }
 
-void perform_result_op(const Simulator &simulator) {
+void perform_print_result(const Simulator &simulator) {
     const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
     const size_t pitch = shots_state_ptr.get_shot_size_bytes_n() + shots_state_ptr.get_shot_pad_bytes_n();
     const void *work_prob_ptr = shots_state_ptr.get_shot_ptr(0).get_results_ptr().get_work_prob_ptr();
@@ -155,7 +155,7 @@ void perform_result_op(const Simulator &simulator) {
     }
 }
 
-void perform_state_op(const Simulator &simulator) {
+void perform_print_state(const Simulator &simulator) {
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
     auto const buffer = new char[simulator.shots_state_ptr.get_size_bytes_n()];
@@ -279,12 +279,20 @@ void execute_op(
     if (name == "LUT")
         return execute_op(istream, simulator, &Simulator::apply_classical_lut);
 
-    if (name == "ERROR")
-        return execute_op(istream, simulator, perform_error_op);
-    if (name == "RESULT")
-        return execute_op(istream, simulator, perform_result_op);
-    if (name == "STATE")
-        return execute_op(istream, simulator, perform_state_op);
+    if (name == "PRINT") {
+        std::string object;
+        read_value(istream, object);
+
+        if (object == "ERROR")
+            return execute_op(istream, simulator, perform_print_error);
+        if (object == "RESULT")
+            return execute_op(istream, simulator, perform_print_result);
+        if (object == "STATE")
+            return execute_op(istream, simulator, perform_print_state);
+
+        fprintf(stderr, "Unknown print object: %s\n", object.c_str());
+        throw ExecException(ExecError::IllegalOp);
+    }
 
     fprintf(stderr, "Unknown op: %s\n", name.c_str());
     throw ExecException(ExecError::IllegalOp);
