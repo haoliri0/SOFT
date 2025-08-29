@@ -74,6 +74,8 @@ struct Simulator {
 
     void apply_classical_write(Rid pointer) const noexcept;
 
+    void apply_classical_check() const noexcept;
+
 
     void apply_classical_or(ClassicalReduceArgs<> args) const noexcept;
 
