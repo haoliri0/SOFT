@@ -48,11 +48,11 @@ void op_classical_write(const ShotStatePtr shot_state_ptr, const Rid pointer) {
 }
 
 static __device__
-void op_classical_check(const ShotStatePtr shot_state_ptr) {
+void op_classical_check(const ShotStatePtr shot_state_ptr, const Err error) {
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
-    const Rvl val = *results_ptr.get_work_value_ptr();
-    Err &err = *shot_state_ptr.get_error_ptr();
-    if (!err && val) err = val;
+    const Rvl cond = *results_ptr.get_work_value_ptr();
+    Err &dst = *shot_state_ptr.get_error_ptr();
+    if (!dst && cond) dst = error;
 }
 
 void Simulator::apply_classical_not() const noexcept {
@@ -71,8 +71,8 @@ void Simulator::apply_classical_write(const Rid pointer) const noexcept {
     cuda_shots_op<Rid, op_classical_write>(stream, shots_state_ptr, pointer);
 }
 
-void Simulator::apply_classical_check() const noexcept {
-    cuda_shots_op<op_classical_check>(stream, shots_state_ptr);
+void Simulator::apply_classical_check(const Err error) const noexcept {
+    cuda_shots_op<Err, op_classical_check>(stream, shots_state_ptr, error);
 }
 
 
