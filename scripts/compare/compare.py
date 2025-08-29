@@ -252,12 +252,12 @@ def main(
                         process.stdin.write("\n")
                         queue.put(('gate', gate))
                     case "prob", prob:
-                        process.stdin.write("RESULT")
+                        process.stdin.write("PRINT RESULT")
                         process.stdin.write("\n")
                         queue.put(('prob', prob))
                     case "state", _:
                         table, entries = read_shot_state_content(fp, args)
-                        process.stdin.write("STATE")
+                        process.stdin.write("PRINT STATE")
                         process.stdin.write("\n")
                         queue.put(('state', table, entries))
                 process.stdin.flush()

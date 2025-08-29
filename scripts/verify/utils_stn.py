@@ -60,7 +60,7 @@ def make_stn_stdin(ops: Iterable[Op], results: Iterable[int] | None = None):
     for op in ops:
         stdin_io.write(make_stn_op(op, results))
         stdin_io.write("\n")
-        stdin_io.write("STATE")
+        stdin_io.write("PRINT STATE")
         stdin_io.write("\n")
     return stdin_io.getvalue()
 
