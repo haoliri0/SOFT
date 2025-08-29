@@ -13,6 +13,13 @@ void op_classical_not(const ShotStatePtr shot_state_ptr) {
 }
 
 static __device__
+void op_classical_set(const ShotStatePtr shot_state_ptr, const Rvl value) {
+    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+    Rvl &dst = *results_ptr.get_work_value_ptr();
+    dst = value;
+}
+
+static __device__
 void op_classical_read(const ShotStatePtr shot_state_ptr, const Rid pointer) {
     if (pointer >= shot_state_ptr.results_m) {
         Err &err = *shot_state_ptr.get_error_ptr();
@@ -50,6 +57,10 @@ void op_classical_check(const ShotStatePtr shot_state_ptr) {
 
 void Simulator::apply_classical_not() const noexcept {
     cuda_shots_op<op_classical_not>(stream, shots_state_ptr);
+}
+
+void Simulator::apply_classical_set(const Rvl value) const noexcept {
+    cuda_shots_op<Rvl, op_classical_set>(stream, shots_state_ptr, value);
 }
 
 void Simulator::apply_classical_read(const Rid pointer) const noexcept {

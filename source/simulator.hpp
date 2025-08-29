@@ -70,6 +70,8 @@ struct Simulator {
 
     void apply_classical_not() const noexcept;
 
+    void apply_classical_set(Rvl value) const noexcept;
+
     void apply_classical_read(Rid pointer) const noexcept;
 
     void apply_classical_write(Rid pointer) const noexcept;
