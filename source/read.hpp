@@ -111,7 +111,7 @@ void read_value(std::istream &istream, std::string &value) {
     istream >> value;
     if (istream.bad()) throw ParseException(std::errc::io_error);
     if (istream.fail()) {
-        istream.clear(istream.rdstate() | std::istream::eofbit);
+        istream.clear(istream.rdstate() & ~std::ios::failbit);
         value.clear();
     }
 }
