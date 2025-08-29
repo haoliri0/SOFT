@@ -186,26 +186,16 @@ void execute_op(
     op();
 }
 
-template<typename Ret>
+template<typename Arg0, typename... Args>
 static
-Ret execute_op(
-    std::istream &,
-    const std::function<Ret()> &op
-) {
-    const Ret ret = op();
-    return ret;
-}
-
-template<typename Ret, typename Arg0, typename... Args>
-static
-Ret execute_op(
+void execute_op(
     std::istream &istream,
-    const std::function<Ret (Arg0, Args...)> &op
+    const std::function<void (Arg0, Args...)> &op
 ) {
     Arg0 arg0;
     read_value(istream, arg0);
     const std::function wrapped = [op, arg0](Args... args) { return op(arg0, args...); };
-    return execute_op(istream, wrapped);
+    execute_op(istream, wrapped);
 }
 
 template<typename Receiver, typename... Args>
