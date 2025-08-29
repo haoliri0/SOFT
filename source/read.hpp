@@ -136,8 +136,11 @@ void read_value(std::istream &istream, std::vector<Item> &value) {
         Item item;
         try {
             read_value(istream, item);
-        } catch (ParseException exception) {
-            if (exception.ec == std::errc::invalid_argument) break;
+        } catch (ParseException &exception) {
+            if (exception.ec == std::errc::invalid_argument) {
+                istream.clear(istream.rdstate() & ~std::ios::failbit);
+                break;
+            }
             throw;
         }
         value.push_back(item);
