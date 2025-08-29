@@ -7,10 +7,10 @@
 
 namespace StnCuda {
 
-using Err = unsigned int;
+using Err = int;
 constexpr Err err_ok = 0;
-constexpr Err err_entries_overflow = 1;
-constexpr Err err_results_overflow = 2;
+constexpr Err err_entries_overflow = -1;
+constexpr Err err_results_overflow = -2;
 
 using Sid = unsigned int;
 using Qid = unsigned int;
