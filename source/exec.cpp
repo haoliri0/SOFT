@@ -269,6 +269,8 @@ void execute_op(
         return execute_op(istream, simulator, &Simulator::apply_classical_read);
     if (name == "WRITE")
         return execute_op(istream, simulator, &Simulator::apply_classical_write);
+    if (name == "CHECK")
+        return execute_op(istream, simulator, &Simulator::apply_classical_check);
 
     if (name == "OR")
         return execute_op(istream, simulator, &Simulator::apply_classical_or);
