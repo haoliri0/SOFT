@@ -828,178 +828,7 @@ struct EntriesPtr : EntriesArgs {
     }
 };
 
-struct ResultsArgs {
-    Rid results_m;
-    
-    __device__ __host__
-    size_t get_work_prob_size_bytes_n() const {
-        return sizeof(Flt);
-    }
-    
-    __device__ __host__
-    size_t get_work_prob_align_bytes_n() const {
-        return alignof(Flt);
-    }
-    
-    __device__ __host__
-    size_t get_work_prob_pad_bytes_n() const {
-        return 0;
-    }
-    
-    __device__ __host__
-    size_t get_work_prob_offset_bytes_n() const {
-        return 0;
-    }
-    
-    __device__ __host__
-    size_t get_work_value_size_bytes_n() const {
-        return sizeof(Rvl);
-    }
-    
-    __device__ __host__
-    size_t get_work_value_align_bytes_n() const {
-        return alignof(Rvl);
-    }
-    
-    __device__ __host__
-    size_t get_work_value_pad_bytes_n() const {
-        return compute_pad_bytes_n(
-            get_work_prob_offset_bytes_n() +
-            get_work_prob_size_bytes_n(),
-            get_work_value_align_bytes_n());
-    }
-    
-    __device__ __host__
-    size_t get_work_value_offset_bytes_n() const {
-        return 
-            get_work_prob_offset_bytes_n() +
-            get_work_prob_size_bytes_n() +
-            get_work_value_pad_bytes_n();
-    }
-    
-    __device__ __host__
-    size_t get_value_size_bytes_n() const {
-        return sizeof(Rvl);
-    }
-    
-    __device__ __host__
-    size_t get_value_align_bytes_n() const {
-        return alignof(Rvl);
-    }
-    
-    __device__ __host__
-    size_t get_value_pad_bytes_n() const {
-        return compute_pad_bytes_n(
-            get_value_size_bytes_n(),
-            get_value_align_bytes_n());
-    }
-    
-    __device__ __host__
-    size_t get_values_size_bytes_n() const {
-        return 
-            results_m * get_value_size_bytes_n() +
-            results_m * get_value_pad_bytes_n();
-    }
-    
-    __device__ __host__
-    size_t get_values_align_bytes_n() const {
-        return alignof(Rvl);
-    }
-    
-    __device__ __host__
-    size_t get_values_pad_bytes_n() const {
-        return compute_pad_bytes_n(
-            get_work_value_offset_bytes_n() +
-            get_work_value_size_bytes_n(),
-            get_values_align_bytes_n());
-    }
-    
-    __device__ __host__
-    size_t get_values_offset_bytes_n() const {
-        return 
-            get_work_value_offset_bytes_n() +
-            get_work_value_size_bytes_n() +
-            get_values_pad_bytes_n();
-    }
-    
-    __device__ __host__
-    size_t get_value_offset_bytes_n(Rid result_i) const {
-        return get_values_offset_bytes_n() +
-            result_i * get_value_size_bytes_n() +
-            result_i * get_value_pad_bytes_n();
-    }
-    
-    __device__ __host__
-    size_t get_size_bytes_n() const {
-        return 
-            get_work_prob_pad_bytes_n() +
-            get_work_prob_size_bytes_n() +
-            get_work_value_pad_bytes_n() +
-            get_work_value_size_bytes_n() +
-            get_values_pad_bytes_n() +
-            get_values_size_bytes_n();
-    }
-    
-    __device__ __host__
-    size_t get_align_bytes_n() const {
-        return max(
-            get_work_prob_align_bytes_n(),
-            get_work_value_align_bytes_n(),
-            get_values_align_bytes_n());
-    }
-};
-
-struct ResultsPtr : ResultsArgs {
-    char *ptr;
-    
-    __device__ __host__
-    Flt *get_work_prob_ptr() const {
-        const size_t offset = get_work_prob_offset_bytes_n();
-        return reinterpret_cast<Flt *>(ptr + offset);
-    }
-    
-    __device__ __host__
-    Rvl *get_work_value_ptr() const {
-        const size_t offset = get_work_value_offset_bytes_n();
-        return reinterpret_cast<Rvl *>(ptr + offset);
-    }
-    
-    __device__ __host__
-    Rvl *get_values_ptr() const {
-        const size_t offset = get_values_offset_bytes_n();
-        return reinterpret_cast<Rvl *>(ptr + offset);
-    }
-    
-    __device__ __host__
-    Rvl *get_value_ptr(const Rid result_i) const {
-        return get_values_ptr() + result_i;
-    }
-};
-
-struct ShotStateArgs {
-    Qid qubits_n;
-    Eid entries_m;
-    Rid results_m;
-    
-    __device__ __host__
-    size_t get_error_size_bytes_n() const {
-        return sizeof(Err);
-    }
-    
-    __device__ __host__
-    size_t get_error_align_bytes_n() const {
-        return alignof(Err);
-    }
-    
-    __device__ __host__
-    size_t get_error_pad_bytes_n() const {
-        return 0;
-    }
-    
-    __device__ __host__
-    size_t get_error_offset_bytes_n() const {
-        return 0;
-    }
+struct WorkArgs {
     
     __device__ __host__
     size_t get_rand_state_size_bytes_n() const {
@@ -1013,19 +842,293 @@ struct ShotStateArgs {
     
     __device__ __host__
     size_t get_rand_state_pad_bytes_n() const {
-        return compute_pad_bytes_n(
-            get_error_offset_bytes_n() +
-            get_error_size_bytes_n(),
-            get_rand_state_align_bytes_n());
+        return 0;
     }
     
     __device__ __host__
     size_t get_rand_state_offset_bytes_n() const {
-        return 
-            get_error_offset_bytes_n() +
-            get_error_size_bytes_n() +
-            get_rand_state_pad_bytes_n();
+        return 0;
     }
+    
+    __device__ __host__
+    size_t get_err_size_bytes_n() const {
+        return sizeof(Int);
+    }
+    
+    __device__ __host__
+    size_t get_err_align_bytes_n() const {
+        return alignof(Int);
+    }
+    
+    __device__ __host__
+    size_t get_err_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_rand_state_offset_bytes_n() +
+            get_rand_state_size_bytes_n(),
+            get_err_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_err_offset_bytes_n() const {
+        return 
+            get_rand_state_offset_bytes_n() +
+            get_rand_state_size_bytes_n() +
+            get_err_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_int_size_bytes_n() const {
+        return sizeof(Int);
+    }
+    
+    __device__ __host__
+    size_t get_int_align_bytes_n() const {
+        return alignof(Int);
+    }
+    
+    __device__ __host__
+    size_t get_int_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_err_offset_bytes_n() +
+            get_err_size_bytes_n(),
+            get_int_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_int_offset_bytes_n() const {
+        return 
+            get_err_offset_bytes_n() +
+            get_err_size_bytes_n() +
+            get_int_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_flt_size_bytes_n() const {
+        return sizeof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_flt_align_bytes_n() const {
+        return alignof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_flt_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_int_offset_bytes_n() +
+            get_int_size_bytes_n(),
+            get_flt_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_flt_offset_bytes_n() const {
+        return 
+            get_int_offset_bytes_n() +
+            get_int_size_bytes_n() +
+            get_flt_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_size_bytes_n() const {
+        return 
+            get_rand_state_pad_bytes_n() +
+            get_rand_state_size_bytes_n() +
+            get_err_pad_bytes_n() +
+            get_err_size_bytes_n() +
+            get_int_pad_bytes_n() +
+            get_int_size_bytes_n() +
+            get_flt_pad_bytes_n() +
+            get_flt_size_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_align_bytes_n() const {
+        return max(
+            get_rand_state_align_bytes_n(),
+            get_err_align_bytes_n(),
+            get_int_align_bytes_n(),
+            get_flt_align_bytes_n());
+    }
+};
+
+struct WorkPtr : WorkArgs {
+    char *ptr;
+    
+    __device__ __host__
+    curandState *get_rand_state_ptr() const {
+        const size_t offset = get_rand_state_offset_bytes_n();
+        return reinterpret_cast<curandState *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Int *get_err_ptr() const {
+        const size_t offset = get_err_offset_bytes_n();
+        return reinterpret_cast<Int *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Int *get_int_ptr() const {
+        const size_t offset = get_int_offset_bytes_n();
+        return reinterpret_cast<Int *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Flt *get_flt_ptr() const {
+        const size_t offset = get_flt_offset_bytes_n();
+        return reinterpret_cast<Flt *>(ptr + offset);
+    }
+};
+
+struct MemoryArgs {
+    Mid mem_ints_m;
+    Mid mem_flts_m;
+    
+    __device__ __host__
+    size_t get_int_size_bytes_n() const {
+        return sizeof(Int);
+    }
+    
+    __device__ __host__
+    size_t get_int_align_bytes_n() const {
+        return alignof(Int);
+    }
+    
+    __device__ __host__
+    size_t get_int_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_int_size_bytes_n(),
+            get_int_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_ints_size_bytes_n() const {
+        return 
+            mem_ints_m * get_int_size_bytes_n() +
+            mem_ints_m * get_int_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_ints_align_bytes_n() const {
+        return alignof(Int);
+    }
+    
+    __device__ __host__
+    size_t get_ints_pad_bytes_n() const {
+        return 0;
+    }
+    
+    __device__ __host__
+    size_t get_ints_offset_bytes_n() const {
+        return 0;
+    }
+    
+    __device__ __host__
+    size_t get_int_offset_bytes_n(Mid int_i) const {
+        return get_ints_offset_bytes_n() +
+            int_i * get_int_size_bytes_n() +
+            int_i * get_int_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_flt_size_bytes_n() const {
+        return sizeof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_flt_align_bytes_n() const {
+        return alignof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_flt_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_flt_size_bytes_n(),
+            get_flt_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_flts_size_bytes_n() const {
+        return 
+            mem_flts_m * get_flt_size_bytes_n() +
+            mem_flts_m * get_flt_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_flts_align_bytes_n() const {
+        return alignof(Flt);
+    }
+    
+    __device__ __host__
+    size_t get_flts_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_ints_offset_bytes_n() +
+            get_ints_size_bytes_n(),
+            get_flts_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_flts_offset_bytes_n() const {
+        return 
+            get_ints_offset_bytes_n() +
+            get_ints_size_bytes_n() +
+            get_flts_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_flt_offset_bytes_n(Mid flt_i) const {
+        return get_flts_offset_bytes_n() +
+            flt_i * get_flt_size_bytes_n() +
+            flt_i * get_flt_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_size_bytes_n() const {
+        return 
+            get_ints_pad_bytes_n() +
+            get_ints_size_bytes_n() +
+            get_flts_pad_bytes_n() +
+            get_flts_size_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_align_bytes_n() const {
+        return max(
+            get_ints_align_bytes_n(),
+            get_flts_align_bytes_n());
+    }
+};
+
+struct MemoryPtr : MemoryArgs {
+    char *ptr;
+    
+    __device__ __host__
+    Int *get_ints_ptr() const {
+        const size_t offset = get_ints_offset_bytes_n();
+        return reinterpret_cast<Int *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Int *get_int_ptr(const Mid int_i) const {
+        return get_ints_ptr() + int_i;
+    }
+    
+    __device__ __host__
+    Flt *get_flts_ptr() const {
+        const size_t offset = get_flts_offset_bytes_n();
+        return reinterpret_cast<Flt *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Flt *get_flt_ptr(const Mid flt_i) const {
+        return get_flts_ptr() + flt_i;
+    }
+};
+
+struct ShotStateArgs {
+    Qid qubits_n;
+    Eid entries_m;
+    Mid mem_ints_m;
+    Mid mem_flts_m;
     
     __device__ __host__
     size_t get_table_size_bytes_n() const {
@@ -1039,18 +1142,12 @@ struct ShotStateArgs {
     
     __device__ __host__
     size_t get_table_pad_bytes_n() const {
-        return compute_pad_bytes_n(
-            get_rand_state_offset_bytes_n() +
-            get_rand_state_size_bytes_n(),
-            get_table_align_bytes_n());
+        return 0;
     }
     
     __device__ __host__
     size_t get_table_offset_bytes_n() const {
-        return 
-            get_rand_state_offset_bytes_n() +
-            get_rand_state_size_bytes_n() +
-            get_table_pad_bytes_n();
+        return 0;
     }
     
     __device__ __host__
@@ -1106,74 +1203,85 @@ struct ShotStateArgs {
     }
     
     __device__ __host__
-    size_t get_results_size_bytes_n() const {
-        return ResultsArgs{results_m}.get_size_bytes_n();
+    size_t get_work_size_bytes_n() const {
+        return WorkArgs{}.get_size_bytes_n();
     }
     
     __device__ __host__
-    size_t get_results_align_bytes_n() const {
-        return ResultsArgs{results_m}.get_align_bytes_n();
+    size_t get_work_align_bytes_n() const {
+        return WorkArgs{}.get_align_bytes_n();
     }
     
     __device__ __host__
-    size_t get_results_pad_bytes_n() const {
+    size_t get_work_pad_bytes_n() const {
         return compute_pad_bytes_n(
             get_entries_offset_bytes_n() +
             get_entries_size_bytes_n(),
-            get_results_align_bytes_n());
+            get_work_align_bytes_n());
     }
     
     __device__ __host__
-    size_t get_results_offset_bytes_n() const {
+    size_t get_work_offset_bytes_n() const {
         return 
             get_entries_offset_bytes_n() +
             get_entries_size_bytes_n() +
-            get_results_pad_bytes_n();
+            get_work_pad_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_memory_size_bytes_n() const {
+        return MemoryArgs{mem_ints_m, mem_flts_m}.get_size_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_memory_align_bytes_n() const {
+        return MemoryArgs{mem_ints_m, mem_flts_m}.get_align_bytes_n();
+    }
+    
+    __device__ __host__
+    size_t get_memory_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_work_offset_bytes_n() +
+            get_work_size_bytes_n(),
+            get_memory_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_memory_offset_bytes_n() const {
+        return 
+            get_work_offset_bytes_n() +
+            get_work_size_bytes_n() +
+            get_memory_pad_bytes_n();
     }
     
     __device__ __host__
     size_t get_size_bytes_n() const {
         return 
-            get_error_pad_bytes_n() +
-            get_error_size_bytes_n() +
-            get_rand_state_pad_bytes_n() +
-            get_rand_state_size_bytes_n() +
             get_table_pad_bytes_n() +
             get_table_size_bytes_n() +
             get_decomp_pad_bytes_n() +
             get_decomp_size_bytes_n() +
             get_entries_pad_bytes_n() +
             get_entries_size_bytes_n() +
-            get_results_pad_bytes_n() +
-            get_results_size_bytes_n();
+            get_work_pad_bytes_n() +
+            get_work_size_bytes_n() +
+            get_memory_pad_bytes_n() +
+            get_memory_size_bytes_n();
     }
     
     __device__ __host__
     size_t get_align_bytes_n() const {
         return max(
-            get_error_align_bytes_n(),
-            get_rand_state_align_bytes_n(),
             get_table_align_bytes_n(),
             get_decomp_align_bytes_n(),
             get_entries_align_bytes_n(),
-            get_results_align_bytes_n());
+            get_work_align_bytes_n(),
+            get_memory_align_bytes_n());
     }
 };
 
 struct ShotStatePtr : ShotStateArgs {
     char *ptr;
-    
-    __device__ __host__
-    Err *get_error_ptr() const {
-        const size_t offset = get_error_offset_bytes_n();
-        return reinterpret_cast<Err *>(ptr + offset);
-    }
-    
-    __device__ __host__
-    curandState *get_rand_state_ptr() const {
-        const size_t offset = get_rand_state_offset_bytes_n();
-        return reinterpret_cast<curandState *>(ptr + offset);
-    }
     
     __device__ __host__
     TablePtr get_table_ptr() const {
@@ -1194,9 +1302,15 @@ struct ShotStatePtr : ShotStateArgs {
     }
     
     __device__ __host__
-    ResultsPtr get_results_ptr() const {
-        const size_t offset = get_results_offset_bytes_n();
-        return {results_m, ptr + offset};
+    WorkPtr get_work_ptr() const {
+        const size_t offset = get_work_offset_bytes_n();
+        return {.ptr=ptr + offset};
+    }
+    
+    __device__ __host__
+    MemoryPtr get_memory_ptr() const {
+        const size_t offset = get_memory_offset_bytes_n();
+        return {mem_ints_m, mem_flts_m, ptr + offset};
     }
 };
 
@@ -1204,16 +1318,17 @@ struct ShotsStateArgs {
     Sid shots_n;
     Qid qubits_n;
     Eid entries_m;
-    Rid results_m;
+    Mid mem_ints_m;
+    Mid mem_flts_m;
     
     __device__ __host__
     size_t get_shot_size_bytes_n() const {
-        return ShotStateArgs{qubits_n, entries_m, results_m}.get_size_bytes_n();
+        return ShotStateArgs{qubits_n, entries_m, mem_ints_m, mem_flts_m}.get_size_bytes_n();
     }
     
     __device__ __host__
     size_t get_shot_align_bytes_n() const {
-        return ShotStateArgs{qubits_n, entries_m, results_m}.get_align_bytes_n();
+        return ShotStateArgs{qubits_n, entries_m, mem_ints_m, mem_flts_m}.get_align_bytes_n();
     }
     
     __device__ __host__
@@ -1232,7 +1347,7 @@ struct ShotsStateArgs {
     
     __device__ __host__
     size_t get_shots_align_bytes_n() const {
-        return ShotStateArgs{qubits_n, entries_m, results_m}.get_align_bytes_n();
+        return ShotStateArgs{qubits_n, entries_m, mem_ints_m, mem_flts_m}.get_align_bytes_n();
     }
     
     __device__ __host__
@@ -1272,7 +1387,7 @@ struct ShotsStatePtr : ShotsStateArgs {
     __device__ __host__
     ShotStatePtr get_shot_ptr(const Sid shot_i) const {
         const size_t offset = get_shot_offset_bytes_n(shot_i);
-        return {qubits_n, entries_m, results_m, ptr + offset};
+        return {qubits_n, entries_m, mem_ints_m, mem_flts_m, ptr + offset};
     }
 };
 

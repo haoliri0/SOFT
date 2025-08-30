@@ -7,21 +7,21 @@
 
 namespace StnCuda {
 
-using Err = int;
-constexpr Err err_ok = 0;
-constexpr Err err_entries_overflow = -1;
-constexpr Err err_results_overflow = -2;
-
 using Sid = unsigned int;
 using Qid = unsigned int;
 using Eid = unsigned int;
-using Bst = unsigned long long;
-using Rid = unsigned int;
-using Rvl = unsigned int;
-using Phs = unsigned char;
+using Mid = unsigned int;
+
+using Int = int;
 using Bit = bool;
 using Flt = float;
 using Amp = cuda::std::complex<Flt>;
+using Bst = unsigned long long;
+using Phs = unsigned char;
+
+constexpr Int err_ok = 0;
+constexpr Int err_entries_overflow = -1;
+constexpr Int err_results_overflow = -2;
 
 constexpr Qid NullPivot = static_cast<Qid>(-1);
 

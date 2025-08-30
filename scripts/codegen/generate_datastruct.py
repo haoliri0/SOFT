@@ -658,38 +658,53 @@ __device__ __host__
 Amp *get_half1_amp_ptr(const Eid entry_i) const {
     return get_half1_amps_ptr() + entry_i;
 }\n""")
-    results_spec = DynamicStructSpec(
-        name="Results",
-        params=(
-            ParamSpec(name="results_m", type="Rid"),),
+    work_spec = DynamicStructSpec(
+        name="Work",
+        params=(),
         fields=(
             ItemFieldSpec(
-                name="work_prob",
-                type=ValueTypeSpec(name="Flt")),
+                name="rand_state",
+                type=ValueTypeSpec(name="curandState")),
             ItemFieldSpec(
-                name="work_value",
-                type=ValueTypeSpec(name="Rvl")),
+                name="err",
+                type=ValueTypeSpec(name="Int")),
+            ItemFieldSpec(
+                name="int",
+                type=ValueTypeSpec(name="Int")),
+            ItemFieldSpec(
+                name="flt",
+                type=ValueTypeSpec(name="Flt")),
+        )
+    )
+    memory_spec = DynamicStructSpec(
+        name="Memory",
+        params=(
+            ParamSpec(name="mem_ints_m", type="Mid"),
+            ParamSpec(name="mem_flts_m", type="Mid")),
+        fields=(
             ListFieldSpec(
-                name="values",
-                item_name="value",
-                item_type=ValueTypeSpec(name="Rvl"),
-                index_name="result_i",
-                index_type="Rid",
-                count="results_m"),
+                name="ints",
+                item_name="int",
+                item_type=ValueTypeSpec(name="Int"),
+                index_name="int_i",
+                index_type="Mid",
+                count="mem_ints_m"),
+            ListFieldSpec(
+                name="flts",
+                item_name="flt",
+                item_type=ValueTypeSpec(name="Flt"),
+                index_name="flt_i",
+                index_type="Mid",
+                count="mem_flts_m"),
         ))
     shot_state_spec = DynamicStructSpec(
         name="ShotState",
         params=(
             ParamSpec(name="qubits_n", type="Qid"),
             ParamSpec(name="entries_m", type="Eid"),
-            ParamSpec(name="results_m", type="Rid")),
+            ParamSpec(name="mem_ints_m", type="Mid"),
+            ParamSpec(name="mem_flts_m", type="Mid")),
         fields=(
-            ItemFieldSpec(
-                name="error",
-                type=ValueTypeSpec(name="Err")),
-            ItemFieldSpec(
-                name="rand_state",
-                type=ValueTypeSpec(name="curandState")),
             ItemFieldSpec(
                 name="table",
                 type=DynamicStructTypeSpec(
@@ -706,10 +721,15 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
                     spec=entries_spec,
                     args=("qubits_n", "entries_m"))),
             ItemFieldSpec(
-                name="results",
+                name="work",
                 type=DynamicStructTypeSpec(
-                    spec=results_spec,
-                    args=("results_m",))),
+                    spec=work_spec,
+                    args=())),
+            ItemFieldSpec(
+                name="memory",
+                type=DynamicStructTypeSpec(
+                    spec=memory_spec,
+                    args=("mem_ints_m", 'mem_flts_m'))),
         ))
     shots_state_spec = DynamicStructSpec(
         name="ShotsState",
@@ -717,14 +737,15 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
             ParamSpec(name="shots_n", type="Sid"),
             ParamSpec(name="qubits_n", type="Qid"),
             ParamSpec(name="entries_m", type="Eid"),
-            ParamSpec(name="results_m", type="Rid")),
+            ParamSpec(name="mem_ints_m", type="Mid"),
+            ParamSpec(name="mem_flts_m", type="Mid")),
         fields=(
             ListFieldSpec(
                 name="shots",
                 item_name="shot",
                 item_type=DynamicStructTypeSpec(
                     spec=shot_state_spec,
-                    args=("qubits_n", "entries_m", "results_m")),
+                    args=("qubits_n", "entries_m", "mem_ints_m", "mem_flts_m")),
                 index_name="shot_i",
                 index_type="Sid",
                 count="shots_n"),
