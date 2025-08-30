@@ -169,8 +169,8 @@ void op_classical_controlled_gate1(const ArgsClassicalControlledGate1 args, cons
     const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
-    const Rvl value = *results_ptr.get_value_ptr(args.target);
-    if (value) op_apply_gate1<op>({shots_state_ptr, args.target}, dims_idx);
+    const Bit cond = *results_ptr.get_work_value_ptr();
+    if (cond) op_apply_gate1<op>({shots_state_ptr, args.target}, dims_idx);
 }
 
 template<void (*op)(Bit &s, Bit &x, Bit &z)>
