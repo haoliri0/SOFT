@@ -358,7 +358,10 @@ def write_get_field_ptr_method_body(writer: Callable[[str], Any], field: FieldSp
     if isinstance(value_type, ValueTypeSpec):
         writer(f"return reinterpret_cast<{value_type.name} *>(ptr + offset);\n")
     elif isinstance(value_type, DynamicStructTypeSpec):
-        writer(f"return {{{', '.join(value_type.args)}, ptr + offset}};\n")
+        if len(value_type.args)>0:
+            writer(f"return {{{''.join(arg + ', ' for arg in value_type.args)}ptr + offset}};\n")
+        else:
+            writer(f"return {{.ptr=ptr + offset}};\n")
     else:
         raise TypeError(f"Unsupported field type: {value_type}")
 
