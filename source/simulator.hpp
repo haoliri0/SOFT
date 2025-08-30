@@ -8,26 +8,33 @@
 
 namespace StnCuda {
 
-template<Rid m = 16>
+template<Mid m = 16>
 struct ClassicalReduceArgs {
-    Rid n;
-    Array<Rid, m> pointers;
+    Mid n;
+    Array<Mid, m> pointers;
 };
 
-template<Rid m = 6>
+template<Mid m = 6>
 struct ClassicalLutArgs {
-    Rid n;
-    Array<Rid, m> pointers;
+    Mid n;
+    Array<Mid, m> pointers;
     Array<Bit, 1 << m> table;
 };
 
 
 struct Simulator {
     cudaStream_t stream = nullptr;
-    ShotsStatePtr shots_state_ptr = {0, 0, 0, 0, nullptr};
+    ShotsStatePtr shots_state_ptr = {0, 0, 0, 0, 0, nullptr};
 
 
-    cudaError_t create(Sid shots_n, Qid qubits_n, Eid entries_m, Rid results_m, unsigned long long seed) noexcept;
+    cudaError_t create(
+        Sid shots_n,
+        Qid qubits_n,
+        Eid entries_m,
+        Mid mem_ints_m,
+        Mid mem_flts_m,
+        unsigned long long seed
+    ) noexcept;
 
     cudaError_t destroy() noexcept;
 
@@ -70,13 +77,13 @@ struct Simulator {
 
     void apply_classical_not() const noexcept;
 
-    void apply_classical_set(Rvl value) const noexcept;
+    void apply_classical_set(Int value) const noexcept;
 
-    void apply_classical_read(Rid pointer) const noexcept;
+    void apply_classical_read(Mid pointer) const noexcept;
 
-    void apply_classical_write(Rid pointer) const noexcept;
+    void apply_classical_write(Mid pointer) const noexcept;
 
-    void apply_classical_check(Err error) const noexcept;
+    void apply_classical_check(Int error) const noexcept;
 
 
     void apply_classical_or(ClassicalReduceArgs<> args) const noexcept;

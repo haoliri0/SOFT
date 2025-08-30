@@ -58,8 +58,7 @@ static __device__
 void op_init_rand(const ArgsInitRand args, const DimsIdx<1> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
     curandState *rand_state_ptr = args.shots_state_ptr
-        .get_shot_ptr(shot_i)
-        .get_rand_state_ptr();
+        .get_shot_ptr(shot_i).get_work_ptr().get_rand_state_ptr();
     curand_init(args.seed, shot_i, 0, rand_state_ptr);
 }
 
@@ -75,7 +74,8 @@ cudaError_t Simulator::create(
     Sid const shots_n,
     Qid const qubits_n,
     Eid const entries_m,
-    Rid const results_m,
+    Mid const mem_ints_m,
+    Mid const mem_flts_m,
     unsigned long long const seed
 ) noexcept {
     cudaError_t err = cudaSuccess;
@@ -85,7 +85,7 @@ cudaError_t Simulator::create(
         if (err != cudaSuccess) break;
 
         // allocate state
-        this->shots_state_ptr = {shots_n, qubits_n, entries_m, results_m};
+        this->shots_state_ptr = {shots_n, qubits_n, entries_m, mem_ints_m, mem_flts_m};
         const size_t state_bytes_n = this->shots_state_ptr.get_size_bytes_n();
         err = cudaMallocAsync(&this->shots_state_ptr.ptr, state_bytes_n, this->stream);
         if (err != cudaSuccess) break;
@@ -112,7 +112,7 @@ cudaError_t Simulator::create(
 cudaError_t Simulator::destroy() noexcept {
     if (this->shots_state_ptr.ptr != nullptr) cudaFree(this->shots_state_ptr.ptr);
     if (this->stream != nullptr) cudaStreamDestroy(this->stream);
-    this->shots_state_ptr = {0, 0, 0, 0, nullptr};
+    this->shots_state_ptr = {0, 0, 0, 0, 0, nullptr};
     this->stream = nullptr;
     return cudaSuccess;
 }
