@@ -21,7 +21,7 @@ using Phs = unsigned char;
 
 constexpr Int err_ok = 0;
 constexpr Int err_entries_overflow = -1;
-constexpr Int err_results_overflow = -2;
+constexpr Int err_memory_overflow = -2;
 
 constexpr Qid NullPivot = static_cast<Qid>(-1);
 

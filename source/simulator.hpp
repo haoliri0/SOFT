@@ -75,15 +75,18 @@ struct Simulator {
     void apply_noise_depo2(Flt prob, Qid target0, Qid target1) const noexcept;
 
 
-    void apply_classical_not() const noexcept;
-
-    void apply_classical_set(Int value) const noexcept;
-
-    void apply_classical_read(Mid pointer) const noexcept;
-
-    void apply_classical_write(Mid pointer) const noexcept;
+    void apply_classical_invert() const noexcept;
 
     void apply_classical_check(Int error) const noexcept;
+
+
+    void apply_classical_load_int(Mid pointer) const noexcept;
+
+    void apply_classical_load_flt(Mid pointer) const noexcept;
+
+    void apply_classical_save_int(Mid pointer) const noexcept;
+
+    void apply_classical_save_flt(Mid pointer) const noexcept;
 
 
     void apply_classical_or(ClassicalReduceArgs<> args) const noexcept;
