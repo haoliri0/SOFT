@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(stn-cuda
     LANGUAGES CXX CUDA
-    VERSION 0.1.10)
+    VERSION 0.1.11)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CUDA_STANDARD 20)
