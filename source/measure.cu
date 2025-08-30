@@ -83,9 +83,10 @@ void op_compute_measure_entries(const ShotsStatePtr shots_state_ptr, const DimsI
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const EntriesPtr entries_ptr = shot_state_ptr.get_entries_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     // check error
-    Err &err = *shot_state_ptr.get_error_ptr();
+    Int &err = *work_ptr.get_err_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // check entries_m, entries_n, entry_i
@@ -182,9 +183,10 @@ void op_compute_measure_probs(const ShotsStatePtr shots_state_ptr, const DimsIdx
     Sid const shot_i = dims_idx.get<0>();
     Bit const result = dims_idx.get<1>();
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     // check error
-    Err err = *shot_state_ptr.get_error_ptr();
+    const Int err = *work_ptr.get_err_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // check pivot
@@ -218,10 +220,10 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
 
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const EntriesPtr entries_ptr = shot_state_ptr.get_entries_ptr();
-    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     // check error
-    Err err = *shot_state_ptr.get_error_ptr();
+    const Int err = *work_ptr.get_err_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // normalize probs
@@ -243,13 +245,13 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
         case SampleMode::Maximum:
             result = prob0 <= prob1;
         default:
-            curandState *rand_state_ptr = shot_state_ptr.get_rand_state_ptr();
+            curandState *rand_state_ptr = work_ptr.get_rand_state_ptr();
             result = prob0 < curand_uniform(rand_state_ptr);
     }
 
     // save result
-    Flt &result_prob = *results_ptr.get_work_prob_ptr();
-    Rvl &result_value = *results_ptr.get_work_value_ptr();
+    Flt &result_prob = *work_ptr.get_flt_ptr();
+    Int &result_value = *work_ptr.get_int_ptr();
     if (!result) {
         result_prob = prob0;
         result_value = 0;
@@ -274,14 +276,14 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     Eid const entry_i = dims_idx.get<1>();
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const EntriesPtr entries_ptr = shot_state_ptr.get_entries_ptr();
-    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     // check error
-    Err err = *shot_state_ptr.get_error_ptr();
+    const Int err = *work_ptr.get_err_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // load result
-    const Bit result_value = *results_ptr.get_work_value_ptr();
+    const Bit result_value = *work_ptr.get_int_ptr();
     const Flt result_norm = !result_value
         ? *entries_ptr.get_half0_norm_ptr()
         : *entries_ptr.get_half1_norm_ptr();
@@ -382,8 +384,8 @@ void op_change_measure_basis_pivot(const ArgsApplyMeasureBasisPivot args, const 
         return; // situation0 不需要改 basis
 
     // load result
-    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
-    const Rvl result_value = *results_ptr.get_work_value_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
+    const Int result_value = *work_ptr.get_int_ptr();
 
     // update table
     const TablePtr table_ptr = shot_state_ptr.get_table_ptr();
@@ -425,9 +427,9 @@ void op_apply_reset(const ArgsAssignOperation args, const DimsIdx<2> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
     const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
-    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
-    const Bit result_value = *results_ptr.get_work_value_ptr();
+    const Bit result_value = *work_ptr.get_int_ptr();
     if (result_value != args.value)
         op_apply_gate1<op_apply_x>({shots_state_ptr, args.target}, dims_idx);
 }

@@ -5,7 +5,7 @@
 using namespace StnCuda;
 
 struct RandomChooseResult {
-    const Rvl value;
+    const Int value;
     const Flt prob;
 };
 
@@ -15,14 +15,14 @@ RandomChooseResult compute_random_choose_result(
     const Array<Flt, probs_n> probs,
     const Flt sample,
     const Flt head_prob,
-    const Rvl head_value
+    const Int head_value
 ) noexcept {
     if constexpr (probs_n == 0) {
         return {0, 1 - head_prob};
     } else {
         const Flt prob = probs.item;
         const Flt tail_prob = head_prob + prob;
-        const Rvl tail_value = head_value + 1;
+        const Int tail_value = head_value + 1;
         if (sample <= tail_prob) return {tail_value, prob};
         return compute_random_choose_result<probs_n - 1>(probs.tail, sample, tail_prob, tail_value);
     }
@@ -51,14 +51,14 @@ void op_random_choose(const ArgsRandomSample<probs_n> args, const DimsIdx<1> dim
 
     Sid const shot_i = dims_idx.get<0>();
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
-    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
-    curandState *rand_state_ptr = shot_state_ptr.get_rand_state_ptr();
+    curandState *rand_state_ptr = work_ptr.get_rand_state_ptr();
     const Flt sample = curand_uniform(rand_state_ptr);
     const auto result = compute_random_choose_result<probs_n>(probs, sample);
 
-    Flt &result_prob = *results_ptr.get_work_prob_ptr();
-    Rvl &result_value = *results_ptr.get_work_value_ptr();
+    Flt &result_prob = *work_ptr.get_flt_ptr();
+    Int &result_value = *work_ptr.get_int_ptr();
     result_value = result.value;
     result_prob = result.prob;
 }
@@ -81,8 +81,8 @@ void op_noise_gate(const ArgsApplyGate1 args, const DimsIdx<2> dims_idx) noexcep
     const Sid shot_i = dims_idx.get<0>();
     const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
-    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
-    const Rvl result_value = *results_ptr.get_work_value_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
+    const Int result_value = *work_ptr.get_int_ptr();
     if (result_value) op_apply_gate1<op>(args, dims_idx);
 }
 
@@ -115,8 +115,8 @@ void op_noise_depo1(const ArgsApplyGate1 args, const DimsIdx<2> dims_idx) noexce
     const Sid shot_i = dims_idx.get<0>();
     const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
-    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
-    const Rvl result_value = *results_ptr.get_work_value_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
+    const Int result_value = *work_ptr.get_int_ptr();
     if (result_value == 1) op_apply_gate1<op_apply_x>(args, dims_idx);
     if (result_value == 2) op_apply_gate1<op_apply_y>(args, dims_idx);
     if (result_value == 3) op_apply_gate1<op_apply_z>(args, dims_idx);
@@ -145,11 +145,11 @@ void op_noise_depo2(const ArgsApplyGate2 args, const DimsIdx<2> dims_idx) noexce
     const Sid shot_i = dims_idx.get<0>();
     const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
-    const ResultsPtr results_ptr = shot_state_ptr.get_results_ptr();
-    const Rvl result_value = *results_ptr.get_work_value_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
+    const Int result_value = *work_ptr.get_int_ptr();
 
-    const Rvl result_value0 = result_value % 4;
-    const Rvl result_value1 = result_value / 4 % 4;
+    const Int result_value0 = result_value % 4;
+    const Int result_value1 = result_value / 4 % 4;
     const ArgsApplyGate1 args0 = {args.shots_state_ptr, args.target0};
     const ArgsApplyGate1 args1 = {args.shots_state_ptr, args.target1};
 

@@ -15,9 +15,10 @@ void op_update_entries_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
     const EntriesPtr entries_ptr = shot_state_ptr.get_entries_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     // check error
-    Err &err = *shot_state_ptr.get_error_ptr();
+    Int &err = *work_ptr.get_err_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // check entries_m, entries_n, entry_i
@@ -77,9 +78,10 @@ void op_update_entries_half0(const ShotsStatePtr shots_state_ptr, const DimsIdx<
 
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const EntriesPtr entries_ptr = shot_state_ptr.get_entries_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     // check error
-    Err &err = *shot_state_ptr.get_error_ptr();
+    Int &err = *work_ptr.get_err_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     // check entries_m, entries_n, entry_i
@@ -117,9 +119,10 @@ void op_merge_entries_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const Sid shot_i = dims_idx.get<0>();
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const EntriesPtr entries_ptr = shot_state_ptr.get_entries_ptr();
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     // check error
-    Err err = *shot_state_ptr.get_error_ptr();
+    const Int err = *work_ptr.get_err_ptr();
     if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
 
     Eid entries_add_n = 0;
