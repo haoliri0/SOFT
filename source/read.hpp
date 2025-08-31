@@ -149,13 +149,13 @@ void read_value(std::istream &istream, std::vector<Item> &value) {
     ensure(istream, is_linebreak, false);
 }
 
-template<Rid m>
+template<Mid m>
 static
 void read_value(std::istream &istream, ClassicalReduceArgs<m> &value) {
-    std::vector<Rid> pointers;
+    std::vector<Mid> pointers;
     read_value(istream, pointers);
 
-    const Rid n = pointers.size();
+    const Mid n = pointers.size();
     if (n > m) {
         fprintf(stderr, "This op can hold at most %u arguments, got %u.", m, n);
         throw ParseException(std::errc::invalid_argument);
@@ -166,13 +166,13 @@ void read_value(std::istream &istream, ClassicalReduceArgs<m> &value) {
         value.pointers.get(i) = pointers[i];
 }
 
-template<Rid m>
+template<Mid m>
 static
 void read_value(std::istream &istream, ClassicalLutArgs<m> &value) {
     std::vector<unsigned int> items;
     read_value(istream, items);
 
-    Rid n = 0;
+    Mid n = 0;
     while (true) {
         if (n > m) {
             fprintf(stderr, "Op Lut can hold at most %u arguments, got %lu.", m + (1 << m), items.size());
@@ -189,7 +189,7 @@ void read_value(std::istream &istream, ClassicalLutArgs<m> &value) {
 
     value.n = n;
     for (size_t i = 0; i < n; ++i) {
-        const Rid pointer = items[i];
+        const Mid pointer = items[i];
         value.pointers.get(i) = pointer;
     }
     for (size_t i = 0; i < (1 << n); ++i) {
