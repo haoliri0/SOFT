@@ -70,14 +70,7 @@ void cuda_init_rand(cudaStream_t const stream, const ShotsStatePtr shots_state_p
 }
 
 
-cudaError_t Simulator::create(
-    Sid const shots_n,
-    Qid const qubits_n,
-    Eid const entries_m,
-    Mid const mem_ints_m,
-    Mid const mem_flts_m,
-    unsigned long long const seed
-) noexcept {
+cudaError_t Simulator::create(SimulatorArgs const &args) noexcept {
     cudaError_t err = cudaSuccess;
     do {
         // create stream
@@ -85,7 +78,7 @@ cudaError_t Simulator::create(
         if (err != cudaSuccess) break;
 
         // allocate state
-        this->shots_state_ptr = {shots_n, qubits_n, entries_m, mem_ints_m, mem_flts_m};
+        this->shots_state_ptr = {args.shots_n, args.qubits_n, args.entries_m, args.mem_ints_m, args.mem_flts_m};
         const size_t state_bytes_n = this->shots_state_ptr.get_size_bytes_n();
         err = cudaMallocAsync(&this->shots_state_ptr.ptr, state_bytes_n, this->stream);
         if (err != cudaSuccess) break;
@@ -96,7 +89,7 @@ cudaError_t Simulator::create(
 
         cuda_init_table(this->stream, this->shots_state_ptr);
         cuda_init_entries(this->stream, this->shots_state_ptr);
-        cuda_init_rand(this->stream, this->shots_state_ptr, seed);
+        cuda_init_rand(this->stream, this->shots_state_ptr, args.seed);
 
         // wait for async operations to complete
         err = cudaStreamSynchronize(this->stream);

@@ -8,6 +8,15 @@
 
 namespace StnCuda {
 
+struct SimulatorArgs {
+    Sid shots_n = 1;
+    Qid qubits_n = 4;
+    Eid entries_m = 16;
+    Mid mem_ints_m = 16;
+    Mid mem_flts_m = 16;
+    unsigned long long seed = 0;
+};
+
 template<Mid m = 16>
 struct ClassicalReduceArgs {
     Mid n;
@@ -26,15 +35,7 @@ struct Simulator {
     cudaStream_t stream = nullptr;
     ShotsStatePtr shots_state_ptr = {0, 0, 0, 0, 0, nullptr};
 
-
-    cudaError_t create(
-        Sid shots_n,
-        Qid qubits_n,
-        Eid entries_m,
-        Mid mem_ints_m,
-        Mid mem_flts_m,
-        unsigned long long seed
-    ) noexcept;
+    cudaError_t create(SimulatorArgs const &args) noexcept;
 
     cudaError_t destroy() noexcept;
 

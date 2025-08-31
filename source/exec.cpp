@@ -14,14 +14,7 @@ using namespace StnCuda;
 
 // cli args
 
-struct CliArgs {
-    Sid shots_n = 1;
-    Qid qubits_n = 4;
-    Eid entries_m = 16;
-    Mid mem_ints_m = 1024;
-    Mid mem_flts_m = 1024;
-    unsigned long long seed = 42;
-};
+using CliArgs = SimulatorArgs;
 
 static
 void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
@@ -405,9 +398,7 @@ int main(const int argc, const char **argv) {
     fprintf(stderr, "Creating\n");
     cudaError cuda_err = cudaSuccess;
 
-    cuda_err = simulator.create(
-        args.shots_n, args.qubits_n, args.entries_m,
-        args.mem_ints_m, args.mem_flts_m, args.seed);
+    cuda_err = simulator.create(args);
     if (cuda_err != cudaSuccess) {
         fprintf(stderr, "Error occurs when creating simulator.\n");
         fprint_cuda_error(stderr, cuda_err);
