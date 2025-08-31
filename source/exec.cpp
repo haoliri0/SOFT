@@ -85,80 +85,7 @@ void parse_cli_args(const int argc, const char **argv, CliArgs &args) {
 
 // custom ops
 
-void perform_print_error(const Simulator &simulator) {
-    const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
-    const size_t pitch = shots_state_ptr.get_shot_size_bytes_n() + shots_state_ptr.get_shot_pad_bytes_n();
-    const void *error_ptr = shots_state_ptr.get_shot_ptr(0).get_error_ptr();
-    const Sid shots_n = shots_state_ptr.shots_n;
-
-    auto const shots_error = new Err[shots_n];
-    Cleaner shots_error_cleaner([shots_error] { delete[] shots_error; });
-
-    cuda_check(cudaMemcpy2DAsync(
-        shots_error,
-        sizeof(Err),
-        error_ptr,
-        pitch,
-        sizeof(Err),
-        shots_n,
-        cudaMemcpyDeviceToHost,
-        simulator.stream));
-
-    cuda_check(cudaStreamSynchronize(simulator.stream));
-
-    printf("error:\n");
-    for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
-        const Err error = shots_error[shot_i];
-        printf("  shot_%u:\n", shot_i);
-        printf("    error: %u\n", error);
-    }
-}
-
-void perform_print_result(const Simulator &simulator) {
-    const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
-    const size_t pitch = shots_state_ptr.get_shot_size_bytes_n() + shots_state_ptr.get_shot_pad_bytes_n();
-    const void *work_prob_ptr = shots_state_ptr.get_shot_ptr(0).get_results_ptr().get_work_prob_ptr();
-    const void *work_value_ptr = shots_state_ptr.get_shot_ptr(0).get_results_ptr().get_work_value_ptr();
-    const Sid shots_n = shots_state_ptr.shots_n;
-
-    auto const shots_result_prob = new Flt[shots_n];
-    Cleaner shots_result_prob_cleaner([shots_result_prob] { delete[] shots_result_prob; });
-    auto const shots_result_value = new Rvl[shots_n];
-    Cleaner shots_result_value_cleaner([shots_result_value] { delete[] shots_result_value; });
-
-    cuda_check(cudaMemcpy2DAsync(
-        shots_result_prob,
-        sizeof(Flt),
-        work_prob_ptr,
-        pitch,
-        sizeof(Flt),
-        shots_n,
-        cudaMemcpyDeviceToHost,
-        simulator.stream));
-
-    cuda_check(cudaMemcpy2DAsync(
-        shots_result_value,
-        sizeof(Rvl),
-        work_value_ptr,
-        pitch,
-        sizeof(Rvl),
-        shots_n,
-        cudaMemcpyDeviceToHost,
-        simulator.stream));
-
-    cuda_check(cudaStreamSynchronize(simulator.stream));
-
-    printf("result:\n");
-    for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
-        const Flt result_prob = shots_result_prob[shot_i];
-        const Rvl result_value = shots_result_value[shot_i];
-        printf("  shot_%u:\n", shot_i);
-        printf("    prob: %f\n", result_prob);
-        printf("    value: %u\n", result_value);
-    }
-}
-
-void perform_print_state(const Simulator &simulator) {
+void perform_print_state(const Simulator &simulator, const unsigned int print_i) {
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
     auto const buffer = new char[simulator.shots_state_ptr.get_size_bytes_n()];
@@ -168,14 +95,103 @@ void perform_print_state(const Simulator &simulator) {
     ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
     shots_state_ptr.ptr = buffer;
 
-    printf("state:\n");
+    printf("print_%u:\n", print_i);
     for (Sid shot_i = 0; shot_i < shots_state_ptr.shots_n; ++shot_i) {
         ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
         print_indent(1);
         printf("shot %u:\n", shot_i);
-        print_error(*shot_state_ptr.get_error_ptr(), 2);
-        print_table(shot_state_ptr.get_table_ptr(), 2);
-        print_entries(shot_state_ptr.get_entries_ptr(), false, 2);
+
+        print_indent(2);
+        const Int err = *shot_state_ptr.get_work_ptr().get_err_ptr();
+        printf("error: %d\n", err);
+        if (!err) {
+            print_table(shot_state_ptr.get_table_ptr(), 2);
+            print_entries(shot_state_ptr.get_entries_ptr(), false, 2);
+        }
+    }
+}
+
+void perform_print_int(const Simulator &simulator, const unsigned int print_i) {
+    const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
+    const size_t pitch = shots_state_ptr.get_shot_size_bytes_n() + shots_state_ptr.get_shot_pad_bytes_n();
+    const void *shot_value_ptr = shots_state_ptr.get_shot_ptr(0).get_work_ptr().get_int_ptr();
+    const Sid shots_n = shots_state_ptr.shots_n;
+
+    auto const shots_value = new Int[shots_n];
+    Cleaner shots_value_cleaner([shots_value] { delete[] shots_value; });
+
+    cuda_check(cudaMemcpy2DAsync(
+        shots_value,
+        sizeof(Int),
+        shot_value_ptr,
+        pitch,
+        sizeof(Int),
+        shots_n,
+        cudaMemcpyDeviceToHost,
+        simulator.stream));
+
+    cuda_check(cudaStreamSynchronize(simulator.stream));
+
+    printf("print_%u:\n", print_i);
+    for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
+        print_indent(1);
+        printf("shot_%u: %d\n", shot_i, shots_value[shot_i]);
+    }
+}
+
+void perform_print_flt(const Simulator &simulator, const unsigned int print_i) {
+    const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
+    const size_t pitch = shots_state_ptr.get_shot_size_bytes_n() + shots_state_ptr.get_shot_pad_bytes_n();
+    const void *shot_value_ptr = shots_state_ptr.get_shot_ptr(0).get_work_ptr().get_flt_ptr();
+    const Sid shots_n = shots_state_ptr.shots_n;
+
+    auto const shots_value = new Flt[shots_n];
+    Cleaner shots_value_cleaner([shots_value] { delete[] shots_value; });
+
+    cuda_check(cudaMemcpy2DAsync(
+        shots_value,
+        sizeof(Flt),
+        shot_value_ptr,
+        pitch,
+        sizeof(Flt),
+        shots_n,
+        cudaMemcpyDeviceToHost,
+        simulator.stream));
+
+    cuda_check(cudaStreamSynchronize(simulator.stream));
+
+    printf("print_%u:\n", print_i);
+    for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
+        print_indent(1);
+        printf("shot_%u: %f\n", shot_i, shots_value[shot_i]);
+    }
+}
+
+void perform_print_err(const Simulator &simulator, const unsigned int print_i) {
+    const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
+    const size_t pitch = shots_state_ptr.get_shot_size_bytes_n() + shots_state_ptr.get_shot_pad_bytes_n();
+    const void *shot_value_ptr = shots_state_ptr.get_shot_ptr(0).get_work_ptr().get_err_ptr();
+    const Sid shots_n = shots_state_ptr.shots_n;
+
+    auto const shots_value = new Int[shots_n];
+    Cleaner shots_value_cleaner([shots_value] { delete[] shots_value; });
+
+    cuda_check(cudaMemcpy2DAsync(
+        shots_value,
+        sizeof(Int),
+        shot_value_ptr,
+        pitch,
+        sizeof(Int),
+        shots_n,
+        cudaMemcpyDeviceToHost,
+        simulator.stream));
+
+    cuda_check(cudaStreamSynchronize(simulator.stream));
+
+    printf("print_%u:\n", print_i);
+    for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
+        print_indent(1);
+        printf("shot_%u: %d\n", shot_i, shots_value[shot_i]);
     }
 }
 
@@ -223,6 +239,18 @@ void execute_op(
     return execute_op(istream, wrapped);
 }
 
+template<typename... Args>
+static
+void execute_op(
+    std::istream &istream,
+    const Simulator &simulator,
+    const unsigned int print_i,
+    void (*op)(const Simulator &, unsigned int, Args...)
+) {
+    std::function wrapped = [&simulator,print_i, op](Args... args) { (*op)(simulator, print_i, args...); };
+    return execute_op(istream, wrapped);
+}
+
 static
 void execute_op(
     std::istream &istream,
@@ -266,14 +294,8 @@ void execute_op(
     if (name == "DEP2")
         return execute_op(istream, simulator, &Simulator::apply_noise_depo2);
 
-    if (name == "SET")
-        return execute_op(istream, simulator, &Simulator::apply_classical_set);
-    if (name == "NOT")
-        return execute_op(istream, simulator, &Simulator::apply_classical_not);
-    if (name == "READ")
-        return execute_op(istream, simulator, &Simulator::apply_classical_read);
-    if (name == "WRITE")
-        return execute_op(istream, simulator, &Simulator::apply_classical_write);
+    if (name == "INVERT")
+        return execute_op(istream, simulator, &Simulator::apply_classical_invert);
     if (name == "CHECK")
         return execute_op(istream, simulator, &Simulator::apply_classical_check);
 
@@ -286,16 +308,44 @@ void execute_op(
     if (name == "LUT")
         return execute_op(istream, simulator, &Simulator::apply_classical_lut);
 
+    if (name == "LOAD") {
+        std::string object;
+        read_value(istream, object);
+
+        if (object == "INT")
+            return execute_op(istream, simulator, &Simulator::apply_classical_load_int);
+        if (object == "FLT")
+            return execute_op(istream, simulator, &Simulator::apply_classical_load_flt);
+
+        fprintf(stderr, "Unknown load object: %s\n", object.c_str());
+        throw ExecException(ExecError::IllegalOp);
+    }
+
+    if (name == "SAVE") {
+        std::string object;
+        read_value(istream, object);
+
+        if (object == "INT")
+            return execute_op(istream, simulator, &Simulator::apply_classical_save_int);
+        if (object == "FLT")
+            return execute_op(istream, simulator, &Simulator::apply_classical_save_flt);
+
+        fprintf(stderr, "Unknown save object: %s\n", object.c_str());
+        throw ExecException(ExecError::IllegalOp);
+    }
+
     if (name == "PRINT") {
         std::string object;
         read_value(istream, object);
 
-        if (object == "ERROR")
-            return execute_op(istream, simulator, perform_print_error);
-        if (object == "RESULT")
-            return execute_op(istream, simulator, perform_print_result);
         if (object == "STATE")
             return execute_op(istream, simulator, perform_print_state);
+        if (object == "INT")
+            return execute_op(istream, simulator, perform_print_int);
+        if (object == "FLT")
+            return execute_op(istream, simulator, perform_print_flt);
+        if (object == "ERR")
+            return execute_op(istream, simulator, perform_print_err);
 
         fprintf(stderr, "Unknown print object: %s\n", object.c_str());
         throw ExecException(ExecError::IllegalOp);
