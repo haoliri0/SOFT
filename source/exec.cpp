@@ -17,8 +17,9 @@ using namespace StnCuda;
 struct CliArgs {
     Sid shots_n = 1;
     Qid qubits_n = 4;
-    Eid entries_m = 4;
-    Rid results_m = 4;
+    Eid entries_m = 16;
+    Mid mem_ints_m = 1024;
+    Mid mem_flts_m = 1024;
     unsigned long long seed = 42;
 };
 
@@ -53,13 +54,14 @@ void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
             }
             continue;
         }
-        if (match(arg_key, "--results_m")) {
+        if (match(arg_key, "--mem_ints_m")) {
             const char *arg_value = *++iter;
-            parse_value(arg_value, args.results_m);
-            if (args.results_m == 0) {
-                fprintf(stderr, "Illegal value: results_m=%s\n", arg_value);
-                throw CliArgsException(CliArgsError::IllegalValue);
-            }
+            parse_value(arg_value, args.mem_ints_m);
+            continue;
+        }
+        if (match(arg_key, "--mem_flts_m")) {
+            const char *arg_value = *++iter;
+            parse_value(arg_value, args.mem_flts_m);
             continue;
         }
         if (match(arg_key, "--seed")) {
@@ -342,7 +344,8 @@ int main(const int argc, const char **argv) {
     fprintf(stderr, "  shots_n=%u\n", args.shots_n);
     fprintf(stderr, "  qubits_n=%u\n", args.qubits_n);
     fprintf(stderr, "  entries_m=%u\n", args.entries_m);
-    fprintf(stderr, "  results_m=%u\n", args.results_m);
+    fprintf(stderr, "  mem_ints_m=%u\n", args.mem_ints_m);
+    fprintf(stderr, "  mem_flts_m=%u\n", args.mem_flts_m);
     fprintf(stderr, "  seed=%llu\n", args.seed);
     fprintf(stderr, "\n");
 
@@ -352,7 +355,9 @@ int main(const int argc, const char **argv) {
     fprintf(stderr, "Creating\n");
     cudaError cuda_err = cudaSuccess;
 
-    cuda_err = simulator.create(args.shots_n, args.qubits_n, args.entries_m, args.results_m, args.seed);
+    cuda_err = simulator.create(
+        args.shots_n, args.qubits_n, args.entries_m,
+        args.mem_ints_m, args.mem_flts_m, args.seed);
     if (cuda_err != cudaSuccess) {
         fprintf(stderr, "Error occurs when creating simulator.\n");
         fprint_cuda_error(stderr, cuda_err);
