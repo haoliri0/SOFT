@@ -13,10 +13,10 @@ void op_classical_invert(const ShotStatePtr shot_state_ptr) {
 }
 
 static __device__
-void op_classical_check(const ShotStatePtr shot_state_ptr, const Int error) {
+void op_classical_check(const ShotStatePtr shot_state_ptr, const Err error) {
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
     const Int cond = *work_ptr.get_int_ptr();
-    Int &dst = *work_ptr.get_err_ptr();
+    Err &dst = *work_ptr.get_err_ptr();
     if (!dst && cond) dst = error;
 }
 
@@ -24,8 +24,8 @@ void Simulator::apply_classical_invert() const noexcept {
     cuda_shots_op<op_classical_invert>(stream, shots_state_ptr);
 }
 
-void Simulator::apply_classical_check(const Int error) const noexcept {
-    cuda_shots_op<Int, op_classical_check>(stream, shots_state_ptr, error);
+void Simulator::apply_classical_check(const Err error) const noexcept {
+    cuda_shots_op<Err, op_classical_check>(stream, shots_state_ptr, error);
 }
 
 
@@ -35,7 +35,7 @@ void op_classical_load_int(const ShotStatePtr shot_state_ptr, const Mid pointer)
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     if (pointer >= memory_ptr.mem_ints_m) {
-        Int &err = *work_ptr.get_err_ptr();
+        Err &err = *work_ptr.get_err_ptr();
         err = err_memory_overflow;
         return;
     }
@@ -51,7 +51,7 @@ void op_classical_load_flt(const ShotStatePtr shot_state_ptr, const Mid pointer)
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     if (pointer >= memory_ptr.mem_flts_m) {
-        Int &err = *work_ptr.get_err_ptr();
+        Err &err = *work_ptr.get_err_ptr();
         err = err_memory_overflow;
         return;
     }
@@ -67,7 +67,7 @@ void op_classical_save_int(const ShotStatePtr shot_state_ptr, const Mid pointer)
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     if (pointer >= memory_ptr.mem_ints_m) {
-        Int &err = *work_ptr.get_err_ptr();
+        Err &err = *work_ptr.get_err_ptr();
         err = err_memory_overflow;
         return;
     }
@@ -83,7 +83,7 @@ void op_classical_save_flt(const ShotStatePtr shot_state_ptr, const Mid pointer)
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     if (pointer >= memory_ptr.mem_flts_m) {
-        Int &err = *work_ptr.get_err_ptr();
+        Err &err = *work_ptr.get_err_ptr();
         err = err_memory_overflow;
         return;
     }

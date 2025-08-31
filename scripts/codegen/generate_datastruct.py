@@ -666,14 +666,14 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
                 name="rand_state",
                 type=ValueTypeSpec(name="curandState")),
             ItemFieldSpec(
-                name="err",
-                type=ValueTypeSpec(name="Int")),
-            ItemFieldSpec(
                 name="int",
                 type=ValueTypeSpec(name="Int")),
             ItemFieldSpec(
                 name="flt",
                 type=ValueTypeSpec(name="Flt")),
+            ItemFieldSpec(
+                name="err",
+                type=ValueTypeSpec(name="Err")),
         )
     )
     memory_spec = DynamicStructSpec(

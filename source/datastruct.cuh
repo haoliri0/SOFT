@@ -851,32 +851,6 @@ struct WorkArgs {
     }
     
     __device__ __host__
-    size_t get_err_size_bytes_n() const {
-        return sizeof(Int);
-    }
-    
-    __device__ __host__
-    size_t get_err_align_bytes_n() const {
-        return alignof(Int);
-    }
-    
-    __device__ __host__
-    size_t get_err_pad_bytes_n() const {
-        return compute_pad_bytes_n(
-            get_rand_state_offset_bytes_n() +
-            get_rand_state_size_bytes_n(),
-            get_err_align_bytes_n());
-    }
-    
-    __device__ __host__
-    size_t get_err_offset_bytes_n() const {
-        return 
-            get_rand_state_offset_bytes_n() +
-            get_rand_state_size_bytes_n() +
-            get_err_pad_bytes_n();
-    }
-    
-    __device__ __host__
     size_t get_int_size_bytes_n() const {
         return sizeof(Int);
     }
@@ -889,16 +863,16 @@ struct WorkArgs {
     __device__ __host__
     size_t get_int_pad_bytes_n() const {
         return compute_pad_bytes_n(
-            get_err_offset_bytes_n() +
-            get_err_size_bytes_n(),
+            get_rand_state_offset_bytes_n() +
+            get_rand_state_size_bytes_n(),
             get_int_align_bytes_n());
     }
     
     __device__ __host__
     size_t get_int_offset_bytes_n() const {
         return 
-            get_err_offset_bytes_n() +
-            get_err_size_bytes_n() +
+            get_rand_state_offset_bytes_n() +
+            get_rand_state_size_bytes_n() +
             get_int_pad_bytes_n();
     }
     
@@ -929,25 +903,51 @@ struct WorkArgs {
     }
     
     __device__ __host__
+    size_t get_err_size_bytes_n() const {
+        return sizeof(Err);
+    }
+    
+    __device__ __host__
+    size_t get_err_align_bytes_n() const {
+        return alignof(Err);
+    }
+    
+    __device__ __host__
+    size_t get_err_pad_bytes_n() const {
+        return compute_pad_bytes_n(
+            get_flt_offset_bytes_n() +
+            get_flt_size_bytes_n(),
+            get_err_align_bytes_n());
+    }
+    
+    __device__ __host__
+    size_t get_err_offset_bytes_n() const {
+        return 
+            get_flt_offset_bytes_n() +
+            get_flt_size_bytes_n() +
+            get_err_pad_bytes_n();
+    }
+    
+    __device__ __host__
     size_t get_size_bytes_n() const {
         return 
             get_rand_state_pad_bytes_n() +
             get_rand_state_size_bytes_n() +
-            get_err_pad_bytes_n() +
-            get_err_size_bytes_n() +
             get_int_pad_bytes_n() +
             get_int_size_bytes_n() +
             get_flt_pad_bytes_n() +
-            get_flt_size_bytes_n();
+            get_flt_size_bytes_n() +
+            get_err_pad_bytes_n() +
+            get_err_size_bytes_n();
     }
     
     __device__ __host__
     size_t get_align_bytes_n() const {
         return max(
             get_rand_state_align_bytes_n(),
-            get_err_align_bytes_n(),
             get_int_align_bytes_n(),
-            get_flt_align_bytes_n());
+            get_flt_align_bytes_n(),
+            get_err_align_bytes_n());
     }
 };
 
@@ -961,12 +961,6 @@ struct WorkPtr : WorkArgs {
     }
     
     __device__ __host__
-    Int *get_err_ptr() const {
-        const size_t offset = get_err_offset_bytes_n();
-        return reinterpret_cast<Int *>(ptr + offset);
-    }
-    
-    __device__ __host__
     Int *get_int_ptr() const {
         const size_t offset = get_int_offset_bytes_n();
         return reinterpret_cast<Int *>(ptr + offset);
@@ -976,6 +970,12 @@ struct WorkPtr : WorkArgs {
     Flt *get_flt_ptr() const {
         const size_t offset = get_flt_offset_bytes_n();
         return reinterpret_cast<Flt *>(ptr + offset);
+    }
+    
+    __device__ __host__
+    Err *get_err_ptr() const {
+        const size_t offset = get_err_offset_bytes_n();
+        return reinterpret_cast<Err *>(ptr + offset);
     }
 };
 

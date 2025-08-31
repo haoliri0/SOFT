@@ -77,7 +77,7 @@ struct Simulator {
 
     void apply_classical_invert() const noexcept;
 
-    void apply_classical_check(Int error) const noexcept;
+    void apply_classical_check(Err error) const noexcept;
 
 
     void apply_classical_load_int(Mid pointer) const noexcept;

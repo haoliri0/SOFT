@@ -19,9 +19,10 @@ using Amp = cuda::std::complex<Flt>;
 using Bst = unsigned long long;
 using Phs = unsigned char;
 
-constexpr Int err_ok = 0;
-constexpr Int err_entries_overflow = -1;
-constexpr Int err_memory_overflow = -2;
+using Err = int;
+constexpr Err err_ok = 0;
+constexpr Err err_entries_overflow = -1;
+constexpr Err err_memory_overflow = -2;
 
 constexpr Qid NullPivot = static_cast<Qid>(-1);
 

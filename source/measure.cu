@@ -86,8 +86,8 @@ void op_compute_measure_entries(const ShotsStatePtr shots_state_ptr, const DimsI
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     // check error
-    Int &err = *work_ptr.get_err_ptr();
-    if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
+    Err &err = *work_ptr.get_err_ptr();
+    if (err) return; // 这个 shot 已经失败，不进行计算
 
     // check entries_m, entries_n, entry_i
     const Eid entries_m = entries_ptr.entries_m;
@@ -186,8 +186,8 @@ void op_compute_measure_probs(const ShotsStatePtr shots_state_ptr, const DimsIdx
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     // check error
-    const Int err = *work_ptr.get_err_ptr();
-    if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
+    const Err err = *work_ptr.get_err_ptr();
+    if (err) return; // 这个 shot 已经失败，不进行计算
 
     // check pivot
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
@@ -223,8 +223,8 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     // check error
-    const Int err = *work_ptr.get_err_ptr();
-    if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
+    const Err err = *work_ptr.get_err_ptr();
+    if (err) return; // 这个 shot 已经失败，不进行计算
 
     // normalize probs
     const Flt norm0 = *entries_ptr.get_half0_norm_ptr();
@@ -279,8 +279,8 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     // check error
-    const Int err = *work_ptr.get_err_ptr();
-    if (err != err_ok) return; // 这个 shot 已经失败，不进行计算
+    const Err err = *work_ptr.get_err_ptr();
+    if (err) return; // 这个 shot 已经失败，不进行计算
 
     // load result
     const Bit result_value = *work_ptr.get_int_ptr();

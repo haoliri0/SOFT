@@ -102,7 +102,7 @@ void perform_print_state(const Simulator &simulator, const unsigned int print_i)
         printf("shot %u:\n", shot_i);
 
         print_indent(2);
-        const Int err = *shot_state_ptr.get_work_ptr().get_err_ptr();
+        const Err err = *shot_state_ptr.get_work_ptr().get_err_ptr();
         printf("error: %d\n", err);
         if (!err) {
             print_table(shot_state_ptr.get_table_ptr(), 2);
@@ -173,15 +173,15 @@ void perform_print_err(const Simulator &simulator, const unsigned int print_i) {
     const void *shot_value_ptr = shots_state_ptr.get_shot_ptr(0).get_work_ptr().get_err_ptr();
     const Sid shots_n = shots_state_ptr.shots_n;
 
-    auto const shots_value = new Int[shots_n];
+    auto const shots_value = new Err[shots_n];
     Cleaner shots_value_cleaner([shots_value] { delete[] shots_value; });
 
     cuda_check(cudaMemcpy2DAsync(
         shots_value,
-        sizeof(Int),
+        sizeof(Err),
         shot_value_ptr,
         pitch,
-        sizeof(Int),
+        sizeof(Err),
         shots_n,
         cudaMemcpyDeviceToHost,
         simulator.stream));
