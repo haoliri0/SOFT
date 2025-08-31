@@ -176,38 +176,48 @@ void print_entries(const EntriesPtr ptr, const bool full, const unsigned int ind
 }
 
 static
-void print_error(const Err error, const unsigned int indent) {
+void print_work(const WorkPtr ptr, const unsigned int indent) {
     print_indent(indent);
-    printf("error=%u\n", error);
+    printf("work:\n");
+
+    print_indent(indent + 1);
+    printf("int: %d\n", *ptr.get_int_ptr());
+
+    print_indent(indent + 1);
+    printf("flt: %f\n", *ptr.get_flt_ptr());
+
+    print_indent(indent + 1);
+    printf("err: %d\n", *ptr.get_err_ptr());
 }
 
 static
-void print_results(const ResultsPtr ptr, const unsigned int indent) {
+void print_memory(const MemoryPtr ptr, const unsigned int indent) {
     print_indent(indent);
-    printf("results:\n");
+    printf("memory:\n");
 
     print_indent(indent + 1);
-    printf("work_prob: %f\n", *ptr.get_work_prob_ptr());
-
-    print_indent(indent + 1);
-    printf("work_value: %u\n", *ptr.get_work_value_ptr());
-
-    print_indent(indent + 1);
-    printf("values:\n");
-    for (Rid result_i = 0; result_i < ptr.results_m; ++result_i) {
+    printf("ints:\n");
+    for (Mid mem_i = 0; mem_i < ptr.mem_ints_m; ++mem_i) {
         print_indent(indent + 2);
-        printf("- %u\n", *ptr.get_value_ptr(result_i));
+        printf("int_%u: %d\n", mem_i, *ptr.get_int_ptr(mem_i));
+    }
+
+    print_indent(indent + 1);
+    printf("flts:\n");
+    for (Mid mem_i = 0; mem_i < ptr.mem_flts_m; ++mem_i) {
+        print_indent(indent + 2);
+        printf("flt_%u: %f\n", mem_i, *ptr.get_flt_ptr(mem_i));
     }
 }
 
 
 static
 void print_shot_state(const ShotStatePtr &ptr, const unsigned int indent) {
-    print_error(*ptr.get_error_ptr(), indent + 1);
     print_table(ptr.get_table_ptr(), indent + 1);
     print_decomp(ptr.get_decomp_ptr(), indent + 1);
     print_entries(ptr.get_entries_ptr(), true, indent + 1);
-    print_results(ptr.get_results_ptr(), indent + 1);
+    print_work(ptr.get_work_ptr(), indent + 1);
+    print_memory(ptr.get_memory_ptr(), indent + 1);
 }
 
 static
@@ -226,7 +236,8 @@ void print_simulator_args(const Simulator &simulator, const unsigned int indent)
     const Sid shots_n = simulator.shots_state_ptr.shots_n;
     const Qid qubits_n = simulator.shots_state_ptr.qubits_n;
     const Eid entries_m = simulator.shots_state_ptr.entries_m;
-    const Rid results_m = simulator.shots_state_ptr.results_m;
+    const Mid mem_ints_m = simulator.shots_state_ptr.mem_ints_m;
+    const Mid mem_flts_m = simulator.shots_state_ptr.mem_flts_m;
 
     print_indent(indent);
     printf("shots_n=%u\n", shots_n);
@@ -235,7 +246,9 @@ void print_simulator_args(const Simulator &simulator, const unsigned int indent)
     print_indent(indent);
     printf("entries_m=%u\n", entries_m);
     print_indent(indent);
-    printf("results_m=%u\n", results_m);
+    printf("mem_ints_m=%u\n", mem_ints_m);
+    print_indent(indent);
+    printf("mem_flts_m=%u\n", mem_flts_m);
 }
 
 static
