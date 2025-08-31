@@ -74,38 +74,38 @@ cudaError_t Simulator::create(SimulatorArgs const &args) noexcept {
     cudaError_t err = cudaSuccess;
     do {
         // create stream
-        err = cudaStreamCreate(&this->stream);
+        err = cudaStreamCreate(&stream);
         if (err != cudaSuccess) break;
 
         // allocate state
-        this->shots_state_ptr = {args.shots_n, args.qubits_n, args.entries_m, args.mem_ints_m, args.mem_flts_m};
-        const size_t state_bytes_n = this->shots_state_ptr.get_size_bytes_n();
-        err = cudaMallocAsync(&this->shots_state_ptr.ptr, state_bytes_n, this->stream);
+        shots_state_ptr = {args.shots_n, args.qubits_n, args.entries_m, args.mem_ints_m, args.mem_flts_m};
+        const size_t state_bytes_n = shots_state_ptr.get_size_bytes_n();
+        err = cudaMallocAsync(&shots_state_ptr.ptr, state_bytes_n, stream);
         if (err != cudaSuccess) break;
 
         // initialize state
-        err = cudaMemsetAsync(this->shots_state_ptr.ptr, 0, state_bytes_n, this->stream);
+        err = cudaMemsetAsync(shots_state_ptr.ptr, 0, state_bytes_n, stream);
         if (err != cudaSuccess) break;
 
-        cuda_init_table(this->stream, this->shots_state_ptr);
-        cuda_init_entries(this->stream, this->shots_state_ptr);
-        cuda_init_rand(this->stream, this->shots_state_ptr, args.seed);
+        cuda_init_table(stream, shots_state_ptr);
+        cuda_init_entries(stream, shots_state_ptr);
+        cuda_init_rand(stream, shots_state_ptr, args.seed);
 
         // wait for async operations to complete
-        err = cudaStreamSynchronize(this->stream);
+        err = cudaStreamSynchronize(stream);
         if (err != cudaSuccess) break;
     } while (false);
 
     if (err != cudaSuccess)
-        this->destroy();
+        destroy();
 
     return err;
 }
 
 cudaError_t Simulator::destroy() noexcept {
-    if (this->shots_state_ptr.ptr != nullptr) cudaFree(this->shots_state_ptr.ptr);
-    if (this->stream != nullptr) cudaStreamDestroy(this->stream);
-    this->shots_state_ptr = {0, 0, 0, 0, 0, nullptr};
-    this->stream = nullptr;
+    if (shots_state_ptr.ptr != nullptr) cudaFree(shots_state_ptr.ptr);
+    if (stream != nullptr) cudaStreamDestroy(stream);
+    shots_state_ptr = {0, 0, 0, 0, 0, nullptr};
+    stream = nullptr;
     return cudaSuccess;
 }
