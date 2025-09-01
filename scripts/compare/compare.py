@@ -22,7 +22,7 @@ def read_and_compare_prob(lines: Iterator[str], args: Args, steps_i: int, prob_e
         print(f"prob (actual): {prob_actual}")
         raise ValueError(f"Found differences in prob! ({steps_i=})")
 
-    # print(f"verified {steps_i}")
+    print(f"verified {steps_i}")
     # print(f"prob: {prob}")
 
 
@@ -67,7 +67,7 @@ def read_and_compare_state(lines: Iterator[str], args: Args, steps_i: int, state
                     print(f"  {key}: {value.real:+f}{value.imag:+f}i")
             raise ValueError(f"Found differences in entries! ({steps_i=}, {key=})")
 
-    # print(f"verified {steps_i}")
+    print(f"verified {steps_i}")
     # print(f"entries:")
     # for key in sorted(entries.keys()):
     #     value = entries[key]
@@ -76,12 +76,11 @@ def read_and_compare_state(lines: Iterator[str], args: Args, steps_i: int, state
     #         print(f"  {key}: {value.real:+f} {value.imag:+f} i")
 
 
-
 def main(
     exec_file_path: str,
     logs_file_path: str,
 ):
-    with open(logs_file_path) as fp:
+    with open(logs_file_path) as fp, JobsQueueExecutor() as executor:
         args = read_args(fp)
         cmd = make_cmd(exec_file_path, args)
 
@@ -92,31 +91,34 @@ def main(
             stderr=sys.stderr,
             text=True)
 
-        with JobsQueueExecutor() as executor:
-            steps_n = 0
-            while True:
-                try:
-                    match read_dict_key_value(fp):
-                        case "gate", gate:
-                            process.stdin.write(gate)
-                            process.stdin.write("\n")
-                            steps_n += 1
-                        case "prob", prob:
-                            prob = float(prob)
-                            process.stdin.write("PRINT FLT")
-                            process.stdin.write("\n")
-                            executor.append(partial(read_and_compare_prob,
-                                process.stdout, args, steps_n, prob))
-                        case "state", _:
-                            table = read_table(fp, args)
-                            entries = read_entries(fp)
-                            process.stdin.write("PRINT STATE")
-                            process.stdin.write("\n")
-                            executor.append(partial(read_and_compare_state,
-                                process.stdout, args, steps_n, (table, entries)))
-                    process.stdin.flush()
-                except StopIteration:
-                    break
+        steps_n = 0
+        while True:
+            try:
+                match read_dict_key_value(fp):
+                    case "gate", gate:
+                        process.stdin.write(gate)
+                        process.stdin.write("\n")
+                        steps_n += 1
+                    case "prob", prob:
+                        prob = float(prob)
+                        process.stdin.write("PRINT FLT")
+                        process.stdin.write("\n")
+                        executor.append(partial(read_and_compare_prob,
+                            process.stdout, args, steps_n, prob))
+                    case "state", _:
+                        table = read_table(fp, args)
+                        entries = read_entries(fp)
+                        process.stdin.write("PRINT STATE")
+                        process.stdin.write("\n")
+                        executor.append(partial(read_and_compare_state,
+                            process.stdout, args, steps_n, (table, entries)))
+                process.stdin.flush()
+            except StopIteration:
+                break
+
+    process.terminate()
+    process.wait()
+    print("Finished")
 
 
 if __name__ == '__main__':
