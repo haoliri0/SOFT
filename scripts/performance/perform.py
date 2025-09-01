@@ -7,7 +7,6 @@ import sys
 import tomllib
 from collections.abc import Iterable
 from datetime import datetime
-from itertools import count
 
 import numpy as np
 
@@ -15,8 +14,10 @@ script_dir_path = os.path.dirname(__file__)
 project_dir_path = os.path.join(script_dir_path, "../..")
 sys.path.append(project_dir_path)
 
-span_time_pattern = re.compile(r"span_time=(\d+(\.\d+)?) s")
-avg_speed_pattern = re.compile(r"avg_speed=(\d+(\.\d+)?) shot/s")
+from scripts.utils.stn import Args, make_cmd
+
+span_time_pattern = re.compile(r"span_time: (\d+(\.\d+)?) s")
+avg_speed_pattern = re.compile(r"avg_speed: (\d+(\.\d+)?) shot/s")
 project_version_pattern = re.compile(r"version = (.+)")
 
 
@@ -55,8 +56,10 @@ def main(*,
     shots_n: int | Iterable[int] = 1,
     qubits_n: int,
     entries_m: int,
-    results_m: int,
+    mem_ints_m: int = 0,
+    mem_flts_m: int = 0,
 ):
+    exec_file_path = os.path.abspath(exec_file_path)
     timestamp = get_timestamp()
     repo_version = get_repo_version()
     repo_revision = get_repo_revision()
@@ -72,13 +75,14 @@ def main(*,
     for shots_n in cases_shots_n:
         for _ in range(repeats_n):
             seed = int(np.frombuffer(rng.bytes(4), np.uint32)[0])
-            cmd = [
-                os.path.abspath(exec_file_path),
-                "--shots_n", str(shots_n),
-                "--qubits_n", str(qubits_n),
-                "--entries_m", str(entries_m),
-                "--results_m", str(results_m),
-                "--seed", str(seed)]
+
+            cmd = make_cmd(exec_file_path, Args(
+                shots_n=shots_n,
+                qubits_n=qubits_n,
+                entries_m=entries_m,
+                mem_ints_m=mem_ints_m,
+                mem_flts_m=mem_flts_m,
+                seed=seed))
 
             try:
                 process = subprocess.run(
@@ -109,7 +113,8 @@ def main(*,
                 shots_n=shots_n,
                 qubits_n=qubits_n,
                 entries_m=entries_m,
-                results_m=results_m,
+                mem_ints_m=mem_ints_m,
+                mem_flts_m=mem_flts_m,
                 seed=seed,
                 span_time=span_time,
                 avg_speed=avg_speed)
@@ -131,4 +136,5 @@ if __name__ == '__main__':
         repeats_n=4,
         qubits_n=42,
         entries_m=2048,
-        results_m=1024)
+        mem_ints_m=0,
+        mem_flts_m=0)
