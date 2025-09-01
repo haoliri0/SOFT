@@ -240,34 +240,34 @@ void execute_op(
     execute_op(istream, wrapped);
 }
 
-template<typename Receiver, typename... Args>
+template<typename... Args>
 static
 void execute_op(
+    const Simulator &simulator,
     std::istream &istream,
-    const Receiver &receiver,
-    void (Receiver::*op)(Args...) const
+    void (Simulator::*op)(Args...) const
 ) {
-    std::function wrapped = [&receiver, op](Args... args) { (receiver.*op)(args...); };
-    return execute_op(istream, wrapped);
-}
-
-template<typename Receiver, typename... Args>
-static
-void execute_op(
-    std::istream &istream,
-    const Receiver &receiver,
-    void (*op)(const Receiver &, Args...)
-) {
-    std::function wrapped = [&receiver, op](Args... args) { (*op)(receiver, args...); };
+    std::function wrapped = [&simulator, op](Args... args) { (simulator.*op)(args...); };
     return execute_op(istream, wrapped);
 }
 
 template<typename... Args>
 static
 void execute_op(
+    const Simulator &simulator,
     std::istream &istream,
+    void (*op)(const Simulator &, Args...)
+) {
+    std::function wrapped = [&simulator, op](Args... args) { (*op)(simulator, args...); };
+    return execute_op(istream, wrapped);
+}
+
+template<typename... Args>
+static
+void execute_op(
     const Simulator &simulator,
     const unsigned int print_i,
+    std::istream &istream,
     void (*op)(const Simulator &, unsigned int, Args...)
 ) {
     std::function wrapped = [&simulator,print_i, op](Args... args) { (*op)(simulator, print_i, args...); };
@@ -276,69 +276,70 @@ void execute_op(
 
 static
 void execute_op(
-    std::istream &istream,
     const Simulator &simulator,
-    const std::string &name
+    unsigned int &prints_n,
+    const std::string &name,
+    std::istream &istream
 ) {
     if (name.empty())
         return execute_op(istream, [] {});
     if (name == "X")
-        return execute_op(istream, simulator, &Simulator::apply_x);
+        return execute_op(simulator, istream, &Simulator::apply_x);
     if (name == "Y")
-        return execute_op(istream, simulator, &Simulator::apply_y);
+        return execute_op(simulator, istream, &Simulator::apply_y);
     if (name == "Z")
-        return execute_op(istream, simulator, &Simulator::apply_z);
+        return execute_op(simulator, istream, &Simulator::apply_z);
     if (name == "H")
-        return execute_op(istream, simulator, &Simulator::apply_h);
+        return execute_op(simulator, istream, &Simulator::apply_h);
     if (name == "S")
-        return execute_op(istream, simulator, &Simulator::apply_s);
+        return execute_op(simulator, istream, &Simulator::apply_s);
     if (name == "SDG")
-        return execute_op(istream, simulator, &Simulator::apply_sdg);
+        return execute_op(simulator, istream, &Simulator::apply_sdg);
     if (name == "T")
-        return execute_op(istream, simulator, &Simulator::apply_t);
+        return execute_op(simulator, istream, &Simulator::apply_t);
     if (name == "TDG")
-        return execute_op(istream, simulator, &Simulator::apply_tdg);
+        return execute_op(simulator, istream, &Simulator::apply_tdg);
     if (name == "CX")
-        return execute_op(istream, simulator, &Simulator::apply_cx);
+        return execute_op(simulator, istream, &Simulator::apply_cx);
 
     if (name == "MEASURE")
-        return execute_op(istream, simulator, &Simulator::apply_measure);
+        return execute_op(simulator, istream, &Simulator::apply_measure);
     if (name == "DESIRE")
-        return execute_op(istream, simulator, &Simulator::apply_desire);
+        return execute_op(simulator, istream, &Simulator::apply_desire);
     if (name == "RESET")
-        return execute_op(istream, simulator, &Simulator::apply_reset);
+        return execute_op(simulator, istream, &Simulator::apply_reset);
 
     if (name == "XERR")
-        return execute_op(istream, simulator, &Simulator::apply_noise_x);
+        return execute_op(simulator, istream, &Simulator::apply_noise_x);
     if (name == "ZERR")
-        return execute_op(istream, simulator, &Simulator::apply_noise_z);
+        return execute_op(simulator, istream, &Simulator::apply_noise_z);
     if (name == "DEP1")
-        return execute_op(istream, simulator, &Simulator::apply_noise_depo1);
+        return execute_op(simulator, istream, &Simulator::apply_noise_depo1);
     if (name == "DEP2")
-        return execute_op(istream, simulator, &Simulator::apply_noise_depo2);
+        return execute_op(simulator, istream, &Simulator::apply_noise_depo2);
 
     if (name == "INVERT")
-        return execute_op(istream, simulator, &Simulator::apply_classical_invert);
+        return execute_op(simulator, istream, &Simulator::apply_classical_invert);
     if (name == "CHECK")
-        return execute_op(istream, simulator, &Simulator::apply_classical_check);
+        return execute_op(simulator, istream, &Simulator::apply_classical_check);
 
     if (name == "OR")
-        return execute_op(istream, simulator, &Simulator::apply_classical_or);
+        return execute_op(simulator, istream, &Simulator::apply_classical_or);
     if (name == "XOR")
-        return execute_op(istream, simulator, &Simulator::apply_classical_xor);
+        return execute_op(simulator, istream, &Simulator::apply_classical_xor);
     if (name == "AND")
-        return execute_op(istream, simulator, &Simulator::apply_classical_and);
+        return execute_op(simulator, istream, &Simulator::apply_classical_and);
     if (name == "LUT")
-        return execute_op(istream, simulator, &Simulator::apply_classical_lut);
+        return execute_op(simulator, istream, &Simulator::apply_classical_lut);
 
     if (name == "LOAD") {
         std::string object;
         read_value(istream, object);
 
         if (object == "INT")
-            return execute_op(istream, simulator, &Simulator::apply_classical_load_int);
+            return execute_op(simulator, istream, &Simulator::apply_classical_load_int);
         if (object == "FLT")
-            return execute_op(istream, simulator, &Simulator::apply_classical_load_flt);
+            return execute_op(simulator, istream, &Simulator::apply_classical_load_flt);
 
         fprintf(stderr, "Unknown load object: %s\n", object.c_str());
         throw ExecException(ExecError::IllegalOp);
@@ -349,9 +350,9 @@ void execute_op(
         read_value(istream, object);
 
         if (object == "INT")
-            return execute_op(istream, simulator, &Simulator::apply_classical_save_int);
+            return execute_op(simulator, istream, &Simulator::apply_classical_save_int);
         if (object == "FLT")
-            return execute_op(istream, simulator, &Simulator::apply_classical_save_flt);
+            return execute_op(simulator, istream, &Simulator::apply_classical_save_flt);
 
         fprintf(stderr, "Unknown save object: %s\n", object.c_str());
         throw ExecException(ExecError::IllegalOp);
@@ -362,13 +363,13 @@ void execute_op(
         read_value(istream, object);
 
         if (object == "STATE")
-            return execute_op(istream, simulator, perform_print_state);
+            return execute_op(simulator, prints_n++, istream, perform_print_state);
         if (object == "INT")
-            return execute_op(istream, simulator, perform_print_int);
+            return execute_op(simulator, prints_n++, istream, perform_print_int);
         if (object == "FLT")
-            return execute_op(istream, simulator, perform_print_flt);
+            return execute_op(simulator, prints_n++, istream, perform_print_flt);
         if (object == "ERR")
-            return execute_op(istream, simulator, perform_print_err);
+            return execute_op(simulator, prints_n++, istream, perform_print_err);
 
         fprintf(stderr, "Unknown print object: %s\n", object.c_str());
         throw ExecException(ExecError::IllegalOp);
@@ -381,11 +382,13 @@ void execute_op(
 static
 void execute_line(
     const Simulator &simulator,
+    unsigned int &prints_n,
     std::istream &istream
 ) {
     std::string name;
     read_value(istream, name);
-    execute_op(istream, simulator, name);
+
+    execute_op(simulator, prints_n, name, istream);
 
     skip(istream, is_whitespace);
     ensure(istream, is_linebreak, true);
@@ -395,16 +398,17 @@ void execute_lines(
     const Simulator &simulator,
     std::istream &istream
 ) {
-    size_t lines_n = 0;
+    unsigned int lines_n = 0;
+    unsigned int prints_n = 0;
     istream >> std::noskipws;
     while (istream.good()) {
+        lines_n++;
         try {
-            execute_line(simulator, istream);
+            execute_line(simulator, prints_n, istream);
         } catch (...) {
-            fprintf(stderr, "Error occurs when parsing line %lu.\n", lines_n + 1);
+            fprintf(stderr, "Error occurs when parsing line %u.\n", lines_n);
             throw;
         }
-        lines_n += 1;
     }
 }
 
