@@ -4,11 +4,12 @@ from typing import Iterable
 
 from qiskit import QuantumCircuit
 from qiskit_aer import AerSimulator
+from scripts.verify.utils_ops import Op
 
 
 def make_qiskit_op(
-    op: tuple[str, int | tuple[int, int]],
     qc: QuantumCircuit,
+    op: Op,
     states_i: Iterator[int],
     results_i: Iterator[int],
 ):
@@ -42,16 +43,20 @@ def make_qiskit_op(
     qc.save_statevector(label=f'state_{state_i}')
 
 
-def make_qiskit_circuit(ops: Iterable, qubits_n: int, results_n: int):
+def make_qiskit_circuit(
+    ops: Iterable[Op],
+    qubits_n: int,
+    results_n: int,
+) -> QuantumCircuit:
     qc = QuantumCircuit(qubits_n, results_n)
     states_i = iter(count())
     results_i = iter(count())
     for op in ops:
-        make_qiskit_op(op, qc, states_i, results_i)
+        make_qiskit_op(qc, op, states_i, results_i)
     return qc
 
 
-def run_qiskit_circuit(qc):
+def run_qiskit_circuit(qc: QuantumCircuit):
     simulator = AerSimulator(method='statevector')
     simulator_result = simulator.run(qc, shots=1, memory=True).result()
     data = simulator_result.data()
@@ -75,8 +80,3 @@ def run_qiskit_circuit(qc):
     probs = tuple(data[f'prob_{i}'][r] for i, r in enumerate(results))
 
     return states, results, probs
-
-
-def print_qiskit_result(results, probs):
-    for r, p in zip(results, probs):
-        print(f"{r}: {p:.4f}")

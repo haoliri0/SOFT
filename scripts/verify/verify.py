@@ -11,18 +11,28 @@ sys.path.append(project_dir_path)
 
 from scripts.verify.utils_ops import Op, generate_random_ops, parse_ops, print_ops
 from scripts.verify.utils_qiskit import make_qiskit_circuit, run_qiskit_circuit
-from scripts.verify.utils_stn import make_stn_cmd, run_stn_states
+from scripts.verify.utils_stn import run_stn_and_collect_states
 
 np.set_printoptions(precision=6, sign='+', floatmode='fixed')
 
 
-def sync_global_phase(state0, state1):
+def sync_global_phase(state0: np.ndarray, state1: np.ndarray) -> np.ndarray:
     index = np.argmax(np.abs(state0) * np.abs(state1))
     angle0 = np.angle(state0[index])
     angle1 = np.angle(state1[index])
     angle_diff = angle0 - angle1
     coef = np.exp(1j * angle_diff)
     return state1 * coef
+
+
+def check_steps_state(states: Iterable[np.ndarray], states_stn: Iterable[np.ndarray]) -> int | None:
+    for index, (state, state_stn) in enumerate(zip(states, states_stn)):
+        state = np.asarray(state)
+        state_stn = np.asarray(state_stn)
+        state_stn = sync_global_phase(state, state_stn)
+        if not np.isclose(state, state_stn, atol=1e-5).all():
+            return index
+    return None
 
 
 def verify_ops(*,
@@ -37,52 +47,24 @@ def verify_ops(*,
 
     circuit = make_qiskit_circuit(ops, qubits_n, results_n)
     states, results, _ = run_qiskit_circuit(circuit)
-
-    states_stn = run_stn_states(
+    states_stn = run_stn_and_collect_states(
         exec_file_path, ops, results,
-        qubits_n, entries_m, max(results_n, 1))
+        qubits_n, entries_m, results_n)
 
-    fail_step_i = None
-    for step_i, step_state_stn in enumerate(states_stn):
-        if step_state_stn is None:
-            fail_step_i = step_i
-            break
-    if fail_step_i is not None:
-        print("Found failure")
-        if label is not None:
-            print(f"label={label}")
-        print(f"fail_step={fail_step_i}")
-
-        states = states[:fail_step_i]
-        states_stn = states_stn[:fail_step_i]
-
-    states = np.asarray(states)
-    states_stn = np.asarray([
-        sync_global_phase(state, state_stn)
-        for state, state_stn in zip(states, states_stn)])
-
-    close = np.isclose(states, states_stn, atol=1e-5)
-    err_step_indices = np.nonzero(~close)[0]
-    if len(err_step_indices) > 0:
-        err_step_index = err_step_indices[0]
+    err_step_index = check_steps_state(states, states_stn)
+    if err_step_index is not None:
         print("\n\n\n")
         print("Found error!!!!!")
         if label is not None:
             print(f"label={label}")
-        cmd = make_stn_cmd(
-            exec_file_path=exec_file_path,
-            qubits_n=qubits_n,
-            entries_m=entries_m,
-            results_n=results_n)
-        print("command=" + " ".join(cmd))
         print(f"circuit=")
         print_ops(ops, results)
         print(f"results={results}")
         print(f"err_step={err_step_index}")
         print(f"state_expected=\n\t{states[err_step_index]!r}")
         print(f"state_actual=\n\t{states_stn[err_step_index]!r}")
-        return False
-    return True
+
+    return err_step_index is None
 
 
 def verify_custom(*,

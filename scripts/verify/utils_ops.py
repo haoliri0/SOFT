@@ -1,8 +1,7 @@
+from io import StringIO
 from typing import Iterable
 
 import numpy as np
-
-from scripts.verify.utils_str import split_and_clean_lines
 
 Op = tuple[str, int | tuple[int, int]]
 
@@ -33,8 +32,9 @@ def generate_random_ops(ops_n: int, qubits_n: int, rng: np.random.Generator) -> 
 
 
 def iter_parse_ops(s: str) -> Iterable[Op]:
-    lines = split_and_clean_lines(s)
+    lines = iter(StringIO(s))
     for line in lines:
+        line = line.strip()
         words = line.split(' ')
         match words:
             case (typ, target):

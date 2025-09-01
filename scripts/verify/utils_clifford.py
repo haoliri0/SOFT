@@ -6,7 +6,10 @@ from qiskit.quantum_info import Clifford
 from qiskit_aer import AerSimulator
 
 
-def compute_clifford_state(clifford: Clifford, entries: Iterable[tuple[tuple[bool, ...], complex]] | None = None):
+def compute_statevector(
+    clifford: Clifford,
+    entries: Iterable[tuple[tuple[bool, ...], complex]] | None = None,
+) -> np.ndarray:
     circuit = clifford.to_circuit()
     circuit.save_statevector()
     simulator = AerSimulator(method='statevector')
@@ -45,6 +48,15 @@ def compute_clifford_state(clifford: Clifford, entries: Iterable[tuple[tuple[boo
     if len(entries_state) == 0:
         return None
 
-    return sum(
+    entries_state = tuple(
         np.asarray(amp * entry_state)
         for entry_state, (_, amp) in zip(entries_state, entries))
+    return np.sum(entries_state, axis=0)
+
+
+def compute_statevector_from_stn(
+    table: tuple[str, ...],
+    entries: Iterable[tuple[tuple[bool, ...], complex]],
+) -> np.ndarray:
+    clifford = Clifford(tuple(row[0:1] + row[1:][::-1] for row in table))
+    return compute_statevector(clifford, entries)

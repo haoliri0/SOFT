@@ -3,25 +3,11 @@ import sys
 from io import StringIO
 from typing import Iterable, Iterator
 
-from qiskit.quantum_info import Clifford
+import numpy as np
 
-from scripts.compare.compare import StnArgs, read_error, read_shot_state_content, read_specified_label
-from scripts.verify.utils_clifford import compute_clifford_state
+from scripts.utils import stn
+from scripts.verify.utils_clifford import compute_statevector_from_stn
 from scripts.verify.utils_ops import Op
-
-
-def make_stn_cmd(
-    exec_file_path: str,
-    qubits_n: int,
-    entries_m: int,
-    results_n: int,
-):
-    return [
-        exec_file_path,
-        "--shots_n", "1",
-        "--qubits_n", str(qubits_n),
-        "--entries_m", str(entries_m),
-        "--results_m", str(results_n)]
 
 
 def make_stn_op(op: Op, results: Iterator[int] | None = None):
@@ -65,36 +51,28 @@ def make_stn_stdin(ops: Iterable[Op], results: Iterable[int] | None = None):
     return stdin_io.getvalue()
 
 
-def read_state(lines: Iterator[str], args: StnArgs):
-    read_specified_label(lines, "state")
-    read_specified_label(lines, "shot 0")
-    if error := read_error(lines):
+def parse_stn_state(lines: Iterator[str], args: stn.Args) -> np.ndarray:
+    error, table, entries = stn.read_printed_shots_state(lines, args)[0]
+    if error:
         raise RuntimeError(f"Simulator error with code {error}")
-    table, entries = read_shot_state_content(lines, args)
-    table = tuple(
-        row[0:1] + row[1:][::-1]
-        for row in table)
-    clifford = Clifford(table)
-    entries = tuple(
-        (tuple(bool(int(b)) for b in bst), amp)
-        for bst, amp in entries.items())
-    return compute_clifford_state(clifford, entries)
+    statevector = compute_statevector_from_stn(table, entries)
+    return statevector
 
 
-def parse_stn_mode2_stdout2(stdout: str, args: StnArgs):
+def parse_stn_stdout(stdout: str, args: stn.Args) -> tuple[np.ndarray, ...]:
     stdout_io = StringIO(stdout)
     stdout_lines = iter(stdout_io)
-    states = []
+    steps_statevector = []
     while True:
         try:
-            state = read_state(stdout_lines, args)
-            states.append(state)
+            statevector = parse_stn_state(stdout_lines, args)
+            steps_statevector.append(statevector)
         except StopIteration:
             break
-    return tuple(states)
+    return tuple(steps_statevector)
 
 
-def run_stn_states(
+def run_stn_and_collect_states(
     exec_file_path: str,
     ops: Iterable[Op],
     results: Iterable[int],
@@ -102,11 +80,13 @@ def run_stn_states(
     entries_m: int,
     results_n: int,
 ):
-    cmd = make_stn_cmd(
-        exec_file_path=exec_file_path,
+    args = stn.Args(
         qubits_n=qubits_n,
         entries_m=entries_m,
-        results_n=results_n)
+        mem_ints_m=results_n)
+    cmd = stn.make_cmd(
+        exec_file_path=exec_file_path,
+        args=args)
     process = subprocess.Popen(cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
@@ -115,13 +95,8 @@ def run_stn_states(
 
     stdin = make_stn_stdin(ops, results)
     stdout, stderr = process.communicate(stdin)
-
     if process.returncode != 0:
         print(stderr, file=sys.stderr)
         raise RuntimeError
 
-    args = StnArgs(
-        qubits_n=qubits_n,
-        entries_m=entries_m,
-        results_m=results_n)
-    return parse_stn_mode2_stdout2(stdout, args)
+    return parse_stn_stdout(stdout, args)
