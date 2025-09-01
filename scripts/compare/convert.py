@@ -118,7 +118,7 @@ def iter_convert_lines(lines: Iterable[str]) -> Iterator[str]:
 
         yield "state:"
 
-        yield "  table:"
+        yield "  table: |"
         next(lines)  # table header
         table = next(lines)
         table = table.strip()

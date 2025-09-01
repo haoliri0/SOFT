@@ -158,7 +158,6 @@ void write_pauli_row(std::ostream &ostream, const PauliRowPtr &ptr) {
 
 static
 void write_table_row(std::ostream &ostream, const TableRowPtr &ptr) {
-    write(ostream, "- ");
     write_sign(ostream, *ptr.get_sign_ptr());
     write_pauli_row(ostream, ptr.get_pauli_ptr());
     write(ostream, "\n");
@@ -166,7 +165,7 @@ void write_table_row(std::ostream &ostream, const TableRowPtr &ptr) {
 
 static
 void write_table(std::ostream &ostream, const TablePtr &ptr) {
-    write(ostream, "table:\n");
+    write(ostream, "table: |\n");
     with_indent(ostream, [&ostream, &ptr] {
         const Qid qubits_n = ptr.qubits_n;
         const Qid rows_n = 2 * qubits_n;

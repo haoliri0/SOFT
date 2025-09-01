@@ -99,8 +99,8 @@ def read_args(lines: Iterator[str]) -> Args:
 
 
 def read_table(lines: Iterator[str], args: Args) -> tuple[str, ...]:
-    read_dict_key_and_check(lines, "table")
-    return tuple(read_list_item(lines) for _ in range(args.qubits_n * 2))
+    read_dict_key_value_and_check(lines, "table")
+    return tuple(next(lines).strip() for _ in range(args.qubits_n * 2))
 
 
 def read_entries(lines: Iterator[str]) -> tuple[tuple[tuple[bool, ...], complex], ...]:
