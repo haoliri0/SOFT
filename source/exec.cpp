@@ -7,7 +7,7 @@
 #include "./datatype.cuh"
 #include "./simulator.hpp"
 #include "./cleaner.hpp"
-#include "./print.hpp"
+#include "./write.hpp"
 #include "./read.hpp"
 
 using namespace StnCuda;
@@ -88,20 +88,26 @@ void perform_print_state(const Simulator &simulator, const unsigned int print_i)
     ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
     shots_state_ptr.ptr = buffer;
 
-    printf("print_%u:\n", print_i);
-    for (Sid shot_i = 0; shot_i < shots_state_ptr.shots_n; ++shot_i) {
-        ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
-        print_indent(1);
-        printf("shot %u:\n", shot_i);
-
-        print_indent(2);
-        const Err err = *shot_state_ptr.get_work_ptr().get_err_ptr();
-        printf("error: %d\n", err);
-        if (!err) {
-            print_table(shot_state_ptr.get_table_ptr(), 2);
-            print_entries(shot_state_ptr.get_entries_ptr(), false, 2);
+    auto &ostream = std::cout;
+    write(ostream, "print_");
+    write(ostream, print_i);
+    write(ostream, ":\n");
+    with_indent(ostream, [&ostream, &shots_state_ptr] {
+        for (Sid shot_i = 0; shot_i < shots_state_ptr.shots_n; ++shot_i) {
+            write(ostream, "shot_");
+            write(ostream, shot_i);
+            write(ostream, ":\n");
+            ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+            with_indent(ostream, [&ostream, &shot_state_ptr] {
+                const Err err = *shot_state_ptr.get_work_ptr().get_err_ptr();
+                write_kv(ostream, "error", err);
+                if (!err) {
+                    write_table(ostream, shot_state_ptr.get_table_ptr());
+                    write_entries(ostream, shot_state_ptr.get_entries_ptr(), false);
+                }
+            });
         }
-    }
+    });
 }
 
 void perform_print_int(const Simulator &simulator, const unsigned int print_i) {
@@ -125,11 +131,19 @@ void perform_print_int(const Simulator &simulator, const unsigned int print_i) {
 
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
-    printf("print_%u:\n", print_i);
-    for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
-        print_indent(1);
-        printf("shot_%u: %d\n", shot_i, shots_value[shot_i]);
-    }
+    auto &ostream = std::cout;
+    write(ostream, "print_");
+    write(ostream, print_i);
+    write(ostream, ":\n");
+    with_indent(ostream, [&ostream, &shots_value, shots_n] {
+        for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
+            write(ostream, "shot_");
+            write(ostream, shot_i);
+            write(ostream, ": ");
+            write(ostream, shots_value[shot_i]);
+            write(ostream, "\n");
+        }
+    });
 }
 
 void perform_print_flt(const Simulator &simulator, const unsigned int print_i) {
@@ -153,11 +167,19 @@ void perform_print_flt(const Simulator &simulator, const unsigned int print_i) {
 
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
-    printf("print_%u:\n", print_i);
-    for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
-        print_indent(1);
-        printf("shot_%u: %f\n", shot_i, shots_value[shot_i]);
-    }
+    auto &ostream = std::cout;
+    write(ostream, "print_");
+    write(ostream, print_i);
+    write(ostream, ":\n");
+    with_indent(ostream, [&ostream, &shots_value, shots_n] {
+        for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
+            write(ostream, "shot_");
+            write(ostream, shot_i);
+            write(ostream, ": ");
+            write(ostream, shots_value[shot_i]);
+            write(ostream, "\n");
+        }
+    });
 }
 
 void perform_print_err(const Simulator &simulator, const unsigned int print_i) {
@@ -181,11 +203,19 @@ void perform_print_err(const Simulator &simulator, const unsigned int print_i) {
 
     cuda_check(cudaStreamSynchronize(simulator.stream));
 
-    printf("print_%u:\n", print_i);
-    for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
-        print_indent(1);
-        printf("shot_%u: %d\n", shot_i, shots_value[shot_i]);
-    }
+    auto &ostream = std::cout;
+    write(ostream, "print_");
+    write(ostream, print_i);
+    write(ostream, ":\n");
+    with_indent(ostream, [&ostream, &shots_value, shots_n] {
+        for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
+            write(ostream, "shot_");
+            write(ostream, shot_i);
+            write(ostream, ": ");
+            write(ostream, shots_value[shot_i]);
+            write(ostream, "\n");
+        }
+    });
 }
 
 // execution
@@ -250,7 +280,7 @@ void execute_op(
     const Simulator &simulator,
     const std::string &name
 ) {
-    if (name == "")
+    if (name.empty())
         return execute_op(istream, [] {});
     if (name == "X")
         return execute_op(istream, simulator, &Simulator::apply_x);
@@ -383,36 +413,29 @@ void execute_lines(
 int main(const int argc, const char **argv) {
     CliArgs args{};
     parse_cli_args(argc, argv, args);
-    fprintf(stderr, "args:\n");
-    fprintf(stderr, "  shots_n=%u\n", args.shots_n);
-    fprintf(stderr, "  qubits_n=%u\n", args.qubits_n);
-    fprintf(stderr, "  entries_m=%u\n", args.entries_m);
-    fprintf(stderr, "  mem_ints_m=%u\n", args.mem_ints_m);
-    fprintf(stderr, "  mem_flts_m=%u\n", args.mem_flts_m);
-    fprintf(stderr, "  seed=%llu\n", args.seed);
-    fprintf(stderr, "\n");
+    write_simulator_args(std::cerr, args);
 
     Simulator simulator;
     Cleaner simulator_cleaner([&simulator] { simulator.destroy(); });
 
-    fprintf(stderr, "Creating\n");
+    write(std::cerr, "Creating\n");
     cudaError cuda_err = cudaSuccess;
 
     cuda_err = simulator.create(args);
     if (cuda_err != cudaSuccess) {
-        fprintf(stderr, "Error occurs when creating simulator.\n");
-        fprint_cuda_error(stderr, cuda_err);
+        write(std::cerr, "Error occurs when creating simulator.\n");
+        write_cuda_error(std::cerr, cuda_err);
         throw CudaException(cuda_err);
     }
 
     cuda_err = cudaStreamSynchronize(simulator.stream);
     if (cuda_err != cudaSuccess) {
-        fprintf(stderr, "Error occurs when creating simulator.\n");
-        fprint_cuda_error(stderr, cuda_err);
+        write(std::cerr, "Error occurs when creating simulator.\n");
+        write_cuda_error(std::cerr, cuda_err);
         throw CudaException(cuda_err);
     }
 
-    fprintf(stderr, "Executing\n");
+    write(std::cerr, "Executing\n");
     const clock_t time_start = clock();
 
     execute_lines(simulator, std::cin);
@@ -429,9 +452,15 @@ int main(const int argc, const char **argv) {
     const float time_span_seconds = static_cast<float>(time_span) / CLOCKS_PER_SEC;
     const float shots_per_second = static_cast<float>(args.shots_n) / time_span_seconds;
 
-    fprintf(stderr, "Finished\n");
-    fprintf(stderr, "performance:\n");
-    fprintf(stderr, "  span_time=%f s\n", time_span_seconds);
-    fprintf(stderr, "  avg_speed=%f shot/s\n", shots_per_second);
+    write(std::cerr, "Finished\n");
+    write(std::cerr, "performance:\n");
+    with_indent(std::cerr, [time_span_seconds,shots_per_second] {
+        write(std::cerr, "span_time: ");
+        write(std::cerr, time_span_seconds);
+        write(std::cerr, " s\n");
+        write(std::cerr, "avg_speed: ");
+        write(std::cerr, shots_per_second);
+        write(std::cerr, " shot/s\n");
+    });
     return 0;
 }
