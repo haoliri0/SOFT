@@ -1,131 +1,80 @@
 import os
-import re
 import subprocess
 import sys
 from collections.abc import Iterator
-from dataclasses import dataclass
-from queue import Queue
-from threading import Thread
+from functools import partial
 
 import numpy as np
 from tqdm import tqdm
+
+from scripts.utils.jobs import JobsQueueExecutor
+from scripts.utils.stn import Args, make_cmd, read_args, read_dict_key_value, read_entries, read_printed_shots_flt, \
+    read_printed_shots_state, read_table
 
 project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
 sys.path.append(project_dir_path)
 
 
-@dataclass(kw_only=True)
-class StnArgs:
-    qubits_n: int
-    entries_m: int
-    results_m: int
+def read_and_compare_prob(lines: Iterator[str], args: Args, steps_i: int, prob_expect: float):
+    prob_actual = read_printed_shots_flt(lines, args)[0]
+    if not np.allclose(prob_expect, prob_actual, rtol=1e-05, atol=1e-05):
+        print(f"prob (expect): {prob_expect}")
+        print(f"prob (actual): {prob_actual}")
+        raise ValueError(f"Found differences in prob! ({steps_i=})")
+
+    # print(f"verified {steps_i}")
+    # print(f"prob: {prob}")
 
 
-def read_nonempty_line(lines: Iterator[str]) -> str:
-    while True:
-        line = next(lines)
-        line = line.strip()
-        if line == "":
-            continue
-        break
-    return line
+def read_and_compare_state(lines: Iterator[str], args: Args, steps_i: int, state_expect: tuple):
+    state_actual = read_printed_shots_state(lines, args)[0]
 
+    table_expect, entries_expect = state_expect
+    error_actual, table_actual, entries_actual = state_actual
+    if error_actual:
+        raise ValueError(f"Found error {error_actual}!")
+    entries_expect = {"".join(str(int(bit)) for bit in bst): amp for bst, amp in entries_expect}
+    entries_actual = {"".join(str(int(bit)) for bit in bst): amp for bst, amp in entries_actual}
 
-def read_label(lines: Iterator[str]) -> tuple[str, str]:
-    line = read_nonempty_line(lines)
-    label_pattern = re.compile(f"(.*):(.*)")
-    match = label_pattern.match(line)
-    if not match:
-        raise ValueError
-    label = match.group(1).strip()
-    content = match.group(2).strip()
-    return label, content
+    if table_expect != table_actual:
+        print(f"table (expected):")
+        for line in table_expect:
+            print(f"  {line}")
+        print(f"table (actual):")
+        for line in table_actual:
+            print(f"  {line}")
+        raise ValueError(f"Found differences in table! ({steps_i=})")
 
+    # print(f"table:")
+    # for line in table:
+    #     print(f"  {line}")
 
-def read_specified_label(lines: Iterator[str], label: str):
-    label_, content = read_label(lines)
-    if label_ != label:
-        raise ValueError
-    return content
+    for key in set(entries_expect.keys()) | set(entries_actual.keys()):
+        value1 = entries_expect.get(key, 0)
+        value2 = entries_actual.get(key, 0)
+        if not np.allclose(value1, value2, rtol=1e-05, atol=1e-05):
+            print(f"entries (expected):")
+            for key in sorted(entries_expect.keys()):
+                value = entries_expect[key]
+                value = complex(value)
+                if abs(value) > 1e-6:
+                    print(f"  {key}: {value.real:+f}{value.imag:+f}i")
+            print(f"entries (actual):")
+            for key in sorted(entries_actual.keys()):
+                value = entries_actual[key]
+                value = complex(value)
+                if abs(value) > 1e-6:
+                    print(f"  {key}: {value.real:+f}{value.imag:+f}i")
+            raise ValueError(f"Found differences in entries! ({steps_i=}, {key=})")
 
+    # print(f"verified {steps_i}")
+    # print(f"entries:")
+    # for key in sorted(entries.keys()):
+    #     value = entries[key]
+    #     value = complex(value)
+    #     if abs(value) > 1e-6:
+    #         print(f"  {key}: {value.real:+f} {value.imag:+f} i")
 
-def read_args(lines: Iterator[str]) -> StnArgs:
-    read_specified_label(lines, "args")
-
-    qubits_n_pattern = re.compile(f"qubits_n=(.*)")
-    entries_m_pattern = re.compile(f"entries_m=(.*)")
-    results_m_pattern = re.compile(f"results_m=(.*)")
-
-    line = next(lines)
-    line = line.strip()
-    qubits_n_match = qubits_n_pattern.match(line)
-    if qubits_n_match is None:
-        raise ValueError
-    qubits_n = int(qubits_n_match.group(1))
-
-    line = next(lines)
-    line = line.strip()
-    entries_m_match = entries_m_pattern.match(line)
-    if entries_m_match is None:
-        raise ValueError
-    entries_m = int(entries_m_match.group(1))
-
-    line = next(lines)
-    line = line.strip()
-    results_m_match = results_m_pattern.match(line)
-    if results_m_match is None:
-        raise ValueError
-    results_m = int(results_m_match.group(1))
-
-    return StnArgs(
-        qubits_n=qubits_n,
-        entries_m=entries_m,
-        results_m=results_m)
-
-
-def read_error(lines: Iterator[str]):
-    error_pattern = re.compile(f"error=(.*)")
-    line = read_nonempty_line(lines)
-    match = error_pattern.match(line)
-    if not match:
-        raise ValueError
-    error = match.group(1)
-    error = error.strip()
-    error = int(error)
-    return error
-
-
-def read_table_content(lines: Iterator[str], args: StnArgs) -> tuple[str, ...]:
-    return tuple(read_nonempty_line(lines) for _ in range(args.qubits_n * 2))
-
-
-def read_entries_content(lines: Iterator[str]) -> dict[str, complex]:
-    line = read_nonempty_line(lines)
-    entries_n_pattern = re.compile(f"entries_n=(.*)")
-    entries_n_str = entries_n_pattern.match(line).group(1)
-    entries_n = int(entries_n_str)
-
-    entries = {}
-    entry_pattern = re.compile(f"(.*):(.*)")
-    for _ in range(entries_n):
-        line = read_nonempty_line(lines)
-        match = entry_pattern.match(line)
-        bst = match.group(1)
-        bst = bst.strip()
-        amp = match.group(2)
-        amp = amp.replace("i", "j")
-        amp = amp.replace(" ", "")
-        amp = complex(amp)
-        entries[bst] = amp
-    return entries
-
-
-def read_shot_state_content(lines: Iterator[str], args: StnArgs):
-    read_specified_label(lines, "table")
-    table = read_table_content(lines, args)
-    read_specified_label(lines, "entries")
-    entries = read_entries_content(lines)
-    return table, entries
 
 
 def main(
@@ -134,12 +83,8 @@ def main(
 ):
     with open(logs_file_path) as fp:
         args = read_args(fp)
-        cmd = [
-            exec_file_path,
-            "--shots_n", "1",
-            "--qubits_n", str(args.qubits_n),
-            "--entries_m", str(args.entries_m),
-            "--results_m", str(args.results_m)]
+        cmd = make_cmd(exec_file_path, args)
+
         print(f"{cmd=}")
         process = subprocess.Popen(cmd,
             stdin=subprocess.PIPE,
@@ -147,132 +92,35 @@ def main(
             stderr=sys.stderr,
             text=True)
 
-        errors = []
-        queue = Queue(64)
-
-        def thread_func():
-            exhausted = False
+        with JobsQueueExecutor() as executor:
+            steps_n = 0
             while True:
-                match queue.get():
-                    case None:
-                        exhausted = True
-                        break
-                    case 'gate', gate:
-                        print(f"gate: {gate}")
-                    case 'prob', prob:
-                        prob = prob.strip()
-                        prob = float(prob)
-
-                        read_specified_label(process.stdout, "result")
-                        read_specified_label(process.stdout, "shot_0")
-                        prob2 = read_specified_label(process.stdout, "prob")
-                        prob2 = prob2.strip()
-                        prob2 = float(prob2)
-                        read_specified_label(process.stdout, "value")
-
-                        if not np.allclose(prob, prob2, rtol=1e-05, atol=1e-05):
-                            error = ValueError(f"Found differences in prob.")
-                            errors.append(error)
-                            print(f"prob (expected): {prob}")
-                            print(f"prob (actual): {prob2}")
-                            break
-
-                        print(f"prob: {prob}")
-
-                    case 'state', table, entries:
-                        read_specified_label(process.stdout, "state")
-                        read_specified_label(process.stdout, "shot 0")
-                        error = read_error(process.stdout)
-                        table2, entries2 = read_shot_state_content(process.stdout, args)
-
-                        if error:
-                            error = ValueError(f"Found error: {error}")
-                            errors.append(error)
-                            break
-
-                        if table != table2:
-                            error = ValueError(f"Found differences in table.")
-                            errors.append(error)
-                            print(f"table (expected):")
-                            for line in table:
-                                print(f"  {line}")
-                            print(f"table (actual):")
-                            for line in table2:
-                                print(f"  {line}")
-                            break
-
-                        print(f"table:")
-                        for line in table:
-                            print(f"  {line}")
-
-                        for key in set(entries.keys()) | set(entries2.keys()):
-                            value1 = entries.get(key, 0)
-                            value2 = entries2.get(key, 0)
-                            if not np.allclose(value1, value2, rtol=1e-05, atol=1e-05):
-                                error = ValueError(f"Found differences in entries ({key=}).")
-                                errors.append(error)
-                                break
-                        if errors:
-                            print(f"entries (expected):")
-                            for key in sorted(entries.keys()):
-                                value = entries[key]
-                                value = complex(value)
-                                if abs(value) > 1e-6:
-                                    print(f"  {key}: {value.real:+f} {value.imag:+f} i")
-                            print(f"entries (actual):")
-                            for key in sorted(entries2.keys()):
-                                value = entries2[key]
-                                value = complex(value)
-                                if abs(value) > 1e-6:
-                                    print(f"  {key}: {value.real:+f} {value.imag:+f} i")
-                            break
-
-                        print(f"entries:")
-                        for key in sorted(entries.keys()):
-                            value = entries[key]
-                            value = complex(value)
-                            if abs(value) > 1e-6:
-                                print(f"  {key}: {value.real:+f} {value.imag:+f} i")
-
-            if not exhausted:
-                while queue.get():
-                    pass
-
-            process.terminate()
-            process.wait()
-
-        thread = Thread(target=thread_func, daemon=True)
-        thread.start()
-
-        while True:
-            try:
-                match read_label(fp):
-                    case "gate", gate:
-                        process.stdin.write(gate)
-                        process.stdin.write("\n")
-                        queue.put(('gate', gate))
-                    case "prob", prob:
-                        process.stdin.write("PRINT RESULT")
-                        process.stdin.write("\n")
-                        queue.put(('prob', prob))
-                    case "state", _:
-                        table, entries = read_shot_state_content(fp, args)
-                        process.stdin.write("PRINT STATE")
-                        process.stdin.write("\n")
-                        queue.put(('state', table, entries))
-                process.stdin.flush()
-            except StopIteration:
-                break
-
-        queue.put(None)
-        thread.join()
-
-        if errors:
-            raise errors[0]
+                try:
+                    match read_dict_key_value(fp):
+                        case "gate", gate:
+                            process.stdin.write(gate)
+                            process.stdin.write("\n")
+                            steps_n += 1
+                        case "prob", prob:
+                            prob = float(prob)
+                            process.stdin.write("PRINT FLT")
+                            process.stdin.write("\n")
+                            executor.append(partial(read_and_compare_prob,
+                                process.stdout, args, steps_n, prob))
+                        case "state", _:
+                            table = read_table(fp, args)
+                            entries = read_entries(fp)
+                            process.stdin.write("PRINT STATE")
+                            process.stdin.write("\n")
+                            executor.append(partial(read_and_compare_state,
+                                process.stdout, args, steps_n, (table, entries)))
+                    process.stdin.flush()
+                except StopIteration:
+                    break
 
 
 if __name__ == '__main__':
-    for i in tqdm(range(10)):
+    for i in tqdm(range(50)):
         exec_file_path = os.path.join(project_dir_path, "cmake-build-release/stn_cuda_exec")
         logs_file_path = os.path.join(project_dir_path, f"scripts/compare/test_{i}.logs.txt")
         main(

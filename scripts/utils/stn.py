@@ -14,10 +14,7 @@ class Args:
     seed: int | None = None
 
 
-def make_cmd(*,
-    exec_file_path: str,
-    args: Args
-) -> tuple[str, ...]:
+def make_cmd(exec_file_path: str, args: Args) -> tuple[str, ...]:
     return (
         exec_file_path,
         "--shots_n", str(args.shots_n),
@@ -59,10 +56,10 @@ def read_dict_key(lines: Iterator[str]) -> str:
 def read_dict_key_value(lines: Iterator[str]) -> tuple[str, str]:
     line = read_nonempty_line(lines)
     line = line.strip()
-    colon = line.index(": ")
+    colon = line.index(":")
     key = line[:colon]
     key = key.strip()
-    value = line[colon + len(": "):]
+    value = line[colon + len(":"):]
     value = value.strip()
     return key, value
 
@@ -140,12 +137,34 @@ def read_printed_shots_state(lines: Iterator[str], args: Args):
     return tuple(read_shot_state(lines, args) for _ in range(args.shots_n))
 
 
-def read_shot_error(lines: Iterator[str]):
+def read_shot_int(lines: Iterator[str]):
+    value = read_dict_key_value_and_check(lines, lambda key: key.startswith("shot_"))
+    value = int(value)
+    return value
+
+
+def read_shot_flt(lines: Iterator[str]):
+    value = read_dict_key_value_and_check(lines, lambda key: key.startswith("shot_"))
+    value = float(value)
+    return value
+
+
+def read_shot_err(lines: Iterator[str]):
     error = read_dict_key_value_and_check(lines, lambda key: key.startswith("shot_"))
     error = int(error)
     return error
 
 
-def read_printed_shots_error(lines: Iterator[str], args: Args):
+def read_printed_shots_int(lines: Iterator[str], args: Args):
     read_dict_key_and_check(lines, lambda key: key.startswith("print_"))
-    return tuple(read_shot_state(lines, args) for _ in range(args.shots_n))
+    return tuple(read_shot_int(lines) for _ in range(args.shots_n))
+
+
+def read_printed_shots_flt(lines: Iterator[str], args: Args):
+    read_dict_key_and_check(lines, lambda key: key.startswith("print_"))
+    return tuple(read_shot_flt(lines) for _ in range(args.shots_n))
+
+
+def read_printed_shots_err(lines: Iterator[str], args: Args):
+    read_dict_key_and_check(lines, lambda key: key.startswith("print_"))
+    return tuple(read_shot_err(lines) for _ in range(args.shots_n))

@@ -48,12 +48,13 @@ def iter_shots_lines(src_file: IO[str]):
 
 
 def iter_convert_lines(lines: Iterable[str]) -> Iterator[str]:
-    qubits_n = 42
-
     yield "args:"
-    yield f"  qubits_n={qubits_n}"
-    yield "  entries_m=4096"
-    yield "  results_m=1024"
+    yield f"  shots_n: {1}"
+    yield f"  qubits_n: {42}"
+    yield f"  entries_m: {4096}"
+    yield f"  mem_ints_m: {1024}"
+    yield f"  mem_flts_m: {0}"
+    yield f"  seed: {0}"
     yield ""
 
     lines = iter(lines)
@@ -145,11 +146,11 @@ def iter_convert_lines(lines: Iterable[str]) -> Iterator[str]:
         entries = entries.strip()
         entries = entries.replace("np.complex128", "")
         entries = eval(entries)
-        yield f"    entries_n={len(entries)}"
+        yield f"    entries_n: {len(entries)}"
         for bst, amp in entries.items():
             bst = int(bst)
             amp = complex(amp)
-            yield f"    {bst:042b} : {amp.real:+f} {amp.imag:+f} i"
+            yield f"    {bst:042b}: {amp.real:+f}{amp.imag:+f}i"
 
 
 def main(
