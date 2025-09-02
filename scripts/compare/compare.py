@@ -16,6 +16,10 @@ from scripts.utils.stn import Args, make_cmd, read_args, read_dict_key_value, re
     read_printed_shots_state, read_table
 
 
+def print_operation(gate: str, steps_i: int):
+    print(f"[{steps_i=}] applied {gate}")
+
+
 def read_and_compare_prob(lines: Iterator[str], args: Args, steps_i: int, prob_expect: float):
     prob_actual = read_printed_shots_flt(lines, args)[0]
     if not np.allclose(prob_expect, prob_actual, rtol=1e-06, atol=1e-06):
@@ -23,7 +27,7 @@ def read_and_compare_prob(lines: Iterator[str], args: Args, steps_i: int, prob_e
         print(f"prob (actual): {prob_actual}")
         raise ValueError(f"Found differences in prob! ({steps_i=})")
 
-    print(f"verified {steps_i}")
+    print(f"[{steps_i=}] verified prob")
     # print(f"prob: {prob}")
 
 
@@ -38,7 +42,7 @@ def read_and_compare_state(lines: Iterator[str], args: Args, steps_i: int, state
     entries_actual = {"".join(str(int(bit)) for bit in bst): amp for bst, amp in entries_actual}
 
     if table_expect != table_actual:
-        print(f"table (expected):")
+        print(f"table (expect):")
         for line in table_expect:
             print(f"  {line}")
         print(f"table (actual):")
@@ -46,6 +50,7 @@ def read_and_compare_state(lines: Iterator[str], args: Args, steps_i: int, state
             print(f"  {line}")
         raise ValueError(f"Found differences in table! ({steps_i=})")
 
+    print(f"[{steps_i=}] verified table")
     # print(f"table:")
     # for line in table:
     #     print(f"  {line}")
@@ -54,7 +59,7 @@ def read_and_compare_state(lines: Iterator[str], args: Args, steps_i: int, state
         value1 = entries_expect.get(key, 0)
         value2 = entries_actual.get(key, 0)
         if not np.allclose(value1, value2, rtol=1e-06, atol=1e-06):
-            print(f"entries (expected):")
+            print(f"entries (expect):")
             for key in sorted(entries_expect.keys()):
                 value = entries_expect[key]
                 value = complex(value)
@@ -68,7 +73,7 @@ def read_and_compare_state(lines: Iterator[str], args: Args, steps_i: int, state
                     print(f"  {key}: {value.real:+f}{value.imag:+f}i")
             raise ValueError(f"Found differences in entries! ({steps_i=}, {key=})")
 
-    print(f"verified {steps_i}")
+    print(f"[{steps_i=}] verified entries")
     # print(f"entries:")
     # for key in sorted(entries.keys()):
     #     value = entries[key]
@@ -104,6 +109,7 @@ def main(
                         process.stdin.write(gate)
                         process.stdin.write("\n")
                         steps_n += 1
+                        executor.append(partial(print_operation, gate, steps_n))
                     case "prob", prob:
                         prob = float(prob)
                         process.stdin.write("PRINT FLT")
