@@ -4,15 +4,15 @@ import sys
 from collections.abc import Iterator
 from functools import partial
 
+import fire
 import numpy as np
-from tqdm import tqdm
+
+project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
+sys.path.append(project_dir_path)
 
 from scripts.utils.jobs import JobsQueueExecutor
 from scripts.utils.stn import Args, make_cmd, read_args, read_dict_key_value, read_entries, read_printed_shots_flt, \
     read_printed_shots_state, read_table
-
-project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
-sys.path.append(project_dir_path)
 
 
 def read_and_compare_prob(lines: Iterator[str], args: Args, steps_i: int, prob_expect: float):
@@ -122,9 +122,4 @@ def main(
 
 
 if __name__ == '__main__':
-    for i in tqdm(range(50)):
-        exec_file_path = os.path.join(project_dir_path, "cmake-build-release/stn_cuda_exec")
-        logs_file_path = os.path.join(project_dir_path, f"scripts/compare/test_{i}.logs.txt")
-        main(
-            exec_file_path=exec_file_path,
-            logs_file_path=logs_file_path)
+    fire.Fire(main)
