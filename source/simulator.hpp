@@ -17,7 +17,7 @@ struct SimulatorArgs {
     unsigned long long seed = 0;
 };
 
-template<Mid m = 16>
+template<Mid m = 64>
 struct ClassicalReduceArgs {
     Mid n;
     Array<Mid, m> pointers;
