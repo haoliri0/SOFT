@@ -6,6 +6,7 @@ from functools import partial
 
 import fire
 import numpy as np
+import pyzstd
 
 project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
 sys.path.append(project_dir_path)
@@ -80,8 +81,12 @@ def main(
     exec_file_path: str,
     logs_file_path: str,
 ):
-    with open(logs_file_path) as fp, JobsQueueExecutor() as executor:
-        args = read_args(fp)
+    open_func = open
+    if logs_file_path.endswith(".zst"):
+        open_func = pyzstd.open
+
+    with open_func(logs_file_path, 'rt') as lines, JobsQueueExecutor() as executor:
+        args = read_args(lines)
         cmd = make_cmd(exec_file_path, args)
 
         print(f"{cmd=}")
@@ -94,7 +99,7 @@ def main(
         steps_n = 0
         while True:
             try:
-                match read_dict_key_value(fp):
+                match read_dict_key_value(lines):
                     case "gate", gate:
                         process.stdin.write(gate)
                         process.stdin.write("\n")
@@ -106,8 +111,8 @@ def main(
                         executor.append(partial(read_and_compare_prob,
                             process.stdout, args, steps_n, prob))
                     case "state", _:
-                        table = read_table(fp, args)
-                        entries = read_entries(fp)
+                        table = read_table(lines, args)
+                        entries = read_entries(lines)
                         process.stdin.write("PRINT STATE")
                         process.stdin.write("\n")
                         executor.append(partial(read_and_compare_state,
