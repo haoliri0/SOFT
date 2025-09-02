@@ -17,7 +17,7 @@ sys.path.append(project_dir_path)
 
 def read_and_compare_prob(lines: Iterator[str], args: Args, steps_i: int, prob_expect: float):
     prob_actual = read_printed_shots_flt(lines, args)[0]
-    if not np.allclose(prob_expect, prob_actual, rtol=1e-05, atol=1e-05):
+    if not np.allclose(prob_expect, prob_actual, rtol=1e-06, atol=1e-06):
         print(f"prob (expect): {prob_expect}")
         print(f"prob (actual): {prob_actual}")
         raise ValueError(f"Found differences in prob! ({steps_i=})")
@@ -52,7 +52,7 @@ def read_and_compare_state(lines: Iterator[str], args: Args, steps_i: int, state
     for key in set(entries_expect.keys()) | set(entries_actual.keys()):
         value1 = entries_expect.get(key, 0)
         value2 = entries_actual.get(key, 0)
-        if not np.allclose(value1, value2, rtol=1e-05, atol=1e-05):
+        if not np.allclose(value1, value2, rtol=1e-06, atol=1e-06):
             print(f"entries (expected):")
             for key in sorted(entries_expect.keys()):
                 value = entries_expect[key]
