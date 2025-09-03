@@ -11,6 +11,7 @@ class Args:
     entries_m: int
     mem_ints_m: int = 0
     mem_flts_m: int = 0
+    epsilon: float = 0
     seed: int | None = None
 
 
@@ -22,6 +23,7 @@ def make_cmd(exec_file_path: str, args: Args) -> tuple[str, ...]:
         "--entries_m", str(args.entries_m),
         "--mem_ints_m", str(args.mem_ints_m),
         "--mem_flts_m", str(args.mem_flts_m),
+        "--epsilon", str(args.epsilon),
         "--seed", str(0 if args.seed is None else args.seed))
 
 
@@ -88,6 +90,7 @@ def read_args(lines: Iterator[str]) -> Args:
     entries_m = read_dict_key_value_and_check(lines, "entries_m")
     mem_ints_m = read_dict_key_value_and_check(lines, "mem_ints_m")
     mem_flts_m = read_dict_key_value_and_check(lines, "mem_flts_m")
+    epsilon = read_dict_key_value_and_check(lines, "epsilon")
     seed = read_dict_key_value_and_check(lines, "seed")
     return Args(
         shots_n=int(shots_n),
@@ -95,6 +98,7 @@ def read_args(lines: Iterator[str]) -> Args:
         entries_m=int(entries_m),
         mem_ints_m=int(mem_ints_m),
         mem_flts_m=int(mem_flts_m),
+        epsilon=float(epsilon),
         seed=int(seed))
 
 
