@@ -320,6 +320,8 @@ void execute_op(
 
     if (name == "FLIP")
         return execute_op(simulator, istream, &Simulator::apply_classical_flip);
+    if (name == "RANDFLIP")
+        return execute_op(simulator, istream, &Simulator::apply_classical_random_flip);
     if (name == "CHECK")
         return execute_op(simulator, istream, &Simulator::apply_classical_check);
 

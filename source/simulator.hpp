@@ -78,6 +78,8 @@ struct Simulator {
 
     void apply_classical_flip() const noexcept;
 
+    void apply_classical_random_flip(Flt prob) const noexcept;
+
     void apply_classical_check(Err error) const noexcept;
 
 

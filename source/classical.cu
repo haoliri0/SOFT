@@ -13,6 +13,14 @@ void op_classical_flip(const ShotStatePtr shot_state_ptr) {
 }
 
 static __device__
+void op_classical_random_flip(const ShotStatePtr shot_state_ptr, const Flt prob) {
+    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
+    curandState *rand_state_ptr = work_ptr.get_rand_state_ptr();
+    const Flt sample = curand_uniform(rand_state_ptr);
+    if (sample < prob) op_classical_flip(shot_state_ptr);
+}
+
+static __device__
 void op_classical_check(const ShotStatePtr shot_state_ptr, const Err error) {
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
     const Int cond = *work_ptr.get_int_ptr();
@@ -22,6 +30,10 @@ void op_classical_check(const ShotStatePtr shot_state_ptr, const Err error) {
 
 void Simulator::apply_classical_flip() const noexcept {
     cuda_shots_op<op_classical_flip>(stream, shots_state_ptr);
+}
+
+void Simulator::apply_classical_random_flip(const Flt prob) const noexcept {
+    cuda_shots_op<Flt, op_classical_random_flip>(stream, shots_state_ptr, prob);
 }
 
 void Simulator::apply_classical_check(const Err error) const noexcept {
