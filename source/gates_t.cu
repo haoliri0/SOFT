@@ -1,10 +1,10 @@
 #include "./simulator.hpp"
 #include "./decompose.hpp"
 #include "./decompose.cuh"
+#include "./shotsop.cuh"
 #include "./dimsop.cuh"
 
 using namespace StnCuda;
-
 
 template<bool dagger>
 static __device__
@@ -115,9 +115,7 @@ void cuda_update_entries_half0(
 
 
 static __device__
-void op_merge_entries_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx) {
-    const Sid shot_i = dims_idx.get<0>();
-    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+void op_merge_entries_halves(const ShotStatePtr shot_state_ptr, const Flt epsilon) {
     const EntriesPtr entries_ptr = shot_state_ptr.get_entries_ptr();
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
@@ -125,6 +123,7 @@ void op_merge_entries_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     const Err err = *work_ptr.get_err_ptr();
     if (err) return; // 这个 shot 已经失败，不进行计算
 
+    // 合并 half1 的条目到 half0
     Eid entries_add_n = 0;
     Eid &entries_n = *entries_ptr.get_entries_n_ptr();
     for (Eid src_entry_i = 0; src_entry_i < entries_n; ++src_entry_i) {
@@ -154,16 +153,41 @@ void op_merge_entries_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<
 
     // 如果有新的 entry 就修改 entries_n
     if (entries_add_n > 0) entries_n += entries_add_n;
+
+    // 判断是否跳过条目清理
+    if (epsilon < 0) return;
+
+    // 清理接近 0 的条目
+    Eid entries_del_n = 0;
+    for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
+        const Bst src_bst = *entries_ptr.get_bst_ptr(entry_i);
+        const Amp src_amp = *entries_ptr.get_amp_ptr(entry_i);
+
+        if (cuda::std::abs(src_amp) <= epsilon) {
+            entries_del_n += 1;
+            continue;
+        }
+
+        if (entries_del_n == 0)
+            continue;
+
+        Bst &dst_bst = *entries_ptr.get_bst_ptr(entry_i - entries_del_n);
+        Amp &dst_amp = *entries_ptr.get_amp_ptr(entry_i - entries_del_n);
+        dst_bst = src_bst;
+        dst_amp = src_amp;
+    }
+
+    // 如果有被清理的 entry 就修改 entries_n
+    if (entries_del_n > 0) entries_n -= entries_del_n;
 }
 
 static __host__
 void cuda_merge_entries_halves(
     cudaStream_t const stream,
-    ShotsStatePtr const shots_state_ptr
+    ShotsStatePtr const shots_state_ptr,
+    Flt const epsilon
 ) {
-    const Sid shots_n = shots_state_ptr.shots_n;
-    cuda_dims_op<ShotsStatePtr, 1, op_merge_entries_halves>
-        (stream, shots_state_ptr, dimsof(shots_n));
+    cuda_shots_op<Flt, op_merge_entries_halves>(stream, shots_state_ptr, epsilon);
 }
 
 
@@ -172,6 +196,7 @@ static __host__
 void cuda_apply_t(
     cudaStream_t const stream,
     ShotsStatePtr const shots_state_ptr,
+    Flt const epsilon,
     Qid const target
 ) {
     // T = cos(pi/8) I ∓ i sin(pi/8) Z
@@ -185,13 +210,13 @@ void cuda_apply_t(
     cuda_update_entries_half0(stream, shots_state_ptr);
 
     // 将两部分合并
-    cuda_merge_entries_halves(stream, shots_state_ptr);
+    cuda_merge_entries_halves(stream, shots_state_ptr, epsilon);
 }
 
 void Simulator::apply_t(const Qid target) const noexcept {
-    cuda_apply_t<false>(stream, shots_state_ptr, target);
+    cuda_apply_t<false>(stream, shots_state_ptr, epsilon, target);
 }
 
 void Simulator::apply_tdg(const Qid target) const noexcept {
-    cuda_apply_t<true>(stream, shots_state_ptr, target);
+    cuda_apply_t<true>(stream, shots_state_ptr, epsilon, target);
 }

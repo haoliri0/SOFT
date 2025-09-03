@@ -57,6 +57,11 @@ void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
             parse_value(arg_value, args.mem_flts_m);
             continue;
         }
+        if (match(arg_key, "--epsilon")) {
+            const char *arg_value = *++iter;
+            parse_value(arg_value, args.epsilon);
+            continue;
+        }
         if (match(arg_key, "--seed")) {
             const char *arg_value = *++iter;
             parse_value(arg_value, args.seed);
