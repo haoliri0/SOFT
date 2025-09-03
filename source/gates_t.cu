@@ -156,6 +156,9 @@ void op_merge_entries_halves(const ShotStatePtr shot_state_ptr, const Flt epsilo
     // 如果有新的 entry 就修改 entries_n
     if (entries_add_n > 0) entries_n += entries_add_n;
 
+    // 判断是否跳过条目清理
+    if (epsilon < 0) return;
+
     // 清理接近 0 的条目
     Eid entries_del_n = 0;
     for (Eid entry_i = 0; entry_i < entries_n; ++entry_i) {
