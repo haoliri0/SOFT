@@ -5,7 +5,7 @@
 using namespace StnCuda;
 
 static __device__
-void op_classical_invert(const ShotStatePtr shot_state_ptr) {
+void op_classical_flip(const ShotStatePtr shot_state_ptr) {
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
     const Bit src = *work_ptr.get_int_ptr();
     Int &dst = *work_ptr.get_int_ptr();
@@ -20,8 +20,8 @@ void op_classical_check(const ShotStatePtr shot_state_ptr, const Err error) {
     if (!dst && cond) dst = error;
 }
 
-void Simulator::apply_classical_invert() const noexcept {
-    cuda_shots_op<op_classical_invert>(stream, shots_state_ptr);
+void Simulator::apply_classical_flip() const noexcept {
+    cuda_shots_op<op_classical_flip>(stream, shots_state_ptr);
 }
 
 void Simulator::apply_classical_check(const Err error) const noexcept {

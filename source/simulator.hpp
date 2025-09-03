@@ -76,7 +76,7 @@ struct Simulator {
     void apply_noise_depo2(Flt prob, Qid target0, Qid target1) const noexcept;
 
 
-    void apply_classical_invert() const noexcept;
+    void apply_classical_flip() const noexcept;
 
     void apply_classical_check(Err error) const noexcept;
 

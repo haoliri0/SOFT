@@ -318,8 +318,8 @@ void execute_op(
     if (name == "DEP2")
         return execute_op(simulator, istream, &Simulator::apply_noise_depo2);
 
-    if (name == "INVERT")
-        return execute_op(simulator, istream, &Simulator::apply_classical_invert);
+    if (name == "FLIP")
+        return execute_op(simulator, istream, &Simulator::apply_classical_flip);
     if (name == "CHECK")
         return execute_op(simulator, istream, &Simulator::apply_classical_check);
 
