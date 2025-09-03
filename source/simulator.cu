@@ -71,6 +71,7 @@ void cuda_init_rand(cudaStream_t const stream, const ShotsStatePtr shots_state_p
 
 
 cudaError_t Simulator::create(SimulatorArgs const &args) noexcept {
+    epsilon = args.epsilon;
     cudaError_t err = cudaSuccess;
     do {
         // create stream

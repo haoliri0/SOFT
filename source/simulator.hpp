@@ -14,6 +14,7 @@ struct SimulatorArgs {
     Eid entries_m = 16;
     Mid mem_ints_m = 16;
     Mid mem_flts_m = 16;
+    Flt epsilon = 0;
     unsigned long long seed = 0;
 };
 
@@ -32,6 +33,7 @@ struct ClassicalLutArgs {
 
 
 struct Simulator {
+    Flt epsilon = 0;
     cudaStream_t stream = nullptr;
     ShotsStatePtr shots_state_ptr = {0, 0, 0, 0, 0, nullptr};
 

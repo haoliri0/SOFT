@@ -296,6 +296,7 @@ void write_simulator_args(std::ostream &ostream, const SimulatorArgs &args) {
         write_kv(ostream, "entries_m", args.entries_m);
         write_kv(ostream, "mem_ints_m", args.mem_ints_m);
         write_kv(ostream, "mem_flts_m", args.mem_flts_m);
+        write_kv(ostream, "epsilon", args.epsilon);
         write_kv(ostream, "seed", args.seed);
     });
 }
