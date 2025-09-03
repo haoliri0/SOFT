@@ -97,13 +97,13 @@ void perform_print_state(const Simulator &simulator, const unsigned int print_i)
     write(ostream, "print_");
     write(ostream, print_i);
     write(ostream, ":\n");
-    with_indent(ostream, [&ostream, &shots_state_ptr] {
+    with_indent(ostream, [&] {
         for (Sid shot_i = 0; shot_i < shots_state_ptr.shots_n; ++shot_i) {
             write(ostream, "shot_");
             write(ostream, shot_i);
             write(ostream, ":\n");
             ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
-            with_indent(ostream, [&ostream, &shot_state_ptr] {
+            with_indent(ostream, [&] {
                 const Err err = *shot_state_ptr.get_work_ptr().get_err_ptr();
                 write_kv(ostream, "error", err);
                 if (!err) {
@@ -122,7 +122,7 @@ void perform_print_int(const Simulator &simulator, const unsigned int print_i) {
     const Sid shots_n = shots_state_ptr.shots_n;
 
     auto const shots_value = new Int[shots_n];
-    Cleaner shots_value_cleaner([shots_value] { delete[] shots_value; });
+    Cleaner shots_value_cleaner([&] { delete[] shots_value; });
 
     cuda_check(cudaMemcpy2DAsync(
         shots_value,
@@ -140,7 +140,7 @@ void perform_print_int(const Simulator &simulator, const unsigned int print_i) {
     write(ostream, "print_");
     write(ostream, print_i);
     write(ostream, ":\n");
-    with_indent(ostream, [&ostream, &shots_value, shots_n] {
+    with_indent(ostream, [&] {
         for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
             write(ostream, "shot_");
             write(ostream, shot_i);
@@ -158,7 +158,7 @@ void perform_print_flt(const Simulator &simulator, const unsigned int print_i) {
     const Sid shots_n = shots_state_ptr.shots_n;
 
     auto const shots_value = new Flt[shots_n];
-    Cleaner shots_value_cleaner([shots_value] { delete[] shots_value; });
+    Cleaner shots_value_cleaner([&] { delete[] shots_value; });
 
     cuda_check(cudaMemcpy2DAsync(
         shots_value,
@@ -176,7 +176,7 @@ void perform_print_flt(const Simulator &simulator, const unsigned int print_i) {
     write(ostream, "print_");
     write(ostream, print_i);
     write(ostream, ":\n");
-    with_indent(ostream, [&ostream, &shots_value, shots_n] {
+    with_indent(ostream, [&] {
         for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
             write(ostream, "shot_");
             write(ostream, shot_i);
@@ -212,7 +212,7 @@ void perform_print_err(const Simulator &simulator, const unsigned int print_i) {
     write(ostream, "print_");
     write(ostream, print_i);
     write(ostream, ":\n");
-    with_indent(ostream, [&ostream, &shots_value, shots_n] {
+    with_indent(ostream, [&] {
         for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
             write(ostream, "shot_");
             write(ostream, shot_i);
@@ -241,7 +241,7 @@ void execute_op(
 ) {
     Arg0 arg0;
     read_value(istream, arg0);
-    const std::function wrapped = [op, arg0](Args... args) { return op(arg0, args...); };
+    const std::function wrapped = [&](Args... args) { return op(arg0, args...); };
     execute_op(istream, wrapped);
 }
 
@@ -252,7 +252,7 @@ void execute_op(
     std::istream &istream,
     void (Simulator::*op)(Args...) const
 ) {
-    std::function wrapped = [&simulator, op](Args... args) { (simulator.*op)(args...); };
+    std::function wrapped = [&](Args... args) { (simulator.*op)(args...); };
     return execute_op(istream, wrapped);
 }
 
@@ -263,7 +263,7 @@ void execute_op(
     std::istream &istream,
     void (*op)(const Simulator &, Args...)
 ) {
-    std::function wrapped = [&simulator, op](Args... args) { (*op)(simulator, args...); };
+    std::function wrapped = [&](Args... args) { (*op)(simulator, args...); };
     return execute_op(istream, wrapped);
 }
 
@@ -275,7 +275,7 @@ void execute_op(
     std::istream &istream,
     void (*op)(const Simulator &, unsigned int, Args...)
 ) {
-    std::function wrapped = [&simulator,print_i, op](Args... args) { (*op)(simulator, print_i, args...); };
+    std::function wrapped = [&](Args... args) { (*op)(simulator, print_i, args...); };
     return execute_op(istream, wrapped);
 }
 
@@ -434,7 +434,7 @@ int main(const int argc, const char **argv) {
     write_simulator_args(std::cerr, args);
 
     Simulator simulator;
-    Cleaner simulator_cleaner([&simulator] { simulator.destroy(); });
+    Cleaner simulator_cleaner([&] { simulator.destroy(); });
 
     write(std::cerr, "Creating\n");
     cudaError cuda_err = cudaSuccess;

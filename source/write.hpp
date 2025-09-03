@@ -166,7 +166,7 @@ void write_table_row(std::ostream &ostream, const TableRowPtr &ptr) {
 static
 void write_table(std::ostream &ostream, const TablePtr &ptr) {
     write(ostream, "table: |\n");
-    with_indent(ostream, [&ostream, &ptr] {
+    with_indent(ostream, [&] {
         const Qid qubits_n = ptr.qubits_n;
         const Qid rows_n = 2 * qubits_n;
         for (Qid row_i = 0; row_i < rows_n; ++row_i)
@@ -186,7 +186,7 @@ void write_pivot(std::ostream &ostream, const Qid pivot) {
 static
 void write_decomp(std::ostream &ostream, const DecompPtr ptr) {
     write(ostream, "decomposed:\n");
-    with_indent(ostream, [&ostream, &ptr] {
+    with_indent(ostream, [&] {
         write(ostream, "bits: ");
         write_bits(ostream, ptr.get_bits_ptr(), 2 * ptr.qubits_n);
         printf("\n");
@@ -216,7 +216,7 @@ void write_entry(std::ostream &ostream, const EntriesPtr ptr, const Eid entry_i)
 static
 void write_entries(std::ostream &ostream, const EntriesPtr ptr, const bool full) {
     write(ostream, "entries:\n");
-    with_indent(ostream, [&ostream, &ptr, full] {
+    with_indent(ostream, [&] {
         if (full) {
             const Eid entries_m = ptr.entries_m;
             write_kv(ostream, "entries_m", entries_m);
@@ -234,7 +234,7 @@ void write_entries(std::ostream &ostream, const EntriesPtr ptr, const bool full)
 static
 void write_work(std::ostream &ostream, const WorkPtr ptr) {
     write(ostream, "work:\n");
-    with_indent(ostream, [&ostream, &ptr] {
+    with_indent(ostream, [&] {
         write_kv(ostream, "int", *ptr.get_int_ptr());
         write_kv(ostream, "flt: ", *ptr.get_flt_ptr());
         write_kv(ostream, "err: ", *ptr.get_err_ptr());
@@ -244,9 +244,9 @@ void write_work(std::ostream &ostream, const WorkPtr ptr) {
 static
 void write_memory(std::ostream &ostream, const MemoryPtr ptr) {
     write(ostream, "memory:\n");
-    with_indent(ostream, [&ostream, &ptr] {
+    with_indent(ostream, [&] {
         write(ostream, "ints:\n");
-        with_indent(ostream, [&ostream, &ptr] {
+        with_indent(ostream, [&] {
             for (Mid mem_i = 0; mem_i < ptr.mem_ints_m; ++mem_i) {
                 write(ostream, "- ");
                 write(ostream, *ptr.get_int_ptr(mem_i));
@@ -254,7 +254,7 @@ void write_memory(std::ostream &ostream, const MemoryPtr ptr) {
             }
         });
         write(ostream, "flts:\n");
-        with_indent(ostream, [&ostream, &ptr] {
+        with_indent(ostream, [&] {
             for (Mid mem_i = 0; mem_i < ptr.mem_flts_m; ++mem_i) {
                 write(ostream, "- ");
                 write(ostream, *ptr.get_flt_ptr(mem_i));
@@ -281,7 +281,7 @@ void write_shots_state(std::ostream &ostream, const ShotsStatePtr &ptr) {
         write(ostream, shot_i);
         write(ostream, ": ");
         write(ostream, "\n");
-        with_indent(ostream, [&ostream, &ptr,shot_i] {
+        with_indent(ostream, [&] {
             write_shot_state(ostream, ptr.get_shot_ptr(shot_i));
         });
     }
@@ -290,7 +290,7 @@ void write_shots_state(std::ostream &ostream, const ShotsStatePtr &ptr) {
 static
 void write_simulator_args(std::ostream &ostream, const SimulatorArgs &args) {
     write(ostream, "args:\n");
-    with_indent(ostream, [&ostream, &args] {
+    with_indent(ostream, [&] {
         write_kv(ostream, "shots_n", args.shots_n);
         write_kv(ostream, "qubits_n", args.qubits_n);
         write_kv(ostream, "entries_m", args.entries_m);
