@@ -5,10 +5,8 @@ import re
 import subprocess
 import sys
 import tomllib
-from collections.abc import Iterable
+from dataclasses import asdict
 from datetime import datetime
-
-import numpy as np
 
 script_dir_path = os.path.dirname(__file__)
 project_dir_path = os.path.join(script_dir_path, "../..")
@@ -53,13 +51,8 @@ def main(*,
     circuit_file_path: str,
     experiment_name: str,
     repeats_n: int = 1,
-    shots_n: int | Iterable[int] = 1,
-    qubits_n: int,
-    entries_m: int,
-    mem_ints_m: int = 0,
-    mem_flts_m: int = 0,
+    args: Args,
 ):
-    exec_file_path = os.path.abspath(exec_file_path)
     timestamp = get_timestamp()
     repo_version = get_repo_version()
     repo_revision = get_repo_revision()
@@ -70,60 +63,48 @@ def main(*,
     circuit_name = os.path.basename(circuit_file_path)
     circuit_sha256 = hashlib.sha256(circuit_str.encode('utf-8')).hexdigest()
 
-    rng = np.random.default_rng()
-    cases_shots_n = shots_n if isinstance(shots_n, Iterable) else (shots_n,)
-    for shots_n in cases_shots_n:
-        for _ in range(repeats_n):
-            seed = int(np.frombuffer(rng.bytes(4), np.uint32)[0])
+    metadata = dict(
+        timestamp=timestamp,
+        repo_version=repo_version,
+        repo_revision=repo_revision,
+        device_name=device_name,
+        circuit_name=circuit_name,
+        circuit_sha256=circuit_sha256,
+        experiment_name=experiment_name)
 
-            cmd = make_cmd(exec_file_path, Args(
-                shots_n=shots_n,
-                qubits_n=qubits_n,
-                entries_m=entries_m,
-                mem_ints_m=mem_ints_m,
-                mem_flts_m=mem_flts_m,
-                seed=seed))
+    for repeat_i in range(repeats_n):
+        args.seed = repeat_i
+        cmd = make_cmd(exec_file_path, args)
 
-            try:
-                process = subprocess.run(
-                    cmd,
-                    text=True,
-                    check=True,
-                    input=circuit_str,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.PIPE)
-            except subprocess.CalledProcessError as process_error:
-                print(process_error.stderr, file=sys.stderr)
-                raise
+        try:
+            process = subprocess.run(
+                cmd,
+                text=True,
+                check=True,
+                input=circuit_str,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as process_error:
+            print(process_error.stderr, file=sys.stderr)
+            raise
 
-            stderr_str = process.stderr
-            span_time_match = span_time_pattern.search(stderr_str)
-            span_time = float(span_time_match.group(1))
-            avg_speed_match = avg_speed_pattern.search(stderr_str)
-            avg_speed = float(avg_speed_match.group(1))
+        stderr_str = process.stderr
+        span_time_match = span_time_pattern.search(stderr_str)
+        span_time = float(span_time_match.group(1))
+        avg_speed_match = avg_speed_pattern.search(stderr_str)
+        avg_speed = float(avg_speed_match.group(1))
+        results = dict(
+            span_time=span_time,
+            avg_speed=avg_speed)
 
-            record = dict(
-                timestamp=timestamp,
-                repo_version=repo_version,
-                repo_revision=repo_revision,
-                device_name=device_name,
-                circuit_name=circuit_name,
-                circuit_sha256=circuit_sha256,
-                experiment_name=experiment_name,
-                shots_n=shots_n,
-                qubits_n=qubits_n,
-                entries_m=entries_m,
-                mem_ints_m=mem_ints_m,
-                mem_flts_m=mem_flts_m,
-                seed=seed,
-                span_time=span_time,
-                avg_speed=avg_speed)
-            with open(records_file_path, "at") as records_io:
-                records_io.write(json.dumps(record))
-                records_io.write("\n")
-            for key, value in record.items():
-                print(f"{key}={value}")
-            print()
+        record = dict(
+            metadata=metadata,
+            arguments=asdict(args),
+            results=results)
+        with open(records_file_path, "at") as records_io:
+            print(json.dumps(record), file=records_io)
+        print(json.dumps(record, indent=2, ensure_ascii=False))
+        print()
 
 
 if __name__ == '__main__':
@@ -132,9 +113,8 @@ if __name__ == '__main__':
         records_file_path=os.path.join(script_dir_path, "records.jsonl"),
         circuit_file_path=os.path.join(script_dir_path, "circuit_3.txt"),
         experiment_name="performance",
-        shots_n=(2 ** n for n in count(8)),
         repeats_n=4,
-        qubits_n=42,
-        entries_m=2048,
-        mem_ints_m=0,
-        mem_flts_m=0)
+        args=Args(
+            shots_n=65536,
+            qubits_n=42,
+            entries_m=2048))
