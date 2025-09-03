@@ -117,4 +117,5 @@ if __name__ == '__main__':
         args=Args(
             shots_n=65536,
             qubits_n=42,
-            entries_m=2048))
+            entries_m=2048,
+            epsilon=1e-7))
