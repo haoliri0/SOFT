@@ -123,14 +123,12 @@ void op_merge_entries_halves(const ShotStatePtr shot_state_ptr, const Flt epsilo
     const Err err = *work_ptr.get_err_ptr();
     if (err) return; // 这个 shot 已经失败，不进行计算
 
+    // 合并 half1 的条目到 half0
     Eid entries_add_n = 0;
     Eid &entries_n = *entries_ptr.get_entries_n_ptr();
     for (Eid src_entry_i = 0; src_entry_i < entries_n; ++src_entry_i) {
         const Bst src_bst = *entries_ptr.get_half1_bst_ptr(src_entry_i);
         const Amp src_amp = *entries_ptr.get_half1_amp_ptr(src_entry_i);
-
-        //  忽略接近 0 的条目
-        if (cuda::std::abs(src_amp) <= epsilon) continue;
 
         // 在 half0 找 bst 对应的条目
         Eid dst_entry_i = 0;
