@@ -1,6 +1,7 @@
 #include "./simulator.hpp"
 #include "./decompose.hpp"
 #include "./decompose.cuh"
+#include "./shotsop.cuh"
 #include "./dimsop.cuh"
 
 using namespace StnCuda;
@@ -116,9 +117,7 @@ void cuda_update_entries_half0(
 
 
 static __device__
-void op_merge_entries_halves(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_idx) {
-    const Sid shot_i = dims_idx.get<0>();
-    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
+void op_merge_entries_halves(const ShotStatePtr shot_state_ptr) {
     const EntriesPtr entries_ptr = shot_state_ptr.get_entries_ptr();
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
@@ -188,9 +187,7 @@ void cuda_merge_entries_halves(
     cudaStream_t const stream,
     ShotsStatePtr const shots_state_ptr
 ) {
-    const Sid shots_n = shots_state_ptr.shots_n;
-    cuda_dims_op<ShotsStatePtr, 1, op_merge_entries_halves>
-        (stream, shots_state_ptr, dimsof(shots_n));
+    cuda_shots_op<op_merge_entries_halves>(stream, shots_state_ptr);
 }
 
 
