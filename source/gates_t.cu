@@ -130,7 +130,7 @@ void op_merge_entries_halves(const ShotStatePtr shot_state_ptr, const Flt epsilo
         const Amp src_amp = *entries_ptr.get_half1_amp_ptr(src_entry_i);
 
         //  忽略接近 0 的条目
-        if (cuda::std::abs(src_amp) < epsilon) continue;
+        if (cuda::std::abs(src_amp) <= epsilon) continue;
 
         // 在 half0 找 bst 对应的条目
         Eid dst_entry_i = 0;
@@ -162,7 +162,7 @@ void op_merge_entries_halves(const ShotStatePtr shot_state_ptr, const Flt epsilo
         const Bst src_bst = *entries_ptr.get_bst_ptr(entry_i);
         const Amp src_amp = *entries_ptr.get_amp_ptr(entry_i);
 
-        if (cuda::std::abs(src_amp) < epsilon) {
+        if (cuda::std::abs(src_amp) <= epsilon) {
             entries_del_n += 1;
             continue;
         }
