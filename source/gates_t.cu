@@ -6,8 +6,6 @@
 
 using namespace StnCuda;
 
-constexpr Flt epsilon = 1e-7;
-
 template<bool dagger>
 static __device__
 void op_update_entries_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
@@ -117,7 +115,7 @@ void cuda_update_entries_half0(
 
 
 static __device__
-void op_merge_entries_halves(const ShotStatePtr shot_state_ptr) {
+void op_merge_entries_halves(const ShotStatePtr shot_state_ptr, const Flt epsilon) {
     const EntriesPtr entries_ptr = shot_state_ptr.get_entries_ptr();
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
@@ -185,9 +183,10 @@ void op_merge_entries_halves(const ShotStatePtr shot_state_ptr) {
 static __host__
 void cuda_merge_entries_halves(
     cudaStream_t const stream,
-    ShotsStatePtr const shots_state_ptr
+    ShotsStatePtr const shots_state_ptr,
+    Flt const epsilon
 ) {
-    cuda_shots_op<op_merge_entries_halves>(stream, shots_state_ptr);
+    cuda_shots_op<Flt, op_merge_entries_halves>(stream, shots_state_ptr, epsilon);
 }
 
 
@@ -196,6 +195,7 @@ static __host__
 void cuda_apply_t(
     cudaStream_t const stream,
     ShotsStatePtr const shots_state_ptr,
+    Flt const epsilon,
     Qid const target
 ) {
     // T = cos(pi/8) I ∓ i sin(pi/8) Z
@@ -209,13 +209,13 @@ void cuda_apply_t(
     cuda_update_entries_half0(stream, shots_state_ptr);
 
     // 将两部分合并
-    cuda_merge_entries_halves(stream, shots_state_ptr);
+    cuda_merge_entries_halves(stream, shots_state_ptr, epsilon);
 }
 
 void Simulator::apply_t(const Qid target) const noexcept {
-    cuda_apply_t<false>(stream, shots_state_ptr, target);
+    cuda_apply_t<false>(stream, shots_state_ptr, epsilon, target);
 }
 
 void Simulator::apply_tdg(const Qid target) const noexcept {
-    cuda_apply_t<true>(stream, shots_state_ptr, target);
+    cuda_apply_t<true>(stream, shots_state_ptr, epsilon, target);
 }
