@@ -9,7 +9,7 @@ void op_classical_flip(const ShotStatePtr shot_state_ptr) {
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
     const Bit src = *work_ptr.get_int_ptr();
     Int &dst = *work_ptr.get_int_ptr();
-    dst = ~src;
+    dst = !src;
 }
 
 static __device__
