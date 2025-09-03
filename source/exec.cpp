@@ -339,6 +339,13 @@ void execute_op(
     if (name == "LUT")
         return execute_op(simulator, istream, &Simulator::apply_classical_lut);
 
+    if (name == "CCX")
+        return execute_op(simulator, istream, &Simulator::apply_classical_controlled_x);
+    if (name == "CCY")
+        return execute_op(simulator, istream, &Simulator::apply_classical_controlled_y);
+    if (name == "CCZ")
+        return execute_op(simulator, istream, &Simulator::apply_classical_controlled_z);
+
     if (name == "LOAD") {
         std::string object;
         read_value(istream, object);
