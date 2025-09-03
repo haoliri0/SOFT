@@ -239,7 +239,7 @@ void execute_op(
     std::istream &istream,
     const std::function<void (Arg0, Args...)> &op
 ) {
-    Arg0 arg0;
+    Arg0 arg0{};
     read_value(istream, arg0);
     const std::function wrapped = [&](Args... args) { return op(arg0, args...); };
     execute_op(istream, wrapped);
