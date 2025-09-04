@@ -183,26 +183,29 @@ void Simulator::apply_classical_and(const ArgsClassicalReduce args) const noexce
 }
 
 
-using ArgsClassicalLut = ClassicalLutArgs<>;
+using ArgsClassicalMatch = ClassicalMatchArgs<>;
 
 static __device__
-void op_classical_lut(const ShotStatePtr shot_state_ptr, const ArgsClassicalLut args) {
-    unsigned int index = 0;
+void op_classical_match(const ShotStatePtr shot_state_ptr, const ArgsClassicalMatch args) {
+    Bit matched = true;
     const MemoryPtr memory_ptr = shot_state_ptr.get_memory_ptr();
     for (unsigned int i = 0; i < args.n; i++) {
         const Mid pointer = args.pointers.get(i);
-        const Bit bit = *memory_ptr.get_int_ptr(pointer);
-        if (bit) index |= 1 << i;
+        const Int value_expect = args.values.get(i);
+        const Int value_actual = *memory_ptr.get_int_ptr(pointer);
+        if (value_expect != value_actual) {
+            matched = false;
+            break;
+        }
     }
 
-    const Int src = args.table.get(index);
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
     Int &dst = *work_ptr.get_int_ptr();
-    dst = src;
+    dst = matched;
 }
 
-void Simulator::apply_classical_lut(const ArgsClassicalLut args) const noexcept {
-    cuda_shots_op<ArgsClassicalLut, op_classical_lut>(stream, shots_state_ptr, args);
+void Simulator::apply_classical_match(const ArgsClassicalMatch args) const noexcept {
+    cuda_shots_op<ArgsClassicalMatch, op_classical_match>(stream, shots_state_ptr, args);
 }
 
 

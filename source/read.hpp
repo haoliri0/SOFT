@@ -168,39 +168,32 @@ void read_value(std::istream &istream, ClassicalReduceArgs<m> &value) {
 
 template<Mid m>
 static
-void read_value(std::istream &istream, ClassicalLutArgs<m> &value) {
-    std::vector<unsigned int> items;
+void read_value(std::istream &istream, ClassicalMatchArgs<m> &value) {
+    std::vector<int> items;
     read_value(istream, items);
 
-    Mid n = 0;
-    while (true) {
-        if (n > m) {
-            fprintf(stderr, "Op Lut can hold at most %u arguments, got %lu.\n", m + (1 << m), items.size());
+    const Mid n2 = items.size();
+    if (n2 % 2 != 0) {
+        fprintf(stderr, "This op expects 2*n arguments, got %u.\n", n2);
+        throw ParseException(std::errc::invalid_argument);
+    }
+    const Mid n = n2 / 2;
+    if (n > m) {
+        fprintf(stderr, "This op can hold at most %u arguments, got %u.\n", 2 * m, 2 * n);
+        throw ParseException(std::errc::invalid_argument);
+    }
+    for (size_t i = 0; i < n; ++i) {
+        if (items[i] < 0) {
+            fprintf(stderr, "This op Match expected positive integers for pointers, got %d.\n", items[i]);
             throw ParseException(std::errc::invalid_argument);
         }
-        const size_t items_n = n + (1 << n);
-        if (items_n == items.size()) break;
-        if (items_n > items.size()) {
-            fprintf(stderr, "Op Lut expected (n + 2**n) arguments, got %lu.\n", items.size());
-            throw ParseException(std::errc::invalid_argument);
-        }
-        ++n;
     }
 
     value.n = n;
-    for (size_t i = 0; i < n; ++i) {
-        const Mid pointer = items[i];
-        value.pointers.get(i) = pointer;
-    }
-    for (size_t i = 0; i < (1 << n); ++i) {
-        const unsigned int item = items[n + i];
-        if (item != 0 && item != 1) {
-            fprintf(stderr, "Op Lut expected 0 or 1 for bits, got %u.\n", item);
-            throw ParseException(std::errc::invalid_argument);
-        }
-        const Bit bit = item;
-        value.table.get(i) = bit;
-    }
+    for (size_t i = 0; i < n; ++i)
+        value.pointers.get(i) = items[i];
+    for (size_t i = 0; i < n; ++i)
+        value.values.get(i) = items[n + i];
 }
 
 

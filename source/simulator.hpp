@@ -24,11 +24,11 @@ struct ClassicalReduceArgs {
     Array<Mid, m> pointers;
 };
 
-template<Mid m = 6>
-struct ClassicalLutArgs {
+template<Mid m = 32>
+struct ClassicalMatchArgs {
     Mid n;
     Array<Mid, m> pointers;
-    Array<Bit, 1 << m> table;
+    Array<Int, m> values;
 };
 
 
@@ -100,7 +100,7 @@ struct Simulator {
 
     void apply_classical_and(ClassicalReduceArgs<> args) const noexcept;
 
-    void apply_classical_lut(ClassicalLutArgs<> args) const noexcept;
+    void apply_classical_match(ClassicalMatchArgs<> args) const noexcept;
 
 
     void apply_classical_controlled_x(Qid target) const noexcept;

@@ -336,8 +336,8 @@ void execute_op(
         return execute_op(simulator, istream, &Simulator::apply_classical_xor);
     if (name == "AND")
         return execute_op(simulator, istream, &Simulator::apply_classical_and);
-    if (name == "LUT")
-        return execute_op(simulator, istream, &Simulator::apply_classical_lut);
+    if (name == "MATCH")
+        return execute_op(simulator, istream, &Simulator::apply_classical_match);
 
     if (name == "CCX")
         return execute_op(simulator, istream, &Simulator::apply_classical_controlled_x);
