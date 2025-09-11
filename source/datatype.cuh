@@ -14,7 +14,7 @@ using Mid = unsigned int;
 
 using Int = int;
 using Bit = bool;
-using Flt = float;
+using Flt = double;
 using Amp = cuda::std::complex<Flt>;
 using Bst = unsigned long long;
 using Phs = unsigned char;
