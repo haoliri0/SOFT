@@ -54,7 +54,7 @@ void op_random_choose(const ArgsRandomSample<probs_n> args, const DimsIdx<1> dim
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
     curandState *rand_state_ptr = work_ptr.get_rand_state_ptr();
-    const Flt sample = curand_uniform(rand_state_ptr);
+    const double sample = curand_uniform_double(rand_state_ptr);
     const auto result = compute_random_choose_result<probs_n>(probs, sample);
 
     Flt &result_prob = *work_ptr.get_flt_ptr();

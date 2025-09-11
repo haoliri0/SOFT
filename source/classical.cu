@@ -16,7 +16,7 @@ static __device__
 void op_classical_random_flip(const ShotStatePtr shot_state_ptr, const Flt prob) {
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
     curandState *rand_state_ptr = work_ptr.get_rand_state_ptr();
-    const Flt sample = curand_uniform(rand_state_ptr);
+    const double sample = curand_uniform_double(rand_state_ptr);
     if (sample < prob) op_classical_flip(shot_state_ptr);
 }
 
