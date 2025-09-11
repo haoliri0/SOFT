@@ -306,7 +306,7 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
     if (entry_i >= entries_n_new) return; // 线程超出了 amp_n 的范围，不进行计算
 
     bsts_dst[entry_i] = bsts_src[entry_i];
-    amps_dst[entry_i] = amps_src[entry_i] / sqrt(result_norm);
+    amps_dst[entry_i] = amps_src[entry_i] / cuda::std::sqrt(result_norm);
 }
 
 static __host__
