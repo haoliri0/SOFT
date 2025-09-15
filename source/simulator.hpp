@@ -9,6 +9,7 @@
 namespace StnCuda {
 
 struct SimulatorArgs {
+    Sid shot_i = 0;
     Sid shots_n = 1;
     Qid qubits_n = 4;
     Eid entries_m = 16;

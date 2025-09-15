@@ -52,6 +52,7 @@ void cuda_init_entries(cudaStream_t const stream, const ShotsStatePtr shots_stat
 struct ArgsInitRand {
     const ShotsStatePtr shots_state_ptr;
     const unsigned long long seed;
+    const Sid shot_i;
 };
 
 static __device__
@@ -59,14 +60,19 @@ void op_init_rand(const ArgsInitRand args, const DimsIdx<1> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
     curandState *rand_state_ptr = args.shots_state_ptr
         .get_shot_ptr(shot_i).get_work_ptr().get_rand_state_ptr();
-    curand_init(args.seed, shot_i, 0, rand_state_ptr);
+    curand_init(args.seed, args.shot_i + shot_i, 0, rand_state_ptr);
 }
 
 static __host__
-void cuda_init_rand(cudaStream_t const stream, const ShotsStatePtr shots_state_ptr, const unsigned long long seed) {
+void cuda_init_rand(
+    cudaStream_t const stream,
+    const ShotsStatePtr shots_state_ptr,
+    const unsigned long long seed,
+    const Sid shot_i
+) {
     const Sid shots_n = shots_state_ptr.shots_n;
     cuda_dims_op<ArgsInitRand, 1, op_init_rand>
-        (stream, {shots_state_ptr, seed}, dimsof(shots_n));
+        (stream, {shots_state_ptr, seed, shot_i}, dimsof(shots_n));
 }
 
 
@@ -90,7 +96,7 @@ cudaError_t Simulator::create(SimulatorArgs const &args) noexcept {
 
         cuda_init_table(stream, shots_state_ptr);
         cuda_init_entries(stream, shots_state_ptr);
-        cuda_init_rand(stream, shots_state_ptr, args.seed);
+        cuda_init_rand(stream, shots_state_ptr, args.seed, args.shot_i);
 
         // wait for async operations to complete
         err = cudaStreamSynchronize(stream);

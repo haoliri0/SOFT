@@ -291,6 +291,7 @@ static
 void write_simulator_args(std::ostream &ostream, const SimulatorArgs &args) {
     write(ostream, "args:\n");
     with_indent(ostream, [&] {
+        write_kv(ostream, "shot_i", args.shot_i);
         write_kv(ostream, "shots_n", args.shots_n);
         write_kv(ostream, "qubits_n", args.qubits_n);
         write_kv(ostream, "entries_m", args.entries_m);

@@ -20,6 +20,11 @@ static
 void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
     for (auto iter = ++span.begin(); iter != span.end(); ++iter) {
         const char *arg_key = *iter;
+        if (match(arg_key, "--shot_i")) {
+            const char *arg_value = *++iter;
+            parse_value(arg_value, args.shot_i);
+            continue;
+        }
         if (match(arg_key, "--shots_n")) {
             const char *arg_value = *++iter;
             parse_value(arg_value, args.shots_n);
