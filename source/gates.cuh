@@ -29,7 +29,7 @@ template<void (*op)(Bit &s, Bit &x, Bit &z)>
 static __host__
 void cuda_apply_gate1_op(
     cudaStream_t const &stream,
-    ShotsStatePtr const shots_state_ptr,
+    ShotsStatePtr const &shots_state_ptr,
     Qid const target
 ) {
     const Sid shots_n = shots_state_ptr.shots_n;
@@ -66,7 +66,7 @@ template<void (*op)(Bit &s, Bit &cx, Bit &cz, Bit &tx, Bit &tz)>
 static __host__
 void cuda_apply_gate2_op(
     cudaStream_t const &stream,
-    ShotsStatePtr const shots_state_ptr,
+    ShotsStatePtr const &shots_state_ptr,
     Qid const control,
     Qid const target
 ) {

@@ -229,7 +229,7 @@ template<void (*op)(Bit &s, Bit &x, Bit &z)>
 static __host__
 void cuda_classical_controlled_gate1(
     cudaStream_t const &stream,
-    ShotsStatePtr const shots_state_ptr,
+    ShotsStatePtr const &shots_state_ptr,
     const Qid target
 ) {
     const Sid shots_n = shots_state_ptr.shots_n;

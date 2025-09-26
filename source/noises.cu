@@ -66,7 +66,7 @@ void op_random_choose(const ArgsRandomSample<probs_n> args, const DimsIdx<1> dim
 template<unsigned int probs_n>
 void cuda_random_choose(
     cudaStream_t const &stream,
-    ShotsStatePtr const shots_state_ptr,
+    ShotsStatePtr const &shots_state_ptr,
     Array<Flt, probs_n> const probs
 ) noexcept {
     const Sid shots_n = shots_state_ptr.shots_n;
@@ -89,7 +89,7 @@ void op_noise_gate(const ArgsApplyGate1 args, const DimsIdx<2> dims_idx) noexcep
 template<void (*op)(Bit &s, Bit &x, Bit &z)>
 void cuda_noise_gate(
     cudaStream_t const &stream,
-    ShotsStatePtr const shots_state_ptr,
+    ShotsStatePtr const &shots_state_ptr,
     Qid const target
 ) noexcept {
     const Sid shots_n = shots_state_ptr.shots_n;
@@ -124,7 +124,7 @@ void op_noise_depo1(const ArgsApplyGate1 args, const DimsIdx<2> dims_idx) noexce
 
 void cuda_noise_depo1(
     cudaStream_t const &stream,
-    ShotsStatePtr const shots_state_ptr,
+    ShotsStatePtr const &shots_state_ptr,
     Qid const target
 ) noexcept {
     const Sid shots_n = shots_state_ptr.shots_n;
@@ -164,7 +164,7 @@ void op_noise_depo2(const ArgsApplyGate2 args, const DimsIdx<2> dims_idx) noexce
 
 void cuda_noise_depo2(
     cudaStream_t const &stream,
-    ShotsStatePtr const shots_state_ptr,
+    ShotsStatePtr const &shots_state_ptr,
     Qid const target0,
     Qid const target1
 ) noexcept {

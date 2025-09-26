@@ -47,7 +47,7 @@ void op_compute_decomposed_bits(const ArgsComputeDecomposedBits args, const Dims
 
 void cuda_compute_decomposed_bits(
     cudaStream_t const &stream,
-    ShotsStatePtr const shots_state_ptr,
+    ShotsStatePtr const &shots_state_ptr,
     const Qid target
 ) {
     const Sid shots_n = shots_state_ptr.shots_n;
@@ -101,7 +101,7 @@ void op_compute_decomposed_phase(const ShotsStatePtr shots_state_ptr, const Dims
 
 void cuda_compute_decomposed_phase(
     cudaStream_t const &stream,
-    ShotsStatePtr const shots_state_ptr
+    ShotsStatePtr const &shots_state_ptr
 ) {
     const Sid shots_n = shots_state_ptr.shots_n;
     cuda_dims_op<ShotsStatePtr, 1, op_compute_decomposed_phase>
@@ -129,7 +129,7 @@ void op_compute_decomp_pivot(const ShotsStatePtr shots_state_ptr, const DimsIdx<
 
 void cuda_compute_decomp_pivot(
     cudaStream_t const &stream,
-    ShotsStatePtr const shots_state_ptr
+    ShotsStatePtr const &shots_state_ptr
 ) {
     const Sid shots_n = shots_state_ptr.shots_n;
     cuda_dims_op<ShotsStatePtr, 1, op_compute_decomp_pivot>
