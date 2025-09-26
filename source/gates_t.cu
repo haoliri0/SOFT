@@ -61,7 +61,7 @@ void op_update_entries_half1(const ShotsStatePtr shots_state_ptr, const DimsIdx<
 template<bool dagger>
 static __host__
 void cuda_update_entries_half1(
-    cudaStream_t const stream,
+    cudaStream_t const &stream,
     ShotsStatePtr const shots_state_ptr
 ) {
     const Sid shots_n = shots_state_ptr.shots_n;
@@ -104,7 +104,7 @@ void op_update_entries_half0(const ShotsStatePtr shots_state_ptr, const DimsIdx<
 
 static __host__
 void cuda_update_entries_half0(
-    cudaStream_t const stream,
+    cudaStream_t const &stream,
     ShotsStatePtr const shots_state_ptr
 ) {
     const Sid shots_n = shots_state_ptr.shots_n;
@@ -183,7 +183,7 @@ void op_merge_entries_halves(const ShotStatePtr shot_state_ptr, const Flt epsilo
 
 static __host__
 void cuda_merge_entries_halves(
-    cudaStream_t const stream,
+    cudaStream_t const &stream,
     ShotsStatePtr const shots_state_ptr,
     Flt const epsilon
 ) {
@@ -194,7 +194,7 @@ void cuda_merge_entries_halves(
 template<bool dagger>
 static __host__
 void cuda_apply_t(
-    cudaStream_t const stream,
+    cudaStream_t const &stream,
     ShotsStatePtr const shots_state_ptr,
     Flt const epsilon,
     Qid const target

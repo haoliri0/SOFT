@@ -110,7 +110,7 @@ void op_compute_measure_entries(const ShotsStatePtr shots_state_ptr, const DimsI
 }
 
 static __host__
-void cuda_compute_measure_entries(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
+void cuda_compute_measure_entries(cudaStream_t const &stream, ShotsStatePtr const shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
     const Eid entries_m = shots_state_ptr.entries_m;
     cuda_dims_op<ShotsStatePtr, 2, op_compute_measure_entries>
@@ -199,7 +199,7 @@ void op_compute_measure_probs(const ShotsStatePtr shots_state_ptr, const DimsIdx
 }
 
 static __host__
-void cuda_compute_measure_probs(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
+void cuda_compute_measure_probs(cudaStream_t const &stream, ShotsStatePtr const shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
     cuda_dims_op<ShotsStatePtr, 2, op_compute_measure_probs>
         (stream, shots_state_ptr, dimsof(shots_n, 2));
@@ -263,7 +263,7 @@ void op_compute_measure_result(const ShotsStatePtr shots_state_ptr, const DimsId
 
 template<SampleMode mode = SampleMode::Random>
 static __host__
-void cuda_compute_measure_result(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
+void cuda_compute_measure_result(cudaStream_t const &stream, ShotsStatePtr const shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
     cuda_dims_op<ShotsStatePtr, 1, op_compute_measure_result<mode>>
         (stream, shots_state_ptr, dimsof(shots_n));
@@ -310,7 +310,7 @@ void op_apply_measure_result(const ShotsStatePtr shots_state_ptr, const DimsIdx<
 }
 
 static __host__
-void cuda_apply_measure_result(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
+void cuda_apply_measure_result(cudaStream_t const &stream, ShotsStatePtr const shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
     const Eid entries_m = shots_state_ptr.entries_m;
     cuda_dims_op<ShotsStatePtr, 2, op_apply_measure_result>
@@ -357,7 +357,7 @@ void op_change_measure_basis_rowsum(const ShotsStatePtr shots_state_ptr, const D
 }
 
 static __host__
-void cuda_change_measure_basis_rowsum(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr) {
+void cuda_change_measure_basis_rowsum(cudaStream_t const &stream, ShotsStatePtr const shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
     const Qid qubits_n = shots_state_ptr.qubits_n;
     const Qid rows_n = 2 * qubits_n;
@@ -409,7 +409,7 @@ void op_change_measure_basis_pivot(const ArgsApplyMeasureBasisPivot args, const 
 }
 
 static __host__
-void cuda_change_measure_basis_pivot(cudaStream_t const stream, ShotsStatePtr const shots_state_ptr, const Qid target) {
+void cuda_change_measure_basis_pivot(cudaStream_t const &stream, ShotsStatePtr const shots_state_ptr, const Qid target) {
     const Sid shots_n = shots_state_ptr.shots_n;
     cuda_dims_op<ArgsApplyMeasureBasisPivot, 1, op_change_measure_basis_pivot>
         (stream, {shots_state_ptr, target}, dimsof(shots_n));
@@ -436,7 +436,7 @@ void op_apply_reset(const ArgsAssignOperation args, const DimsIdx<2> dims_idx) {
 
 static __host__
 void cuda_apply_reset(
-    cudaStream_t const stream,
+    cudaStream_t const &stream,
     ShotsStatePtr const shots_state_ptr,
     const Qid target,
     const Bit value

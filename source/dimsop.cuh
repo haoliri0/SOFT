@@ -55,12 +55,12 @@ void kernel_dims_op(Args args, Dims<dims_n> dims) {
 
 template<typename Args, unsigned int dims_n, void (*op)(Args args, DimsIdx<dims_n> dims_idx)>
 static __host__
-void cuda_dims_op(cudaStream_t stream, Args args, Dims<dims_n> dims) {
+void cuda_dims_op(cudaStream_t const &stream, Args args, Dims<dims_n> dims) {
     const unsigned int global_threads_n = compute_dims_threads_n(dims);
     const unsigned int block_threads_n = default_block_threads_n;
     const unsigned int blocks_n = ceiling_divide(global_threads_n, block_threads_n);
     kernel_dims_op<Args, dims_n, op>
-        <<<blocks_n, block_threads_n, 0 ,stream>>>(args, dims);
+        <<<blocks_n, block_threads_n, 0, stream>>>(args, dims);
 }
 
 #endif

@@ -228,7 +228,7 @@ void op_classical_controlled_gate1(const ArgsClassicalControlledGate1 args, cons
 template<void (*op)(Bit &s, Bit &x, Bit &z)>
 static __host__
 void cuda_classical_controlled_gate1(
-    cudaStream_t const stream,
+    cudaStream_t const &stream,
     ShotsStatePtr const shots_state_ptr,
     const Qid target
 ) {

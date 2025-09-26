@@ -28,7 +28,7 @@ void op_apply_gate1(const ArgsApplyGate1 args, const DimsIdx<2> dims_idx) {
 template<void (*op)(Bit &s, Bit &x, Bit &z)>
 static __host__
 void cuda_apply_gate1_op(
-    cudaStream_t const stream,
+    cudaStream_t const &stream,
     ShotsStatePtr const shots_state_ptr,
     Qid const target
 ) {
@@ -65,7 +65,7 @@ void op_apply_gate2(const ArgsApplyGate2 args, const DimsIdx<2> dims_idx) {
 template<void (*op)(Bit &s, Bit &cx, Bit &cz, Bit &tx, Bit &tz)>
 static __host__
 void cuda_apply_gate2_op(
-    cudaStream_t const stream,
+    cudaStream_t const &stream,
     ShotsStatePtr const shots_state_ptr,
     Qid const control,
     Qid const target

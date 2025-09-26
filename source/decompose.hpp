@@ -6,18 +6,18 @@
 using namespace StnCuda;
 
 void cuda_compute_decomposed_bits(
-    cudaStream_t stream,
+    cudaStream_t const &stream,
     ShotsStatePtr shots_state_ptr,
     Qid target
 );
 
 void cuda_compute_decomposed_phase(
-    cudaStream_t stream,
+    cudaStream_t const &stream,
     ShotsStatePtr shots_state_ptr
 );
 
 void cuda_compute_decomp_pivot(
-    cudaStream_t stream,
+    cudaStream_t const &stream,
     ShotsStatePtr shots_state_ptr
 );
 

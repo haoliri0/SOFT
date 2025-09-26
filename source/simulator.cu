@@ -20,7 +20,7 @@ void op_init_table(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_id
 }
 
 static __host__
-void cuda_init_table(cudaStream_t const stream, const ShotsStatePtr shots_state_ptr) {
+void cuda_init_table(cudaStream_t const &stream, const ShotsStatePtr shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
     const Qid rows_n = 2 * shots_state_ptr.qubits_n;
     cuda_dims_op<ShotsStatePtr, 2, op_init_table>
@@ -42,7 +42,7 @@ void op_init_entries(const ShotsStatePtr shots_state_ptr, const DimsIdx<1> dims_
 }
 
 static __host__
-void cuda_init_entries(cudaStream_t const stream, const ShotsStatePtr shots_state_ptr) {
+void cuda_init_entries(cudaStream_t const &stream, const ShotsStatePtr shots_state_ptr) {
     const Sid shots_n = shots_state_ptr.shots_n;
     cuda_dims_op<ShotsStatePtr, 1, op_init_entries>
         (stream, shots_state_ptr, dimsof(shots_n));
@@ -65,7 +65,7 @@ void op_init_rand(const ArgsInitRand args, const DimsIdx<1> dims_idx) {
 
 static __host__
 void cuda_init_rand(
-    cudaStream_t const stream,
+    cudaStream_t const &stream,
     const ShotsStatePtr shots_state_ptr,
     const unsigned long long seed,
     const Sid shot_i
