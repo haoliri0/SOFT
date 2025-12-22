@@ -1,5 +1,6 @@
 # cmake
 /cmake-build*
+/CMakeUserPresets.json
 
 # python
 __pycache__
@@ -7,3 +8,6 @@ __pycache__
 
 # ide clion
 /.idea
+
+# ide vscode
+.vscode/
