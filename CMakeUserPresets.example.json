@@ -17,8 +17,8 @@
     },
     {
       "name": "Release",
-      "binaryDir": "cmake-build-release",
       "inherits": "Debug",
+      "binaryDir": "cmake-build-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
