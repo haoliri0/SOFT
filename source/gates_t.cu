@@ -4,7 +4,7 @@
 #include "./shotsop.cuh"
 #include "./dimsop.cuh"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 template<bool dagger>
 static __device__

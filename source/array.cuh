@@ -1,5 +1,5 @@
-#ifndef STN_CUDA_ARRAY_CUH
-#define STN_CUDA_ARRAY_CUH
+#ifndef SOFT_CUDA_ARRAY_CUH
+#define SOFT_CUDA_ARRAY_CUH
 
 template<typename Item, unsigned int n>
 struct Array {

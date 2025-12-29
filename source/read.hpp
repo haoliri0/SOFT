@@ -1,5 +1,5 @@
-#ifndef STN_CUDA_READ_HPP
-#define STN_CUDA_READ_HPP
+#ifndef SOFT_CUDA_READ_HPP
+#define SOFT_CUDA_READ_HPP
 
 #include <istream>
 #include <charconv>

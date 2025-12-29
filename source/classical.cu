@@ -2,7 +2,7 @@
 #include "./shotsop.cuh"
 #include "./gates.cuh"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 static __device__
 void op_classical_flip(const ShotStatePtr shot_state_ptr) {

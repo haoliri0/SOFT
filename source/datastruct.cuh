@@ -1,9 +1,9 @@
-#ifndef STN_CUDA_DATASTRUCT_CUH
-#define STN_CUDA_DATASTRUCT_CUH
+#ifndef SOFT_CUDA_DATASTRUCT_CUH
+#define SOFT_CUDA_DATASTRUCT_CUH
 
 #include "./datatype.cuh"
 
-namespace StnCuda {
+namespace SoftCuda {
 
 template<typename Item, typename... Args>
 static __device__ __host__

@@ -4,7 +4,7 @@
 #include "./threads.cuh"
 #include "./dimsop.cuh"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 
 struct ArgsComputeDecomposedBits {
