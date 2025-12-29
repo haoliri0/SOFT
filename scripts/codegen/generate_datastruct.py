@@ -481,12 +481,12 @@ def write_entire_code(writer: Callable[[str], Any], spec: DynamicStructSpec, pre
 
 def main(code_file_path: str | None = None):
     prefix = (
-        "#ifndef STN_CUDA_DATASTRUCT_CUH\n"
-        "#define STN_CUDA_DATASTRUCT_CUH\n"
+        "#ifndef SOFT_CUDA_DATASTRUCT_CUH\n"
+        "#define SOFT_CUDA_DATASTRUCT_CUH\n"
         "\n"
         '#include "./datatype.cuh"\n'
         "\n"
-        "namespace StnCuda {\n")
+        "namespace SoftCuda {\n")
 
     postfix = (
         "}\n"

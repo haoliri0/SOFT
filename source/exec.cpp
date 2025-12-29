@@ -10,7 +10,7 @@
 #include "./write.hpp"
 #include "./read.hpp"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 // cli args
 

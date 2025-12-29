@@ -5,7 +5,7 @@
 #include "./dimsop.cuh"
 #include "./gates.cuh"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 static __device__
 void compute_measure_entries_situation0(const ShotStatePtr shot_state_ptr, const Eid entry_i) {

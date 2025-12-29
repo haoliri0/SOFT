@@ -1,10 +1,10 @@
-#ifndef STN_CUDA_SHOTSOP_CUH
-#define STN_CUDA_SHOTSOP_CUH
+#ifndef SOFT_CUDA_SHOTSOP_CUH
+#define SOFT_CUDA_SHOTSOP_CUH
 
 #include "./dimsop.cuh"
 #include "./datastruct.cuh"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 template<typename Args>
 struct ArgsShotsOp {

@@ -1,5 +1,5 @@
-#ifndef STN_CUDA_DIMSOP_CUH
-#define STN_CUDA_DIMSOP_CUH
+#ifndef SOFT_CUDA_DIMSOP_CUH
+#define SOFT_CUDA_DIMSOP_CUH
 
 #include "./array.cuh"
 #include "./threads.cuh"

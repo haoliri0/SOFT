@@ -54,7 +54,7 @@ def compute_statevector(
     return np.sum(entries_state, axis=0)
 
 
-def compute_statevector_from_stn(
+def compute_statevector_from_soft(
     table: tuple[str, ...],
     entries: Iterable[tuple[tuple[bool, ...], complex]],
 ) -> np.ndarray:

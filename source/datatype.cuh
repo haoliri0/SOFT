@@ -1,11 +1,11 @@
-#ifndef STN_CUDA_DATATYPE_CUH
-#define STN_CUDA_DATATYPE_CUH
+#ifndef SOFT_CUDA_DATATYPE_CUH
+#define SOFT_CUDA_DATATYPE_CUH
 
 #include<complex>
 #include<curand_kernel.h>
 #include<cuda/std/complex>
 
-namespace StnCuda {
+namespace SoftCuda {
 
 using Sid = unsigned int;
 using Qid = unsigned int;

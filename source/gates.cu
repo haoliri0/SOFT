@@ -1,6 +1,6 @@
 #include "./gates.cuh"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 void Simulator::apply_x(const Qid target) const noexcept {
     cuda_apply_gate1_op<op_apply_x>(stream, shots_state_ptr, target);

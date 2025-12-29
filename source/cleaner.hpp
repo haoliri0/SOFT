@@ -1,5 +1,5 @@
-#ifndef STN_CUDA_CLEANER_HPP
-#define STN_CUDA_CLEANER_HPP
+#ifndef SOFT_CUDA_CLEANER_HPP
+#define SOFT_CUDA_CLEANER_HPP
 
 #include <functional>
 

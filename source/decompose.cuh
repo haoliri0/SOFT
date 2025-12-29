@@ -1,9 +1,9 @@
-#ifndef STN_CUDA_DECOMPOSE_CUH
-#define STN_CUDA_DECOMPOSE_CUH
+#ifndef SOFT_CUDA_DECOMPOSE_CUH
+#define SOFT_CUDA_DECOMPOSE_CUH
 
 #include "./datatype.cuh"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 static __device__
 Bit compute_sign(Bst key, const Bit *stab_bits, const Qid qubits_n) {

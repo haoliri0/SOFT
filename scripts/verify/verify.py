@@ -11,7 +11,7 @@ sys.path.append(project_dir_path)
 
 from scripts.verify.utils_ops import Op, generate_random_ops, parse_ops, print_ops
 from scripts.verify.utils_qiskit import make_qiskit_circuit, run_qiskit_circuit
-from scripts.verify.utils_stn import run_stn_and_collect_states
+from scripts.verify.utils_soft import run_soft_and_collect_states
 
 np.set_printoptions(precision=6, sign='+', floatmode='fixed')
 
@@ -25,12 +25,12 @@ def sync_global_phase(state0: np.ndarray, state1: np.ndarray) -> np.ndarray:
     return state1 * coef
 
 
-def check_steps_state(states: Iterable[np.ndarray], states_stn: Iterable[np.ndarray]) -> int | None:
-    for index, (state, state_stn) in enumerate(zip(states, states_stn)):
+def check_steps_state(states: Iterable[np.ndarray], states_soft: Iterable[np.ndarray]) -> int | None:
+    for index, (state, state_soft) in enumerate(zip(states, states_soft)):
         state = np.asarray(state)
-        state_stn = np.asarray(state_stn)
-        state_stn = sync_global_phase(state, state_stn)
-        if not np.isclose(state, state_stn, atol=1e-5).all():
+        state_soft = np.asarray(state_soft)
+        state_soft = sync_global_phase(state, state_soft)
+        if not np.isclose(state, state_soft, atol=1e-5).all():
             return index
     return None
 
@@ -47,11 +47,11 @@ def verify_ops(*,
 
     circuit = make_qiskit_circuit(ops, qubits_n, results_n)
     states, results, _ = run_qiskit_circuit(circuit)
-    states_stn = run_stn_and_collect_states(
+    states_soft = run_soft_and_collect_states(
         exec_file_path, ops, results,
         qubits_n, entries_m, results_n)
 
-    err_step_index = check_steps_state(states, states_stn)
+    err_step_index = check_steps_state(states, states_soft)
     if err_step_index is not None:
         print("\n\n\n")
         print("Found error!!!!!")
@@ -62,7 +62,7 @@ def verify_ops(*,
         print(f"results={results}")
         print(f"err_step={err_step_index}")
         print(f"state_expected=\n\t{states[err_step_index]!r}")
-        print(f"state_actual=\n\t{states_stn[err_step_index]!r}")
+        print(f"state_actual=\n\t{states_soft[err_step_index]!r}")
 
     return err_step_index is None
 
@@ -105,7 +105,7 @@ def verify_random(*,
 
 
 if __name__ == "__main__":
-    exec_file_path = os.path.join(project_dir_path, "cmake-build-release/stn_cuda_exec")
+    exec_file_path = os.path.join(project_dir_path, "cmake-build-release/soft_cuda_exec")
     verify_random(
         exec_file_path=exec_file_path,
         qubits_n=8,

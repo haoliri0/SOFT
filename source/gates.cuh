@@ -1,10 +1,10 @@
-#ifndef STN_CUDA_GATES_CUH
-#define STN_CUDA_GATES_CUH
+#ifndef SOFT_CUDA_GATES_CUH
+#define SOFT_CUDA_GATES_CUH
 
 #include "./simulator.hpp"
 #include "./dimsop.cuh"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 struct ArgsApplyGate1 {
     const ShotsStatePtr shots_state_ptr;

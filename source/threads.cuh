@@ -1,5 +1,5 @@
-#ifndef STN_CUDA_THREADS_CUH
-#define STN_CUDA_THREADS_CUH
+#ifndef SOFT_CUDA_THREADS_CUH
+#define SOFT_CUDA_THREADS_CUH
 
 #include <cuda_runtime.h>
 
