@@ -12,7 +12,7 @@ project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
 sys.path.append(project_dir_path)
 
 from scripts.utils.jobs import JobsQueueExecutor
-from scripts.utils.stn import Args, make_cmd, read_args, read_dict_key_value, read_entries, read_printed_shots_flt, \
+from scripts.utils.soft import Args, make_cmd, read_args, read_dict_key_value, read_entries, read_printed_shots_flt, \
     read_printed_shots_state, read_table
 
 

@@ -1,9 +1,9 @@
-#ifndef STN_CUDA_DECOMPOSE_HPP
-#define STN_CUDA_DECOMPOSE_HPP
+#ifndef SOFT_CUDA_DECOMPOSE_HPP
+#define SOFT_CUDA_DECOMPOSE_HPP
 
 #include "./simulator.hpp"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 void cuda_compute_decomposed_bits(
     cudaStream_t const &stream,

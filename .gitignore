@@ -1,3 +1,6 @@
+# cpp
+/build
+
 # cmake
 /cmake-build*
 /CMakeUserPresets.json

@@ -2,7 +2,7 @@
 #include "gates.cuh"
 #include "simulator.hpp"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 struct RandomChooseResult {
     const Int value;

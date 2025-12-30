@@ -2,7 +2,7 @@
 #include "./simulator.hpp"
 #include "./dimsop.cuh"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 
 static __device__

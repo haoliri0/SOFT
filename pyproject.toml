@@ -1,5 +1,5 @@
 [project]
-name = "stn-cuda"
+name = "soft-cuda"
 version = "0.1.17"
 
 requires-python = ">=3.11"

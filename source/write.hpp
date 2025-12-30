@@ -1,5 +1,5 @@
-#ifndef STN_CUDA_WRITE_HPP
-#define STN_CUDA_WRITE_HPP
+#ifndef SOFT_CUDA_WRITE_HPP
+#define SOFT_CUDA_WRITE_HPP
 
 #include <iostream>
 #include <streambuf>
@@ -7,7 +7,7 @@
 #include "./simulator.hpp"
 #include "./exceptions.hpp"
 
-using namespace StnCuda;
+using namespace SoftCuda;
 
 // indent
 

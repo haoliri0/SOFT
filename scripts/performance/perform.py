@@ -12,7 +12,7 @@ script_dir_path = os.path.dirname(__file__)
 project_dir_path = os.path.join(script_dir_path, "../..")
 sys.path.append(project_dir_path)
 
-from scripts.utils.stn import Args, make_cmd
+from scripts.utils.soft import Args, make_cmd
 
 span_time_pattern = re.compile(r"span_time: (\d+(\.\d+)?) s")
 avg_speed_pattern = re.compile(r"avg_speed: (\d+(\.\d+)?) shot/s")
@@ -109,7 +109,7 @@ def main(*,
 
 if __name__ == '__main__':
     main(
-        exec_file_path=os.path.join(project_dir_path, "cmake-build-release/stn_cuda_exec"),
+        exec_file_path=os.path.join(project_dir_path, "cmake-build-release/soft_cuda_exec"),
         records_file_path=os.path.join(script_dir_path, "records.jsonl"),
         circuit_file_path=os.path.join(script_dir_path, "circuit_3.txt"),
         experiment_name="performance",

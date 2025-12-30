@@ -1,12 +1,12 @@
-#ifndef STN_CUDA_SIMULATOR_HPP
-#define STN_CUDA_SIMULATOR_HPP
+#ifndef SOFT_CUDA_SIMULATOR_HPP
+#define SOFT_CUDA_SIMULATOR_HPP
 
 #include<cuda_runtime.h>
 #include "./array.cuh"
 #include "./datatype.cuh"
 #include "./datastruct.cuh"
 
-namespace StnCuda {
+namespace SoftCuda {
 
 struct SimulatorArgs {
     Sid shot_i = 0;
