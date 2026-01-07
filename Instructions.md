@@ -216,14 +216,10 @@ You can save or print the noise results by performing a `SAVE` or `PRINT` operat
 
 * `FLIP`: flip the value of working integer as a boolean.
 * `RANDFLIP <prob>`: perform `FLIP` with probability `prob`.
-* `OR <index0> <index1> ...`: logical or on multiple memory integers (as boolean).
-    * Result is stored in working integer.
-* `XOR <index0> <index1> ...`: logical xor on multiple memory integers (as boolean).
-    * Result is stored in working integer.
-* `AND <index0> <index1> ...`: logical and on multiple memory integers (as boolean).
-    * Result is stored in working integer.
-* `MATCH <index0> <index1> ... <value0> <value1> ...`: check whether the specified memory integers are equal to the specified values.
-    * Result is stored in working integer.
+* `OR <index0> <index1> ...`: logical or on multiple memory integers (as boolean), storing result in working integer.
+* `XOR <index0> <index1> ...`: logical xor on multiple memory integers (as boolean), storing result in working integer.
+* `AND <index0> <index1> ...`: logical and on multiple memory integers (as boolean), storing result in working integer.
+* `MATCH <index0> <index1> ... <value0> <value1> ...`: check whether all specified memory integers are equal to the corresponding given values, storing result in working integer.
 * `CHECK <error>`: set the error code to `error` if working integer is not `0`.
 
 #### I/O Operations
