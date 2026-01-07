@@ -99,8 +99,6 @@ but has separate memory space and uses a different random seed.
 The states of different shots are strictly isolated from each other in memory,
 in other words, there is no interaction between shots.
 
-### 2. State
-
 The state of each shot consists of the following parts:
 
 * `qubits`: The quantum state of a fixed number of qubits in generalized stabilizer representation.
@@ -111,7 +109,7 @@ The state of each shot consists of the following parts:
     * If the error code is not `0`, all results of this shot will have undefined values.
 * `hidden memory`: Other working space to ensure proper functioning, hidden from users.
 
-### 3. Parameters
+### 2. Parameters
 
 Here we introduce the command-line parameters of the simulator:
 
@@ -152,7 +150,7 @@ Here is an example command to run the executable:
 Note that there is no command-line argument about the operations to perform (the quantum circuit to run).
 By design, it should be passed through stdin instead.
 
-### 4. Operations
+### 3. Operations
 
 Running the executable file in the command line will enter a shell-like environment,
 where users can perform operations by entering corresponding texts.
