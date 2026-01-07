@@ -192,8 +192,8 @@ You can save or print the measurement results by performing a `SAVE` or `PRINT` 
 * `XERR <prob> <target>`: apply a pauli X gate with probability `prob` on specified qubit.
 * `YERR <prob> <target>`: apply a pauli Y gate with probability `prob` on specified qubit.
 * `ZERR <prob> <target>`: apply a pauli Z gate with probability `prob` on specified qubit.
-* `DEP1 <prob> <target>`: single-qubit depolarization, apply one of X, Y, Z gates with probability `prob/3`.
-* `DEP2 <prob> <target0> <target1>`: two-qubit depolarization, apply one of XI, YI, ZI, XX, ..., ZZ gates with probability `prob/15`.
+* `DEP1 <prob> <target>`: single-qubit depolarization, apply one of X, Y, Z gates with probability `prob`.
+* `DEP2 <prob> <target0> <target1>`: two-qubit depolarization, apply one of XI, YI, ZI, XX, ..., ZZ (totally 15) gates with probability `prob`.
 
 After any of these noise operations,
 the type of sampled operation is stored in the working integer.
