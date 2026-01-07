@@ -107,6 +107,10 @@ The state of each shot consists of the following parts:
 * `error code`: An error code to indicate the running status of this shot.
     * If the error code is `0`, the simulation is successful.
     * If the error code is not `0`, all results of this shot will have undefined values.
+    * Predefined error codes:
+        * `0`: success - the simulation is successful.
+        * `-1`: entries overflow error - the number of entries in the generalized stabilizer representation exceeds the limit.
+        * `-2`: out of bounds error - the index of qubits, memory integers or memory floats is out of bounds.
 * `hidden memory`: Other working space to ensure proper functioning, hidden from users.
 
 ### 2. Parameters
