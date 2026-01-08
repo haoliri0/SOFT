@@ -15,8 +15,8 @@ To build from source, the following packages are needed:
 >  * gcc 11.4.0
 >  * cuda toolkit 12.1
 
-> To build on Windows, you may need to install [Visual Studio](https://visualstudio.microsoft.com/),
-> since cuda toolkit supports only MSVC compiler on Windows.
+> We currently only support linux or unix-like operating systems.
+> Building on Windows is not supported yet.
 
 ### 2. Configuring
 
