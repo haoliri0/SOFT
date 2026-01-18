@@ -68,7 +68,7 @@ Preset `Debug` tells the compiler to preserve information for debugging.
 With a generated build system, we can compile the source code with the following command:
 
 ```shell
-cmake --build --preset Release
+cmake --build ./cmake-build-release
 ```
 
 > If not using presets, you should run:
