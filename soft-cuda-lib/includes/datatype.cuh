@@ -1,9 +1,9 @@
 #ifndef SOFT_CUDA_DATATYPE_CUH
 #define SOFT_CUDA_DATATYPE_CUH
 
-#include<complex>
-#include<curand_kernel.h>
-#include<cuda/std/complex>
+#include <complex>
+#include <curand_kernel.h>
+#include <cuda/std/complex>
 
 namespace SoftCuda {
 

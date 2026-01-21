@@ -1,8 +1,8 @@
 #ifndef SOFT_CUDA_EXCEPTIONS_HPP
 #define SOFT_CUDA_EXCEPTIONS_HPP
 
-#include<exception>
-#include<cuda_runtime.h>
+#include <exception>
+#include <cuda_runtime.h>
 
 class CudaException final : public std::exception {
 public:

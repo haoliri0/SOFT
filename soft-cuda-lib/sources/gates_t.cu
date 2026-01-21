@@ -1,4 +1,4 @@
-#include "./simulator.hpp"
+#include <simulator.hpp>
 #include "./decompose.hpp"
 #include "./decompose.cuh"
 #include "./shotsop.cuh"

@@ -4,8 +4,7 @@
 #include <iostream>
 #include <functional>
 
-#include "./datatype.cuh"
-#include "./simulator.hpp"
+#include <simulator.hpp>
 #include "./cleaner.hpp"
 #include "./write.hpp"
 #include "./read.hpp"

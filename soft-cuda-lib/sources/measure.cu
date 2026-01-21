@@ -1,7 +1,6 @@
-#include "./simulator.hpp"
+#include <simulator.hpp>
 #include "./decompose.hpp"
 #include "./decompose.cuh"
-#include "./datatype.cuh"
 #include "./dimsop.cuh"
 #include "./gates.cuh"
 

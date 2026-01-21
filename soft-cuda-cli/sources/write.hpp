@@ -4,7 +4,8 @@
 #include <iostream>
 #include <streambuf>
 #include <utility>
-#include "./simulator.hpp"
+
+#include <simulator.hpp>
 #include "./exceptions.hpp"
 
 using namespace SoftCuda;

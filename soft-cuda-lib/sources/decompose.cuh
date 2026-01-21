@@ -1,7 +1,7 @@
 #ifndef SOFT_CUDA_DECOMPOSE_CUH
 #define SOFT_CUDA_DECOMPOSE_CUH
 
-#include "./datatype.cuh"
+#include <datatype.cuh>
 
 using namespace SoftCuda;
 

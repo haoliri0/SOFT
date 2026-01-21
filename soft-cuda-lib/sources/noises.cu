@@ -1,6 +1,6 @@
+#include <simulator.hpp>
 #include "dimsop.cuh"
 #include "gates.cuh"
-#include "simulator.hpp"
 
 using namespace SoftCuda;
 

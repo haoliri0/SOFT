@@ -4,7 +4,8 @@
 #include <istream>
 #include <charconv>
 #include <exception>
-#include "./simulator.hpp"
+
+#include <simulator.hpp>
 
 static
 bool match(const char *str, const char *seg) {

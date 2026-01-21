@@ -1,7 +1,6 @@
+#include <simulator.hpp>
 #include "./decompose.hpp"
 #include "./decompose.cuh"
-#include "./simulator.hpp"
-#include "./threads.cuh"
 #include "./dimsop.cuh"
 
 using namespace SoftCuda;

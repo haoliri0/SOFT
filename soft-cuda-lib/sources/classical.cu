@@ -1,4 +1,4 @@
-#include "./simulator.hpp"
+#include <simulator.hpp>
 #include "./shotsop.cuh"
 #include "./gates.cuh"
 

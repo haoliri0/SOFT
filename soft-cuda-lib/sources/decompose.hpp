@@ -1,7 +1,7 @@
 #ifndef SOFT_CUDA_DECOMPOSE_HPP
 #define SOFT_CUDA_DECOMPOSE_HPP
 
-#include "./simulator.hpp"
+#include <simulator.hpp>
 
 using namespace SoftCuda;
 

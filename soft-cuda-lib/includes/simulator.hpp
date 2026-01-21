@@ -1,7 +1,7 @@
 #ifndef SOFT_CUDA_SIMULATOR_HPP
 #define SOFT_CUDA_SIMULATOR_HPP
 
-#include<cuda_runtime.h>
+#include <cuda_runtime.h>
 #include "./array.cuh"
 #include "./datatype.cuh"
 #include "./datastruct.cuh"

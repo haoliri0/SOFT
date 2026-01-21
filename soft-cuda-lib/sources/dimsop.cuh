@@ -1,7 +1,7 @@
 #ifndef SOFT_CUDA_DIMSOP_CUH
 #define SOFT_CUDA_DIMSOP_CUH
 
-#include "./array.cuh"
+#include <array.cuh>
 #include "./threads.cuh"
 
 template<unsigned int dims_n>

@@ -1,8 +1,8 @@
 #ifndef SOFT_CUDA_SHOTSOP_CUH
 #define SOFT_CUDA_SHOTSOP_CUH
 
+#include <datastruct.cuh>
 #include "./dimsop.cuh"
-#include "./datastruct.cuh"
 
 using namespace SoftCuda;
 

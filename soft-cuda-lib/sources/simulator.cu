@@ -1,5 +1,4 @@
-#include <cuda_runtime.h>
-#include "./simulator.hpp"
+#include <simulator.hpp>
 #include "./dimsop.cuh"
 
 using namespace SoftCuda;
