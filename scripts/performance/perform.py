@@ -109,7 +109,7 @@ def main(*,
 
 if __name__ == '__main__':
     main(
-        exec_file_path=os.path.join(project_dir_path, "cmake-build-release/soft_cuda_exec"),
+        exec_file_path=os.path.join(project_dir_path, "cmake-build-release/soft-cuda-cli/soft-cuda-cli"),
         records_file_path=os.path.join(script_dir_path, "records.jsonl"),
         circuit_file_path=os.path.join(script_dir_path, "circuit_3.txt"),
         experiment_name="performance",

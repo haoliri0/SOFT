@@ -78,14 +78,14 @@ cmake --build ./cmake-build-release
 
 After this command, you will find the built artifacts in the build folder `./cmake-build-release`:
 
-* `libsoft_cuda.a`: a static library of the simulator.
-* `soft_cuda_exec`: an executable file, the command-line interface of the simulator.
+* `cmake-build-release/soft-cuda-lib/libsoft-cuda.a`: a static library of the simulator.
+* `cmake-build-release/soft-cuda-cli/soft-cuda-cli`: an executable file, the command-line interface of the simulator.
 
 ## Using the command-line interface
 
 ### 1. Overview
 
-We provide a command-line interface (the executable file `soft_cuda_exec`),
+We provide a command-line interface (`soft-cuda-cli`),
 which allows users to perform interactions via stdio.
 
 The simulator maintains in memory (on GPU) the state of a system,
@@ -141,7 +141,7 @@ Here we introduce the command-line parameters of the simulator:
 Here is an example command to run the executable:
 
 ```shell
-./cmake-build-release/soft_cuda_exec \
+./cmake-build-release/soft-cuda-cli/soft-cuda-cli \
   --shots_n 1024 \
   --qubits_n 32 \
   --entries_m 2048 \

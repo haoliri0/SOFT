@@ -105,7 +105,7 @@ def verify_random(*,
 
 
 if __name__ == "__main__":
-    exec_file_path = os.path.join(project_dir_path, "cmake-build-release/soft_cuda_exec")
+    exec_file_path = os.path.join(project_dir_path, "cmake-build-release/soft-cuda-cli/soft-cuda-cli")
     verify_random(
         exec_file_path=exec_file_path,
         qubits_n=8,

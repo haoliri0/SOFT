@@ -14,7 +14,7 @@ Here is an example:
 
 ```bash
 cat ./magic_state_cultivation/circuits/circuit_d5_p0.001.stim.compiled | \
-./cmake-build-release/soft_cuda_exec \
+./cmake-build-release/soft-cuda-cli/soft-cuda-cli \
   --qubits_n 42 \
   --entries_m 2048 \
   --mem_ints_m 112 \

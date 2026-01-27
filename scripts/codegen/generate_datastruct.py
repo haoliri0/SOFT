@@ -760,6 +760,6 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
 
 if __name__ == '__main__':
     project_dir_path = os.path.join(os.path.dirname(__file__), "../..")
-    code_file_path = os.path.join(project_dir_path, "source/datastruct.cuh")
+    code_file_path = os.path.join(project_dir_path, "soft-cuda-lib/includes/datastruct.cuh")
     main(code_file_path)
     # main()
