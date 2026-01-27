@@ -1,6 +1,8 @@
 #ifndef SOFT_CUDA_ARRAY_CUH
 #define SOFT_CUDA_ARRAY_CUH
 
+namespace SoftCuda {
+
 template<typename Item, unsigned int n>
 struct Array {
     Item item;
@@ -53,6 +55,8 @@ template<typename Item, typename... Items>
 static __device__ __host__
 Array<Item, sizeof...(Items)> arrayof(Items... items) {
     return Array<Item, sizeof...(Items)>::of(items...);
+}
+
 }
 
 #endif
