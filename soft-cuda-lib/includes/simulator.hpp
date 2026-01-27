@@ -13,8 +13,8 @@ struct SimulatorArgs {
     Sid shots_n = 1;
     Qid qubits_n = 4;
     Eid entries_m = 16;
-    Mid mem_ints_m = 16;
-    Mid mem_flts_m = 16;
+    Mid mem_ints_n = 16;
+    Mid mem_flts_n = 16;
     Flt epsilon = 0;
     unsigned long long seed = 0;
 };

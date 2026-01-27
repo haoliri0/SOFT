@@ -248,7 +248,7 @@ void write_memory(std::ostream &ostream, const MemoryPtr ptr) {
     with_indent(ostream, [&] {
         write(ostream, "ints:\n");
         with_indent(ostream, [&] {
-            for (Mid mem_i = 0; mem_i < ptr.mem_ints_m; ++mem_i) {
+            for (Mid mem_i = 0; mem_i < ptr.mem_ints_n; ++mem_i) {
                 write(ostream, "- ");
                 write(ostream, *ptr.get_int_ptr(mem_i));
                 write(ostream, "\n");
@@ -256,7 +256,7 @@ void write_memory(std::ostream &ostream, const MemoryPtr ptr) {
         });
         write(ostream, "flts:\n");
         with_indent(ostream, [&] {
-            for (Mid mem_i = 0; mem_i < ptr.mem_flts_m; ++mem_i) {
+            for (Mid mem_i = 0; mem_i < ptr.mem_flts_n; ++mem_i) {
                 write(ostream, "- ");
                 write(ostream, *ptr.get_flt_ptr(mem_i));
                 write(ostream, "\n");
@@ -296,8 +296,8 @@ void write_simulator_args(std::ostream &ostream, const SimulatorArgs &args) {
         write_kv(ostream, "shots_n", args.shots_n);
         write_kv(ostream, "qubits_n", args.qubits_n);
         write_kv(ostream, "entries_m", args.entries_m);
-        write_kv(ostream, "mem_ints_m", args.mem_ints_m);
-        write_kv(ostream, "mem_flts_m", args.mem_flts_m);
+        write_kv(ostream, "mem_ints_n", args.mem_ints_n);
+        write_kv(ostream, "mem_flts_n", args.mem_flts_n);
         write_kv(ostream, "epsilon", args.epsilon);
         write_kv(ostream, "seed", args.seed);
     });

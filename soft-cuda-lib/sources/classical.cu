@@ -46,7 +46,7 @@ void op_classical_load_int(const ShotStatePtr shot_state_ptr, const Mid pointer)
     const MemoryPtr memory_ptr = shot_state_ptr.get_memory_ptr();
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
-    if (pointer >= memory_ptr.mem_ints_m) {
+    if (pointer >= memory_ptr.mem_ints_n) {
         Err &err = *work_ptr.get_err_ptr();
         err = err_memory_overflow;
         return;
@@ -62,7 +62,7 @@ void op_classical_load_flt(const ShotStatePtr shot_state_ptr, const Mid pointer)
     const MemoryPtr memory_ptr = shot_state_ptr.get_memory_ptr();
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
-    if (pointer >= memory_ptr.mem_flts_m) {
+    if (pointer >= memory_ptr.mem_flts_n) {
         Err &err = *work_ptr.get_err_ptr();
         err = err_memory_overflow;
         return;
@@ -78,7 +78,7 @@ void op_classical_save_int(const ShotStatePtr shot_state_ptr, const Mid pointer)
     const MemoryPtr memory_ptr = shot_state_ptr.get_memory_ptr();
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
-    if (pointer >= memory_ptr.mem_ints_m) {
+    if (pointer >= memory_ptr.mem_ints_n) {
         Err &err = *work_ptr.get_err_ptr();
         err = err_memory_overflow;
         return;
@@ -94,7 +94,7 @@ void op_classical_save_flt(const ShotStatePtr shot_state_ptr, const Mid pointer)
     const MemoryPtr memory_ptr = shot_state_ptr.get_memory_ptr();
     const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
 
-    if (pointer >= memory_ptr.mem_flts_m) {
+    if (pointer >= memory_ptr.mem_flts_n) {
         Err &err = *work_ptr.get_err_ptr();
         err = err_memory_overflow;
         return;

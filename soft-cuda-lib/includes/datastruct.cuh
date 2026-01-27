@@ -980,8 +980,8 @@ struct WorkPtr : WorkArgs {
 };
 
 struct MemoryArgs {
-    Mid mem_ints_m;
-    Mid mem_flts_m;
+    Mid mem_ints_n;
+    Mid mem_flts_n;
     
     __device__ __host__
     size_t get_int_size_bytes_n() const {
@@ -1003,8 +1003,8 @@ struct MemoryArgs {
     __device__ __host__
     size_t get_ints_size_bytes_n() const {
         return 
-            mem_ints_m * get_int_size_bytes_n() +
-            mem_ints_m * get_int_pad_bytes_n();
+            mem_ints_n * get_int_size_bytes_n() +
+            mem_ints_n * get_int_pad_bytes_n();
     }
     
     __device__ __host__
@@ -1049,8 +1049,8 @@ struct MemoryArgs {
     __device__ __host__
     size_t get_flts_size_bytes_n() const {
         return 
-            mem_flts_m * get_flt_size_bytes_n() +
-            mem_flts_m * get_flt_pad_bytes_n();
+            mem_flts_n * get_flt_size_bytes_n() +
+            mem_flts_n * get_flt_pad_bytes_n();
     }
     
     __device__ __host__
@@ -1127,8 +1127,8 @@ struct MemoryPtr : MemoryArgs {
 struct ShotStateArgs {
     Qid qubits_n;
     Eid entries_m;
-    Mid mem_ints_m;
-    Mid mem_flts_m;
+    Mid mem_ints_n;
+    Mid mem_flts_n;
     
     __device__ __host__
     size_t get_table_size_bytes_n() const {
@@ -1230,12 +1230,12 @@ struct ShotStateArgs {
     
     __device__ __host__
     size_t get_memory_size_bytes_n() const {
-        return MemoryArgs{mem_ints_m, mem_flts_m}.get_size_bytes_n();
+        return MemoryArgs{mem_ints_n, mem_flts_n}.get_size_bytes_n();
     }
     
     __device__ __host__
     size_t get_memory_align_bytes_n() const {
-        return MemoryArgs{mem_ints_m, mem_flts_m}.get_align_bytes_n();
+        return MemoryArgs{mem_ints_n, mem_flts_n}.get_align_bytes_n();
     }
     
     __device__ __host__
@@ -1310,7 +1310,7 @@ struct ShotStatePtr : ShotStateArgs {
     __device__ __host__
     MemoryPtr get_memory_ptr() const {
         const size_t offset = get_memory_offset_bytes_n();
-        return {mem_ints_m, mem_flts_m, ptr + offset};
+        return {mem_ints_n, mem_flts_n, ptr + offset};
     }
 };
 
@@ -1318,17 +1318,17 @@ struct ShotsStateArgs {
     Sid shots_n;
     Qid qubits_n;
     Eid entries_m;
-    Mid mem_ints_m;
-    Mid mem_flts_m;
+    Mid mem_ints_n;
+    Mid mem_flts_n;
     
     __device__ __host__
     size_t get_shot_size_bytes_n() const {
-        return ShotStateArgs{qubits_n, entries_m, mem_ints_m, mem_flts_m}.get_size_bytes_n();
+        return ShotStateArgs{qubits_n, entries_m, mem_ints_n, mem_flts_n}.get_size_bytes_n();
     }
     
     __device__ __host__
     size_t get_shot_align_bytes_n() const {
-        return ShotStateArgs{qubits_n, entries_m, mem_ints_m, mem_flts_m}.get_align_bytes_n();
+        return ShotStateArgs{qubits_n, entries_m, mem_ints_n, mem_flts_n}.get_align_bytes_n();
     }
     
     __device__ __host__
@@ -1347,7 +1347,7 @@ struct ShotsStateArgs {
     
     __device__ __host__
     size_t get_shots_align_bytes_n() const {
-        return ShotStateArgs{qubits_n, entries_m, mem_ints_m, mem_flts_m}.get_align_bytes_n();
+        return ShotStateArgs{qubits_n, entries_m, mem_ints_n, mem_flts_n}.get_align_bytes_n();
     }
     
     __device__ __host__
@@ -1387,7 +1387,7 @@ struct ShotsStatePtr : ShotsStateArgs {
     __device__ __host__
     ShotStatePtr get_shot_ptr(const Sid shot_i) const {
         const size_t offset = get_shot_offset_bytes_n(shot_i);
-        return {qubits_n, entries_m, mem_ints_m, mem_flts_m, ptr + offset};
+        return {qubits_n, entries_m, mem_ints_n, mem_flts_n, ptr + offset};
     }
 };
 

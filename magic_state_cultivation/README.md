@@ -17,18 +17,18 @@ cat ./magic_state_cultivation/circuits/circuit_d5_p0.001.stim.compiled | \
 ./cmake-build-release/soft-cuda-cli/soft-cuda-cli \
   --qubits_n 42 \
   --entries_m 2048 \
-  --mem_ints_m 112 \
+  --mem_ints_n 112 \
   --shots_n 4 \
   --seed 42
 ```
 
-**Note:** the command-line arguments `qubits_n`, `entries_m`, `mem_ints_m`, `mem_flts_m`
+**Note:** the command-line arguments `qubits_n`, `entries_m`, `mem_ints_n`, `mem_flts_n`
 should be configured according to the circuit,
 ensuring sufficient memory allocation, or else an overflow error will occur.
 Here we provide a set of feasible arguments for different circuits:
 
-* for d=3 circuits, use `--qubits_n 15 --entries_m 32   --mem_ints_m 21`
-* for d=5 circuits, use `--qubits_n 42 --entries_m 2048 --mem_ints_m 112`
+* for d=3 circuits, use `--qubits_n 15 --entries_m 32   --mem_ints_n 21`
+* for d=5 circuits, use `--qubits_n 42 --entries_m 2048 --mem_ints_n 112`
 
 **Note:** the command-line arguments `seed` is default to be constant `0`.
 Do not omit it if you want to sample random results in different runs.

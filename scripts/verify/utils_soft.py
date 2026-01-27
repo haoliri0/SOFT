@@ -83,7 +83,7 @@ def run_soft_and_collect_states(
     args = soft.Args(
         qubits_n=qubits_n,
         entries_m=entries_m,
-        mem_ints_m=results_n)
+        mem_ints_n=results_n)
     cmd = soft.make_cmd(
         exec_file_path=exec_file_path,
         args=args)

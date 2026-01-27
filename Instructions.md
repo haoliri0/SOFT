@@ -121,8 +121,8 @@ Here we introduce the command-line parameters of the simulator:
 * `qubits_n`: The number of qubits. 
   * Limited by current implementation, only up to 64 qubits are supported.
   * We've planned to fix this in the next minor version.
-* `mem_ints_m`: The number of memory integers.
-* `mem_flts_m`: The number of memory floats.
+* `mem_ints_n`: The number of memory integers.
+* `mem_flts_n`: The number of memory floats.
 * `entries_m`: The maximum number of entries in the map of generalized stabilizer representation.
     * Initially, there is only one entry in the map.
     * Some operations (such as T gate and measurement) may double the number of entries.
@@ -147,8 +147,8 @@ Here is an example command to run the executable:
   --shots_n 1024 \
   --qubits_n 32 \
   --entries_m 2048 \
-  --mem_ints_m 1024 \
-  --mem_flts_m 1024 \
+  --mem_ints_n 1024 \
+  --mem_flts_n 1024 \
   --epsilon 1e-7 \
   --seed 42
 ```

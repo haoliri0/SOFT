@@ -9,8 +9,8 @@ class Args:
     shots_n: int = 1
     qubits_n: int
     entries_m: int
-    mem_ints_m: int = 0
-    mem_flts_m: int = 0
+    mem_ints_n: int = 0
+    mem_flts_n: int = 0
     epsilon: float = 0
     seed: int | None = None
 
@@ -21,8 +21,8 @@ def make_cmd(exec_file_path: str, args: Args) -> tuple[str, ...]:
         "--shots_n", str(args.shots_n),
         "--qubits_n", str(args.qubits_n),
         "--entries_m", str(args.entries_m),
-        "--mem_ints_m", str(args.mem_ints_m),
-        "--mem_flts_m", str(args.mem_flts_m),
+        "--mem_ints_n", str(args.mem_ints_n),
+        "--mem_flts_n", str(args.mem_flts_n),
         "--epsilon", str(args.epsilon),
         "--seed", str(0 if args.seed is None else args.seed))
 
@@ -88,16 +88,16 @@ def read_args(lines: Iterator[str]) -> Args:
     shots_n = read_dict_key_value_and_check(lines, "shots_n")
     qubits_n = read_dict_key_value_and_check(lines, "qubits_n")
     entries_m = read_dict_key_value_and_check(lines, "entries_m")
-    mem_ints_m = read_dict_key_value_and_check(lines, "mem_ints_m")
-    mem_flts_m = read_dict_key_value_and_check(lines, "mem_flts_m")
+    mem_ints_n = read_dict_key_value_and_check(lines, "mem_ints_n")
+    mem_flts_n = read_dict_key_value_and_check(lines, "mem_flts_n")
     epsilon = read_dict_key_value_and_check(lines, "epsilon")
     seed = read_dict_key_value_and_check(lines, "seed")
     return Args(
         shots_n=int(shots_n),
         qubits_n=int(qubits_n),
         entries_m=int(entries_m),
-        mem_ints_m=int(mem_ints_m),
-        mem_flts_m=int(mem_flts_m),
+        mem_ints_n=int(mem_ints_n),
+        mem_flts_n=int(mem_flts_n),
         epsilon=float(epsilon),
         seed=int(seed))
 

@@ -55,14 +55,14 @@ void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
             }
             continue;
         }
-        if (match(arg_key, "--mem_ints_m")) {
+        if (match(arg_key, "--mem_ints_n")) {
             const char *arg_value = *++iter;
-            parse_value(arg_value, args.mem_ints_m);
+            parse_value(arg_value, args.mem_ints_n);
             continue;
         }
-        if (match(arg_key, "--mem_flts_m")) {
+        if (match(arg_key, "--mem_flts_n")) {
             const char *arg_value = *++iter;
-            parse_value(arg_value, args.mem_flts_m);
+            parse_value(arg_value, args.mem_flts_n);
             continue;
         }
         if (match(arg_key, "--epsilon")) {

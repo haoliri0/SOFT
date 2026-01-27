@@ -84,7 +84,7 @@ cudaError_t Simulator::create(SimulatorArgs const &args) noexcept {
         if (err != cudaSuccess) break;
 
         // allocate state
-        shots_state_ptr = {args.shots_n, args.qubits_n, args.entries_m, args.mem_ints_m, args.mem_flts_m};
+        shots_state_ptr = {args.shots_n, args.qubits_n, args.entries_m, args.mem_ints_n, args.mem_flts_n};
         const size_t state_bytes_n = shots_state_ptr.get_size_bytes_n();
         err = cudaMallocAsync(&shots_state_ptr.ptr, state_bytes_n, stream);
         if (err != cudaSuccess) break;

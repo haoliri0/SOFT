@@ -679,8 +679,8 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
     memory_spec = DynamicStructSpec(
         name="Memory",
         params=(
-            ParamSpec(name="mem_ints_m", type="Mid"),
-            ParamSpec(name="mem_flts_m", type="Mid")),
+            ParamSpec(name="mem_ints_n", type="Mid"),
+            ParamSpec(name="mem_flts_n", type="Mid")),
         fields=(
             ListFieldSpec(
                 name="ints",
@@ -688,22 +688,22 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
                 item_type=ValueTypeSpec(name="Int"),
                 index_name="int_i",
                 index_type="Mid",
-                count="mem_ints_m"),
+                count="mem_ints_n"),
             ListFieldSpec(
                 name="flts",
                 item_name="flt",
                 item_type=ValueTypeSpec(name="Flt"),
                 index_name="flt_i",
                 index_type="Mid",
-                count="mem_flts_m"),
+                count="mem_flts_n"),
         ))
     shot_state_spec = DynamicStructSpec(
         name="ShotState",
         params=(
             ParamSpec(name="qubits_n", type="Qid"),
             ParamSpec(name="entries_m", type="Eid"),
-            ParamSpec(name="mem_ints_m", type="Mid"),
-            ParamSpec(name="mem_flts_m", type="Mid")),
+            ParamSpec(name="mem_ints_n", type="Mid"),
+            ParamSpec(name="mem_flts_n", type="Mid")),
         fields=(
             ItemFieldSpec(
                 name="table",
@@ -729,7 +729,7 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
                 name="memory",
                 type=DynamicStructTypeSpec(
                     spec=memory_spec,
-                    args=("mem_ints_m", 'mem_flts_m'))),
+                    args=("mem_ints_n", 'mem_flts_n'))),
         ))
     shots_state_spec = DynamicStructSpec(
         name="ShotsState",
@@ -737,15 +737,15 @@ Amp *get_half1_amp_ptr(const Eid entry_i) const {
             ParamSpec(name="shots_n", type="Sid"),
             ParamSpec(name="qubits_n", type="Qid"),
             ParamSpec(name="entries_m", type="Eid"),
-            ParamSpec(name="mem_ints_m", type="Mid"),
-            ParamSpec(name="mem_flts_m", type="Mid")),
+            ParamSpec(name="mem_ints_n", type="Mid"),
+            ParamSpec(name="mem_flts_n", type="Mid")),
         fields=(
             ListFieldSpec(
                 name="shots",
                 item_name="shot",
                 item_type=DynamicStructTypeSpec(
                     spec=shot_state_spec,
-                    args=("qubits_n", "entries_m", "mem_ints_m", "mem_flts_m")),
+                    args=("qubits_n", "entries_m", "mem_ints_n", "mem_flts_n")),
                 index_name="shot_i",
                 index_type="Sid",
                 count="shots_n"),
