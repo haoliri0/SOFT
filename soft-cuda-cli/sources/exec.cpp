@@ -40,6 +40,10 @@ void parse_cli_args(const std::span<const char *> span, CliArgs &args) {
                 fprintf(stderr, "Illegal value: qubits_n=%s\n", arg_value);
                 throw CliArgsException(CliArgsError::IllegalValue);
             }
+            if (args.qubits_n > 64) {
+                fprintf(stderr, "Illegal value: qubits_n=%s, expected <=64\n", arg_value);
+                throw CliArgsException(CliArgsError::IllegalValue);
+            }
             continue;
         }
         if (match(arg_key, "--entries_m")) {
