@@ -8,6 +8,11 @@ class CudaException final : public std::exception {
 public:
     const cudaError error;
     explicit CudaException(const cudaError error) : error(error) {}
+
+    [[nodiscard]]
+    const char *what() const noexcept override {
+        return cudaGetErrorString(error);
+    }
 };
 
 static
