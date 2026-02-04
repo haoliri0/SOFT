@@ -77,7 +77,7 @@ void compute_measure_entries_situation1(const ShotStatePtr shot_state_ptr, const
 static __device__
 void op_compute_measure_entries(const ShotsStatePtr shots_state_ptr, const DimsIdx<2> dims_idx) {
     Sid const shot_i = dims_idx.get<0>();
-    Bst const entry_i = dims_idx.get<1>();
+    Eid const entry_i = dims_idx.get<1>();
 
     const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
     const DecompPtr decomp_ptr = shot_state_ptr.get_decomp_ptr();
