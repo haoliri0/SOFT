@@ -1,6 +1,6 @@
 add_executable(
     soft-cuda-cli
-    "sources/exec.cpp")
+    "source/exec.cpp")
 
 target_link_libraries(
     soft-cuda-cli
