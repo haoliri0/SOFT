@@ -1,8 +1,10 @@
 import os
 import sys
+from functools import partial
 from itertools import count
 from typing import Iterable
 
+import fire
 import numpy as np
 from tqdm import tqdm
 
@@ -106,8 +108,8 @@ def verify_random(*,
 
 if __name__ == "__main__":
     exec_file_path = os.path.join(project_dir_path, "cmake-build-release/soft-cuda-cli/soft-cuda-cli")
-    verify_random(
+    fire.Fire(partial(verify_random,
         exec_file_path=exec_file_path,
+        ops_n=1024,
         qubits_n=8,
-        entries_m=1024,
-        ops_n=1024)
+        entries_m=1024))
