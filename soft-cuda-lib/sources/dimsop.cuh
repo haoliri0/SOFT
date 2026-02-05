@@ -4,6 +4,9 @@
 #include <array.cuh>
 #include "./threads.cuh"
 
+using namespace SoftCuda;
+
+
 template<unsigned int dims_n>
 using Dims = Array<unsigned int, dims_n>;
 
