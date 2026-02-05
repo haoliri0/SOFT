@@ -118,7 +118,9 @@ The state of each shot consists of the following parts:
 Here we introduce the command-line parameters of the simulator:
 
 * `shots_n`: The number of shots. Default is `1`.
-* `qubits_n`: The number of qubits.
+* `qubits_n`: The number of qubits. 
+  * Limited by current implementation, only up to 64 qubits are supported.
+  * We've planned to fix this in the next minor version.
 * `mem_ints_m`: The number of memory integers.
 * `mem_flts_m`: The number of memory floats.
 * `entries_m`: The maximum number of entries in the map of generalized stabilizer representation.
