@@ -10,7 +10,7 @@ You can find instructions for building and running SOFT in [Instructions.md](Ins
 
 For the first version of SOFT paper, see:
 
-    Li, Riling, et al. “SOFT: A High-Performance Simulator for Universal Fault-Tolerant Quantum Circuits.” *arXiv*, 2025, arXiv:2512.23037.
+> Li, Riling, et al. “SOFT: A High-Performance Simulator for Universal Fault-Tolerant Quantum Circuits.” _arXiv_, 2025, arXiv:2512.23037.
 
 
 ## One thing to note
