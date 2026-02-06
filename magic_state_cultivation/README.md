@@ -98,7 +98,7 @@ for serval captured erroneous cases in `*.reveal` files under folder `erroneous`
 where a bunch of extra information is recorded with prefix `#`.
 
 Here shows an example snippet from a `*.reveal`, 
-indicating an occurrence of a depolarizing error.
+indicating an occurrence of a depolarizing error on qubit $35$.
 
 ```text
 ...
