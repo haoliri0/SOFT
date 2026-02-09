@@ -231,6 +231,42 @@ void perform_print_err(const Simulator &simulator, const unsigned int print_i) {
     });
 }
 
+void perform_print_entries_n(const Simulator &simulator, const unsigned int print_i) {
+    const ShotsStatePtr shots_state_ptr = simulator.shots_state_ptr;
+    const size_t pitch = shots_state_ptr.get_shot_size_bytes_n() + shots_state_ptr.get_shot_pad_bytes_n();
+    const void *shot_entries_n_ptr = shots_state_ptr.get_shot_ptr(0).get_entries_ptr().get_entries_n_ptr();
+    const Sid shots_n = shots_state_ptr.shots_n;
+
+    auto const shots_entries_n = new Eid[shots_n];
+    Cleaner shots_entries_n_cleaner([shots_entries_n] { delete[] shots_entries_n; });
+
+    cuda_check(cudaMemcpy2DAsync(
+        shots_entries_n,
+        sizeof(Eid),
+        shot_entries_n_ptr,
+        pitch,
+        sizeof(Eid),
+        shots_n,
+        cudaMemcpyDeviceToHost,
+        simulator.stream));
+
+    cuda_check(cudaStreamSynchronize(simulator.stream));
+
+    auto &ostream = std::cout;
+    write(ostream, "print_");
+    write(ostream, print_i);
+    write(ostream, ":\n");
+    with_indent(ostream, [&] {
+        for (Sid shot_i = 0; shot_i < shots_n; ++shot_i) {
+            write(ostream, "shot_");
+            write(ostream, shot_i);
+            write(ostream, ": ");
+            write(ostream, shots_entries_n[shot_i]);
+            write(ostream, "\n");
+        }
+    });
+}
+
 // execution
 
 static
@@ -392,6 +428,8 @@ void execute_op(
             return execute_op(simulator, prints_n++, istream, perform_print_flt);
         if (object == "ERR")
             return execute_op(simulator, prints_n++, istream, perform_print_err);
+        if (object == "ENTRIES_N")
+            return execute_op(simulator, prints_n++, istream, perform_print_entries_n);
 
         fprintf(stderr, "Unknown print object: %s\n", object.c_str());
         throw ExecException(ExecError::IllegalOp);
