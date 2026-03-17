@@ -3,8 +3,8 @@ a high-performance parallel **S**imulat**O**r for universal **F**ault-**T**olera
 
 ## Instructions
 
-You can find instructions for building and running SOFT in [Instructions.md](Instructions.md).
-
+* Instructions for building from source: [Building.md](docs/Building.md).
+* Instructions for using the command-line interface: [UsingCli.md](docs/UsingCli.md)
 
 ## Paper
 
