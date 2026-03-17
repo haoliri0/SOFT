@@ -182,7 +182,7 @@ void cuda_noise_depo1(
 }
 
 void Simulator::apply_noise_depo1(const Flt prob, const Qid target) const noexcept {
-    cuda_random_choose(stream, shots_state_ptr, arrayof<Flt>(prob / 3, prob / 3, prob / 3));
+    cuda_random_choose2<3>(stream, shots_state_ptr, prob);
     cuda_noise_depo1(stream, shots_state_ptr, target);
 }
 
@@ -223,9 +223,6 @@ void cuda_noise_depo2(
 }
 
 void Simulator::apply_noise_depo2(const Flt prob, const Qid target0, const Qid target1) const noexcept {
-    cuda_random_choose(stream, shots_state_ptr, arrayof<Flt>(
-        prob / 15, prob / 15, prob / 15, prob / 15, prob / 15,
-        prob / 15, prob / 15, prob / 15, prob / 15, prob / 15,
-        prob / 15, prob / 15, prob / 15, prob / 15, prob / 15));
+    cuda_random_choose2<15>(stream, shots_state_ptr, prob);
     cuda_noise_depo2(stream, shots_state_ptr, target0, target1);
 }
