@@ -37,7 +37,7 @@ RandomChooseResult compute_random_choose_result(
     return compute_random_choose_result(probs, sample, 0., 0);
 }
 
-template<unsigned int probs_n>
+template<unsigned int probs_n = 1>
 static __device__ __host__
 RandomChooseResult compute_random_choose2_result(
     const Flt prob,
@@ -79,7 +79,7 @@ struct ArgsRandomChoose2 {
     const Flt prob;
 };
 
-template<unsigned int probs_n>
+template<unsigned int probs_n = 1>
 static __device__
 void op_random_choose2(const ArgsRandomChoose2 args, const DimsIdx<1> dims_idx) noexcept {
     const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
@@ -110,7 +110,7 @@ void cuda_random_choose(
         (stream, {shots_state_ptr, probs}, dimsof(shots_n));
 }
 
-template<unsigned int probs_n>
+template<unsigned int probs_n = 1>
 void cuda_random_choose2(
     cudaStream_t const &stream,
     ShotsStatePtr const &shots_state_ptr,
@@ -147,12 +147,12 @@ void cuda_noise_gate(
 }
 
 void Simulator::apply_noise_x(const Flt prob, const Qid target) const noexcept {
-    cuda_random_choose(stream, shots_state_ptr, arrayof<Flt>(prob));
+    cuda_random_choose2(stream, shots_state_ptr, prob);
     cuda_noise_gate<op_apply_x>(stream, shots_state_ptr, target);
 }
 
 void Simulator::apply_noise_z(const Flt prob, const Qid target) const noexcept {
-    cuda_random_choose(stream, shots_state_ptr, arrayof<Flt>(prob));
+    cuda_random_choose2(stream, shots_state_ptr, prob);
     cuda_noise_gate<op_apply_z>(stream, shots_state_ptr, target);
 }
 
