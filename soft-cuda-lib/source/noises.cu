@@ -9,34 +9,6 @@ struct RandomChooseResult {
     const Flt prob;
 };
 
-template<unsigned int probs_n>
-static __device__ __host__
-RandomChooseResult compute_random_choose_result(
-    const Array<Flt, probs_n> probs,
-    const Flt sample,
-    const Flt head_prob,
-    const Int head_value
-) noexcept {
-    if constexpr (probs_n == 0) {
-        return {0, 1 - head_prob};
-    } else {
-        const Flt prob = probs.item;
-        const Flt tail_prob = head_prob + prob;
-        const Int tail_value = head_value + 1;
-        if (sample <= tail_prob) return {tail_value, prob};
-        return compute_random_choose_result<probs_n - 1>(probs.tail, sample, tail_prob, tail_value);
-    }
-}
-
-template<unsigned int probs_n>
-static __device__ __host__
-RandomChooseResult compute_random_choose_result(
-    const Array<Flt, probs_n> probs,
-    const Flt sample
-) noexcept {
-    return compute_random_choose_result(probs, sample, 0., 0);
-}
-
 template<unsigned int probs_n = 1>
 static __device__ __host__
 RandomChooseResult compute_random_choose2_result(
@@ -46,32 +18,6 @@ RandomChooseResult compute_random_choose2_result(
     if (sample >= prob) return {0, 1 - prob};
     const Int value = 1 + static_cast<Int>(sample / (prob / probs_n));
     return {value, prob / probs_n};
-}
-
-template<unsigned int probs_n>
-struct ArgsRandomSample {
-    const ShotsStatePtr shots_state_ptr;
-    const Array<Flt, probs_n> probs;
-};
-
-template<unsigned int probs_n>
-static __device__
-void op_random_choose(const ArgsRandomSample<probs_n> args, const DimsIdx<1> dims_idx) noexcept {
-    const ShotsStatePtr shots_state_ptr = args.shots_state_ptr;
-    const Array<Flt, probs_n> probs = args.probs;
-
-    Sid const shot_i = dims_idx.get<0>();
-    const ShotStatePtr shot_state_ptr = shots_state_ptr.get_shot_ptr(shot_i);
-    const WorkPtr work_ptr = shot_state_ptr.get_work_ptr();
-
-    curandState *rand_state_ptr = work_ptr.get_rand_state_ptr();
-    const double sample = curand_uniform_double(rand_state_ptr);
-    const auto result = compute_random_choose_result<probs_n>(probs, sample);
-
-    Flt &result_prob = *work_ptr.get_flt_ptr();
-    Int &result_value = *work_ptr.get_int_ptr();
-    result_value = result.value;
-    result_prob = result.prob;
 }
 
 struct ArgsRandomChoose2 {
@@ -97,17 +43,6 @@ void op_random_choose2(const ArgsRandomChoose2 args, const DimsIdx<1> dims_idx) 
     Int &result_value = *work_ptr.get_int_ptr();
     result_value = result.value;
     result_prob = result.prob;
-}
-
-template<unsigned int probs_n>
-void cuda_random_choose(
-    cudaStream_t const &stream,
-    ShotsStatePtr const &shots_state_ptr,
-    Array<Flt, probs_n> const probs
-) noexcept {
-    const Sid shots_n = shots_state_ptr.shots_n;
-    cuda_dims_op<ArgsRandomSample<probs_n>, 1, op_random_choose<probs_n>>
-        (stream, {shots_state_ptr, probs}, dimsof(shots_n));
 }
 
 template<unsigned int probs_n = 1>
