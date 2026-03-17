@@ -238,6 +238,7 @@ You can save or print the noise results by performing a `SAVE` or `PRINT` operat
 * `PRINT FLT`: print the working float.
 * `PRINT ERR`: print the error code.
 * `PRINT STATE`: print the detailed current state, for debugging only.
+* `PRINT ENTRIES_N`: print the curren number of entries in the map of generalized stabilizer representation.
 
 The `PRINT` operations print results via stdout in a YAML-compatible format.
 This is the only way to read results from the simulator when using the command-line interface.
