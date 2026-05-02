@@ -15,6 +15,11 @@ For the first version of SOFT paper, see:
 
 ## One thing to note
 
-We are developing *SOFT v2*, which is expected to deliver **at least** a $3\times$ speedup over the first version.
+~~We are developing *SOFT v2*, which is expected to deliver **at least** a $3\times$ speedup over the first version.~~
+No more need for previously planned *SOFT v2*, as [Clifft](https://github.com/unitaryfoundation/clifft) achieved such a speedup.
+
+The Pauli propagation method in the Heisenberg picture is more suitable for massive sampling (SOFT directly simulates circuits in the Schrodinger picture).
+
+So we are deveploping the clifft-cuda now, which seems likely to be finished in two days with the generative AI :)
 
 Feel free to ask us ANY questions on the issue tracker — we'd be happy to answer them.
