@@ -1,0 +1,147 @@
+{
+  "run": {
+    "gpu": 0,
+    "sample_seconds": 60,
+    "repeats": 2,
+    "compile_timeout_seconds": 300,
+    "seed": 20260723,
+    "circuit_dir": "circuit",
+    "report": "GPU_performance.md"
+  },
+  "shots": {
+    "tsim_call": {
+      "msc_d3": 20000,
+      "msc_d5": 1,
+      "coherent_d3_r1": 1048576,
+      "coherent_d3_r3": 256,
+      "coherent_d5_r1": 1048576,
+      "coherent_d5_r5": 1,
+      "distillation": 1048576,
+      "surface_d7_r7": 131072,
+      "surface_d9_r9": 131072
+    },
+    "symft_call": {
+      "msc_d3": 5000000,
+      "msc_d5": 5000000,
+      "coherent_d3_r1": 1000000,
+      "coherent_d3_r3": 1000000,
+      "coherent_d5_r1": 100,
+      "coherent_d5_r5": 2,
+      "distillation": 2000000,
+      "surface_d7_r7": 5000000,
+      "surface_d9_r9": 5000000
+    }
+  },
+  "symft_gpu": {
+    "msc_d3": {
+      "mode": "gpu_presample_expressions",
+      "threads_per_block": 32,
+      "shots_per_launch": 4194304
+    },
+    "msc_d5": {
+      "mode": "gpu_presample_expressions",
+      "threads_per_block": 128,
+      "shots_per_launch": 262144
+    },
+    "coherent_d3_r1": {
+      "mode": "gpu_presample_expressions",
+      "threads_per_block": 32,
+      "shots_per_launch": 4194304
+    },
+    "coherent_d3_r3": {
+      "mode": "gpu_presample_expressions",
+      "threads_per_block": 32,
+      "shots_per_launch": 4194304
+    },
+    "coherent_d5_r1": {
+      "mode": "gpu",
+      "threads_per_block": 128,
+      "shots_per_launch": 1048576
+    },
+    "coherent_d5_r5": {
+      "mode": "gpu",
+      "threads_per_block": 64,
+      "shots_per_launch": 1048576
+    },
+    "distillation": {
+      "mode": "gpu_presample_expressions",
+      "threads_per_block": 32,
+      "shots_per_launch": 4194304
+    },
+    "surface_d7_r7": {
+      "mode": "gpu_presample_expressions",
+      "threads_per_block": 128,
+      "shots_per_launch": 1048576
+    },
+    "surface_d9_r9": {
+      "mode": "gpu_presample_expressions",
+      "threads_per_block": 128,
+      "shots_per_launch": 4194304
+    }
+  },
+  "circuits": [
+    {
+      "id": "msc_d3",
+      "group": "near-clifford",
+      "file": "msc_d3_inject_cultivate_p1e-3.stim",
+      "postselect": true,
+      "tsim_strategy": "cutting"
+    },
+    {
+      "id": "msc_d5",
+      "group": "near-clifford",
+      "file": "msc_d5_inject_cultivate_p1e-3.stim",
+      "postselect": true,
+      "tsim_strategy": "cutting"
+    },
+    {
+      "id": "coherent_d3_r1",
+      "group": "near-clifford",
+      "file": "coherent_surface_d3_r1_p1e-3_rz0p02.stim",
+      "postselect": true,
+      "tsim_strategy": "cutting"
+    },
+    {
+      "id": "coherent_d3_r3",
+      "group": "near-clifford",
+      "file": "coherent_surface_d3_r3_p1e-3_rz0p02.stim",
+      "postselect": true,
+      "tsim_strategy": "cutting"
+    },
+    {
+      "id": "coherent_d5_r1",
+      "group": "near-clifford",
+      "file": "coherent_surface_d5_r1_p1e-3_rz0p02.stim",
+      "postselect": true,
+      "tsim_strategy": "cutting"
+    },
+    {
+      "id": "coherent_d5_r5",
+      "group": "near-clifford",
+      "file": "coherent_surface_d5_r5_p1e-3_rz0p02.stim",
+      "postselect": true,
+      "tsim_strategy": "cutting"
+    },
+    {
+      "id": "distillation",
+      "group": "near-clifford",
+      "file": "distillation.stim",
+      "postselect": true,
+      "tsim_strategy": "cat5"
+    },
+    {
+      "id": "surface_d7_r7",
+      "group": "pure-clifford",
+      "file": "pure_surface_d7_r7_p1e-3.stim",
+      "postselect": false,
+      "tsim_strategy": "cat5"
+    },
+    {
+      "id": "surface_d9_r9",
+      "group": "pure-clifford",
+      "file": "pure_surface_d9_r9_p1e-3.stim",
+      "postselect": false,
+      "tsim_strategy": "cat5"
+    }
+  ]
+}

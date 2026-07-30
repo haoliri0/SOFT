@@ -1,0 +1,30 @@
+# Build and packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# Python bytecode and tool caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environments and editor metadata
+.venv/
+.vscode/
+.idea/
+.agents/
+.codex/
+
+# Native extension artifacts
+*.so
+*.pyd
+*.dylib
+
+# Generated benchmark reports
+benchmark/performance.md
+benchmark/GPU_performance.md
+
+# Local manuscript
+main.tex
