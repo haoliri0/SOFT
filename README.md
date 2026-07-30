@@ -1,3 +1,5 @@
+> **SymFT:** The second-generation successor to SOFT is available on the [`symft` branch](https://github.com/haoliri0/SOFT/tree/symft)
+
 # SOFT
 a high-performance parallel **S**imulat**O**r for universal **F**ault-**T**olerant quantum circuits
 
