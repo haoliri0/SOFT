@@ -65,6 +65,7 @@ enum class CircuitInstructionKind {
     RX,
     RY,
     MPP,
+    EXP_VAL,
     XError,
     YError,
     ZError,
@@ -108,6 +109,7 @@ struct CircuitInstruction {
     std::vector<CircuitPauliProduct> pauli_products;
     std::vector<CircuitFeedbackTarget> feedback_targets;
     std::vector<double> probabilities;
+    int exp_val = -1;
     int line = 0;
 };
 
@@ -128,6 +130,7 @@ struct CircuitObservableInclude {
 struct QuantumCircuit {
     int nqubits = 0;
     int nrecords = 0;
+    int nexpvals = 0;
     std::vector<CircuitInstruction> instructions;
     std::vector<CircuitDetector> detectors;
     std::vector<CircuitObservableInclude> observables;

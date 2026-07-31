@@ -1191,6 +1191,16 @@ void append_instruction(StimCircuitBuilder& builder, const StimInstruction& inst
         instruction.pauli_products = circuit_mpp_targets(builder.circuit.nqubits, inst);
         builder.circuit.nrecords += static_cast<int>(instruction.pauli_products.size());
         builder.circuit.instructions.push_back(std::move(instruction));
+    } else if (op == "EXP_VAL") {
+        require_no_parens(inst);
+        CircuitInstruction instruction = new_circuit_instruction(CircuitInstructionKind::EXP_VAL, inst.line);
+        instruction.pauli_products = circuit_mpp_targets(builder.circuit.nqubits, inst);
+        if (instruction.pauli_products.empty()) {
+            fail("EXP_VAL expects at least one Pauli product");
+        }
+        instruction.exp_val = builder.circuit.nexpvals;
+        builder.circuit.nexpvals += static_cast<int>(instruction.pauli_products.size());
+        builder.circuit.instructions.push_back(std::move(instruction));
     } else if (op == "MXX" || op == "MYY" || op == "MZZ") {
         CircuitInstruction instruction = new_circuit_instruction(CircuitInstructionKind::MPP, inst.line);
         instruction.probability = stim_paren_probability(inst);

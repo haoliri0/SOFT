@@ -32,6 +32,9 @@ FactoredInstruction push_instruction(PendingFactoredState& state, FactoredInstru
 }
 
 std::optional<int> measurement_record(PendingFactoredState& state, const PendingPauliMeasurement& measurement) {
+    if (measurement.exp_val) {
+        return std::nullopt;
+    }
     if (!measurement.record) {
         if (measurement.record_condition) {
             return std::nullopt;
@@ -80,6 +83,7 @@ PendingPauliMeasurement xor_operation_sign_if_anticommutes(
         SymbolicPauliString(operation.pauli.pauli, xor_bool(operation.pauli.sign, sign)),
         operation.record,
         operation.record_condition,
+        operation.exp_val,
     };
 }
 
@@ -348,6 +352,7 @@ std::optional<FactoredInstruction> record_deterministic_measurement(
             measurement_record(state, measurement),
             measurement.record_condition,
             SymbolicBoolEvaluationPlan(outcome),
+            measurement.exp_val,
         });
     reduce_pending_signs_by_measurement_relation(
         state,
@@ -390,6 +395,18 @@ std::optional<FactoredInstruction> measure_dormant_xy_pauli(
     PendingPauliMeasurement current,
     int picked_dormant,
     bool queued_first) {
+    if (current.exp_val) {
+        return push_instruction(
+            state,
+            IntroduceDormantMeasurementBranch{
+                0,
+                SymbolicBool(false),
+                std::nullopt,
+                std::nullopt,
+                SymbolicBoolEvaluationPlan(SymbolicBool(false)),
+                current.exp_val,
+            });
+    }
     const int picked_q = state.k + picked_dormant;
     const CliffordFrame frame = dormant_measurement_replacement_tableau_frame(state, current.pauli.pauli, picked_dormant);
     current = transform_operation_by_frame(current, frame);
@@ -423,6 +440,29 @@ std::optional<FactoredInstruction> measure_dormant_xy_pauli(
     return instruction;
 }
 
+std::optional<FactoredInstruction> evaluate_active_pauli(
+    PendingFactoredState& state,
+    const PendingPauliMeasurement& current,
+    const PauliString& active_body,
+    const SymbolicBool& base_outcome) {
+    if (!pauli_squares_to_identity(active_body)) {
+        fail("active expectation Pauli must square to identity");
+    }
+    const PrecomputedActivePauliMeasurementKernel kernel(active_body);
+    return push_instruction(
+        state,
+        MeasurePrecomputedActivePauli{
+            active_body,
+            kernel,
+            0,
+            base_outcome,
+            std::nullopt,
+            std::nullopt,
+            SymbolicBoolEvaluationPlan(base_outcome),
+            current.exp_val,
+        });
+}
+
 PauliString transform_by_frame(const CliffordFrame& frame, const PauliString& pauli) {
     return coordinates_in_frame(frame, pauli);
 }
@@ -439,6 +479,7 @@ PendingPauliMeasurement transform_operation_by_frame(const PendingPauliMeasureme
         SymbolicPauliString(transform_by_frame(frame, operation.pauli.pauli), operation.pauli.sign),
         operation.record,
         operation.record_condition,
+        operation.exp_val,
     };
 }
 
@@ -555,6 +596,9 @@ std::optional<FactoredInstruction> process_pending_measurement(PendingFactoredSt
     const SymbolicBool base_outcome = measurement_base_outcome(current.pauli);
     if (!active_body.has_nonidentity_body()) {
         return record_deterministic_measurement(state, current, base_outcome, queued_first);
+    }
+    if (current.exp_val) {
+        return evaluate_active_pauli(state, current, active_body, base_outcome);
     }
     return measure_active_pauli_branches(state, current, active_body, base_outcome, queued_first);
 }
@@ -803,6 +847,7 @@ FactoredInstructionProgram::FactoredInstructionProgram(
     reduce_program_symbolic_expressions(instructions);
     int record_count = 0;
     int detector_count = 0;
+    int exp_val_count = 0;
     for (auto& instruction : instructions) {
         refresh_instruction_plans(instruction);
         context.bump_next_condition(max_condition(instruction));
@@ -812,8 +857,14 @@ FactoredInstructionProgram::FactoredInstructionProgram(
                     if (inst.record) {
                         record_count = std::max(record_count, *inst.record);
                     }
-                } else if constexpr (requires { inst.detector; }) {
+                }
+                if constexpr (requires { inst.detector; }) {
                     detector_count = std::max(detector_count, inst.detector);
+                }
+                if constexpr (requires { inst.exp_val; }) {
+                    if (inst.exp_val) {
+                        exp_val_count = std::max(exp_val_count, *inst.exp_val + 1);
+                    }
                 }
             },
             instruction);
@@ -821,6 +872,7 @@ FactoredInstructionProgram::FactoredInstructionProgram(
     nsymbols = std::max(0, context.next_condition - 1);
     nrecords = record_count;
     ndetectors = detector_count;
+    nexpvals = exp_val_count;
     build_categorical_sample_plan(
         context.categorical_distributions,
         sampled_categorical_distributions,

@@ -317,6 +317,32 @@ PyObject* words_to_numpy(
     return array;
 }
 
+PyObject* doubles_to_numpy(const std::vector<std::vector<double>>& rows, int width) {
+    if (width < 0) {
+        PyErr_SetString(PyExc_ValueError, "number of expectation values must be nonnegative");
+        return nullptr;
+    }
+    npy_intp dims[2] = {
+        static_cast<npy_intp>(rows.size()),
+        static_cast<npy_intp>(width),
+    };
+    PyObject* array = PyArray_SimpleNew(2, dims, NPY_DOUBLE);
+    if (array == nullptr) {
+        return nullptr;
+    }
+    auto* data = static_cast<double*>(PyArray_DATA(reinterpret_cast<PyArrayObject*>(array)));
+    for (std::size_t shot = 0; shot < rows.size(); ++shot) {
+        const auto& row = rows[shot];
+        if (static_cast<int>(row.size()) != width) {
+            Py_DECREF(array);
+            PyErr_SetString(PyExc_RuntimeError, "inconsistent expectation row width");
+            return nullptr;
+        }
+        std::copy(row.begin(), row.end(), data + shot * static_cast<std::size_t>(width));
+    }
+    return array;
+}
+
 std::vector<std::vector<std::uint64_t>> sample_detector_words_single_shot(
     const symft::FactoredInstructionProgram& program,
     int shots,
@@ -340,7 +366,7 @@ std::vector<std::vector<std::uint64_t>> sample_measurement_words(
     int use_batch,
     int batch_size,
     int sample_chunk_shots) {
-    if (use_batch) {
+    if (use_batch && program.nexpvals == 0) {
         return symft::sample_measurements_batch(program, shots, batch_size, seed);
     }
     return symft::sample_measurements(program, shots, seed, sample_chunk_shots);
@@ -571,9 +597,10 @@ int Circuit_init(PyCircuit* self, PyObject* args, PyObject* kwargs) {
 PyObject* Circuit_repr(PyCircuit* self) {
     const auto& circuit = *self->circuit;
     return PyUnicode_FromFormat(
-        "<symft.Circuit qubits=%d measurements=%d detectors=%zd observables=%d>",
+        "<symft.Circuit qubits=%d measurements=%d exp_vals=%d detectors=%zd observables=%d>",
         circuit.nqubits,
         circuit.nrecords,
+        circuit.nexpvals,
         circuit.detectors.size(),
         num_observables(circuit));
 }
@@ -607,7 +634,9 @@ PyObject* Circuit_compile_sampler(PyCircuit* self, PyObject* args, PyObject* kwa
             AllowThreads allow;
             program = make_program_from_circuit(*self->circuit);
         }
-        return create_measurement_sampler(std::move(program), use_batch, batch_size, sample_chunk_shots);
+        const bool batch_backend = use_batch && program.nexpvals == 0;
+        return create_measurement_sampler(
+            std::move(program), batch_backend, batch_size, sample_chunk_shots);
     } catch (...) {
         return set_cpp_exception_null();
     }
@@ -749,6 +778,58 @@ PyObject* Circuit_sample(PyCircuit* self, PyObject* args, PyObject* kwargs) {
         return set_cpp_exception_null();
     }
     return words_to_numpy(rows, nrecords, bit_packed != 0);
+}
+
+PyObject* Circuit_sample_with_expectations(PyCircuit* self, PyObject* args, PyObject* kwargs) {
+    long long shots_value = 1;
+    unsigned long long seed = 1;
+    int bit_packed = 0;
+    long long sample_chunk_value = 0;
+    static const char* kwlist[] = {"shots", "seed", "bit_packed", "sample_chunk_shots", nullptr};
+    if (!PyArg_ParseTupleAndKeywords(
+            args,
+            kwargs,
+            "|LKpL:sample_with_expectations",
+            const_cast<char**>(kwlist),
+            &shots_value,
+            &seed,
+            &bit_packed,
+            &sample_chunk_value)) {
+        return nullptr;
+    }
+    int shots = 0;
+    int sample_chunk_shots = 0;
+    if (!parse_nonnegative_int_arg(shots_value, shots, "shots") ||
+        !parse_nonnegative_int_arg(sample_chunk_value, sample_chunk_shots, "sample_chunk_shots")) {
+        return nullptr;
+    }
+
+    symft::MeasurementExpectationSamples samples;
+    int nrecords = 0;
+    int nexpvals = 0;
+    try {
+        AllowThreads allow;
+        const symft::FactoredInstructionProgram program = make_program_from_circuit(*self->circuit);
+        nrecords = program.nrecords;
+        nexpvals = program.nexpvals;
+        samples = symft::sample_measurements_and_expectations(
+            program,
+            shots,
+            static_cast<std::uint64_t>(seed),
+            sample_chunk_shots);
+    } catch (...) {
+        return set_cpp_exception_null();
+    }
+    PyObject* measurements = words_to_numpy(samples.measurements, nrecords, bit_packed != 0);
+    if (measurements == nullptr) {
+        return nullptr;
+    }
+    PyObject* expectations = doubles_to_numpy(samples.expectations, nexpvals);
+    if (expectations == nullptr) {
+        Py_DECREF(measurements);
+        return nullptr;
+    }
+    return Py_BuildValue("NN", measurements, expectations);
 }
 
 PyObject* Circuit_sample_counts(PyCircuit* self, PyObject* args, PyObject* kwargs) {
@@ -905,6 +986,10 @@ PyObject* Circuit_get_num_qubits(PyCircuit* self, void*) {
 
 PyObject* Circuit_get_num_measurements(PyCircuit* self, void*) {
     return PyLong_FromLong(self->circuit->nrecords);
+}
+
+PyObject* Circuit_get_num_exp_vals(PyCircuit* self, void*) {
+    return PyLong_FromLong(self->circuit->nexpvals);
 }
 
 PyObject* Circuit_get_num_detectors(PyCircuit* self, void*) {
@@ -1285,6 +1370,17 @@ PyMethodDef Circuit_methods[] = {
         "the dtype is uint8 and the second dimension is ceil(num_measurements / 8).",
     },
     {
+        "sample_with_expectations",
+        reinterpret_cast<PyCFunction>(Circuit_sample_with_expectations),
+        METH_VARARGS | METH_KEYWORDS,
+        "sample_with_expectations($self, /, shots=1, seed=1, bit_packed=False, "
+        "sample_chunk_shots=0)\n"
+        "--\n\n"
+        "Sample measurement records and non-destructive EXP_VAL values. "
+        "Returns (measurements, expectations), with expectations shaped "
+        "(shots, num_exp_vals).",
+    },
+    {
         "sample_counts",
         reinterpret_cast<PyCFunction>(Circuit_sample_counts),
         METH_VARARGS | METH_KEYWORDS,
@@ -1318,6 +1414,13 @@ PyGetSetDef Circuit_getsets[] = {
         reinterpret_cast<getter>(Circuit_get_num_measurements),
         nullptr,
         "Number of measurement records.",
+        nullptr,
+    },
+    {
+        "num_exp_vals",
+        reinterpret_cast<getter>(Circuit_get_num_exp_vals),
+        nullptr,
+        "Number of EXP_VAL probes.",
         nullptr,
     },
     {"num_detectors", reinterpret_cast<getter>(Circuit_get_num_detectors), nullptr, "Number of detectors.", nullptr},

@@ -36,6 +36,9 @@ bool rotation_can_cross(
         return pauli_bodies_commute(rotation.body, other->pauli.pauli);
     }
     if (const auto* measurement = std::get_if<PendingPauliMeasurement>(&operation)) {
+        if (measurement->exp_val) {
+            return false;
+        }
         return pauli_bodies_commute(rotation.body, measurement->pauli.pauli);
     }
     // A classical record has no quantum action. Fusion keeps all record events

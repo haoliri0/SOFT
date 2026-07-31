@@ -602,6 +602,16 @@ void apply_instruction(CircuitLoweringAccumulator& acc, const CircuitInstruction
             apply_pauli_measurement(state, product.pauli, sign, record, record_condition);
         }
         return;
+    case CircuitInstructionKind::EXP_VAL:
+        if (instruction.exp_val < 0) {
+            fail("EXP_VAL index range is invalid");
+        }
+        for (std::size_t i = 0; i < instruction.pauli_products.size(); ++i) {
+            const auto& product = instruction.pauli_products[i];
+            PauliString pauli = maybe_inverted_pauli_product(product);
+            apply_pauli_expectation(state, pauli, instruction.exp_val + static_cast<int>(i));
+        }
+        return;
     case CircuitInstructionKind::XError:
     case CircuitInstructionKind::YError:
     case CircuitInstructionKind::ZError: {
