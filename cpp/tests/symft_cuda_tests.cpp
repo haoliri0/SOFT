@@ -1,4 +1,5 @@
 #include "cuda/cuda_sampler.hpp"
+#include "cuda/cuda_runtime.hpp"
 #include "frontend/stim_prepared_sampler.hpp"
 
 #include <cmath>
@@ -112,6 +113,18 @@ void test_deterministic_postselection() {
     std::remove(reject_path.c_str());
 }
 
+void test_large_per_shot_workspace() {
+    symft::cuda::CudaProgramData program;
+    program.record_words = 1 << 16;
+    symft::cuda::CudaRuntimeProgram runtime(program);
+    symft::cuda::CudaLaunchOptions options;
+    options.sample_exogenous_on_device = true;
+    options.threads_per_block = 32;
+    const auto result = runtime.run(nullptr, 0, 0, 16, 1234, options);
+    require(result.accepted == 16, "CUDA global workspace accepts deterministic shots");
+    require(result.discarded == 0, "CUDA global workspace has no false discards");
+}
+
 void test_fixture_discard_rates() {
     {
         const std::string path = fixture_path("benchmark/circuit/msc_d3_inject_cultivate_p1e-3.stim");
@@ -159,6 +172,7 @@ void test_fixture_discard_rates() {
 
 int main() {
     test_deterministic_postselection();
+    test_large_per_shot_workspace();
     test_fixture_discard_rates();
     std::cout << "symft_cuda_tests passed\n";
     return 0;
