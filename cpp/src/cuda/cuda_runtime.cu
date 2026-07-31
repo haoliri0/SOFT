@@ -156,8 +156,8 @@ struct DeviceProgramView {
     const std::uint64_t* sample_assignment_table = nullptr;
     const double* sample_probability_table = nullptr;
     const int* sample_event_row_table = nullptr;
-    CudaReal* global_state = nullptr;
-    std::size_t global_state_stride = 0;
+    std::uint64_t* global_workspace = nullptr;
+    std::size_t global_workspace_stride = 0;
 };
 
 struct DeviceAuxiliaryView {
@@ -2230,14 +2230,19 @@ __device__ __forceinline__ void symft_persistent_sample_body(
     CudaReal* scratch_re;
     CudaReal* scratch_im;
     std::uint64_t* condition_words;
-    if (program.global_state != nullptr) {
-        CudaReal* state = program.global_state +
-                          static_cast<std::size_t>(shot) * program.global_state_stride;
+    if (program.global_workspace != nullptr) {
+        auto* workspace = reinterpret_cast<unsigned char*>(program.global_workspace) +
+                          static_cast<std::size_t>(shot) *
+                              program.global_workspace_stride * sizeof(std::uint64_t);
+        CudaReal* state = reinterpret_cast<CudaReal*>(workspace);
         active_re = state;
         active_im = active_re + max_dim;
         scratch_re = active_im + max_dim;
         scratch_im = scratch_re + scratch_dim;
-        condition_words = reinterpret_cast<std::uint64_t*>(persistent_shared_raw);
+        condition_words = reinterpret_cast<std::uint64_t*>(workspace +
+                                                            (2 * static_cast<std::size_t>(max_dim) +
+                                                             2 * static_cast<std::size_t>(scratch_dim)) *
+                                                                sizeof(CudaReal));
     } else {
         active_re = reinterpret_cast<CudaReal*>(persistent_shared_raw);
         active_im = active_re + max_dim;
@@ -2749,7 +2754,7 @@ struct CudaRuntimeProgram::Impl {
     DeviceArray<std::uint64_t> expression_words;
     DeviceArray<std::uint8_t> discarded_flags;
     DeviceArray<std::uint8_t> logical_flags;
-    DeviceArray<CudaReal> global_state;
+    DeviceArray<std::uint64_t> global_workspace;
     std::vector<std::uint8_t> host_discarded;
     std::vector<std::uint8_t> host_logical;
 
@@ -2935,8 +2940,11 @@ CudaKernelRunResult CudaRuntimeProgram::run(
     cudaDeviceProp prop{};
     check_cuda(cudaGetDeviceProperties(&prop, device), "cudaGetDeviceProperties");
     const std::size_t shared_limit = static_cast<std::size_t>(prop.sharedMemPerBlockOptin);
-    const bool use_global_state = sampler_shared_bytes > shared_limit;
-    const std::size_t launch_shared_bytes = use_global_state ? metadata_shared_bytes : sampler_shared_bytes;
+    const bool use_global_workspace = sampler_shared_bytes > shared_limit;
+    const std::size_t workspace_bytes = state_bytes + metadata_shared_bytes;
+    const std::size_t workspace_words =
+        (workspace_bytes + sizeof(std::uint64_t) - 1) / sizeof(std::uint64_t);
+    const std::size_t launch_shared_bytes = use_global_workspace ? 0 : sampler_shared_bytes;
     if (launch_shared_bytes > shared_limit || generator_shared_bytes > shared_limit) {
         throw Error(
             "CUDA sampler needs more shared memory than this device allows for the program max_k "
@@ -2945,19 +2953,21 @@ CudaKernelRunResult CudaRuntimeProgram::run(
             ", generator=" + std::to_string(generator_shared_bytes) +
             ", limit=" + std::to_string(shared_limit) + ")");
     }
-    if (use_global_state) {
-        if (state_reals != 0 &&
-            static_cast<std::size_t>(shots) > std::numeric_limits<std::size_t>::max() / state_reals) {
-            throw Error("CUDA sampler global state allocation exceeds addressable memory");
+    if (use_global_workspace) {
+        if (workspace_words != 0 &&
+            static_cast<std::size_t>(shots) >
+                std::numeric_limits<std::size_t>::max() / workspace_words) {
+            throw Error("CUDA sampler global workspace allocation exceeds addressable memory");
         }
-        impl_->global_state.resize_uninitialized(static_cast<std::size_t>(shots) * state_reals);
+        impl_->global_workspace.resize_uninitialized(
+            static_cast<std::size_t>(shots) * workspace_words);
     } else {
-        impl_->global_state.reset();
+        impl_->global_workspace.reset();
     }
     DeviceProgramView program_view = impl_->view();
-    if (use_global_state) {
-        program_view.global_state = impl_->global_state.ptr;
-        program_view.global_state_stride = state_reals;
+    if (use_global_workspace) {
+        program_view.global_workspace = impl_->global_workspace.ptr;
+        program_view.global_workspace_stride = workspace_words;
     }
     if (launch_shared_bytes > static_cast<std::size_t>(prop.sharedMemPerBlock)) {
         if (options.lazy_exogenous_on_device) {
