@@ -2938,7 +2938,12 @@ CudaKernelRunResult CudaRuntimeProgram::run(
     const bool use_global_state = sampler_shared_bytes > shared_limit;
     const std::size_t launch_shared_bytes = use_global_state ? metadata_shared_bytes : sampler_shared_bytes;
     if (launch_shared_bytes > shared_limit || generator_shared_bytes > shared_limit) {
-        throw Error("CUDA sampler needs more shared memory than this device allows for the program max_k");
+        throw Error(
+            "CUDA sampler needs more shared memory than this device allows for the program max_k "
+            "(state=" + std::to_string(state_bytes) +
+            ", metadata=" + std::to_string(metadata_shared_bytes) +
+            ", generator=" + std::to_string(generator_shared_bytes) +
+            ", limit=" + std::to_string(shared_limit) + ")");
     }
     if (use_global_state) {
         if (state_reals != 0 &&
