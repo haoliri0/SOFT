@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -155,6 +156,8 @@ struct DeviceProgramView {
     const std::uint64_t* sample_assignment_table = nullptr;
     const double* sample_probability_table = nullptr;
     const int* sample_event_row_table = nullptr;
+    CudaReal* global_state = nullptr;
+    std::size_t global_state_stride = 0;
 };
 
 struct DeviceAuxiliaryView {
@@ -2222,11 +2225,26 @@ __device__ __forceinline__ void symft_persistent_sample_body(
     const int scratch_dim = max_dim > 1 ? (max_dim >> 1) : 1;
     // One CTA owns one complete shot. Active amplitudes stay in shared memory
     // across the whole instruction stream; only final counts leave the GPU.
-    CudaReal* active_re = reinterpret_cast<CudaReal*>(persistent_shared_raw);
-    CudaReal* active_im = active_re + max_dim;
-    CudaReal* scratch_re = active_im + max_dim;
-    CudaReal* scratch_im = scratch_re + scratch_dim;
-    auto* condition_words = reinterpret_cast<std::uint64_t*>(scratch_im + scratch_dim);
+    CudaReal* active_re;
+    CudaReal* active_im;
+    CudaReal* scratch_re;
+    CudaReal* scratch_im;
+    std::uint64_t* condition_words;
+    if (program.global_state != nullptr) {
+        CudaReal* state = program.global_state +
+                          static_cast<std::size_t>(shot) * program.global_state_stride;
+        active_re = state;
+        active_im = active_re + max_dim;
+        scratch_re = active_im + max_dim;
+        scratch_im = scratch_re + scratch_dim;
+        condition_words = reinterpret_cast<std::uint64_t*>(persistent_shared_raw);
+    } else {
+        active_re = reinterpret_cast<CudaReal*>(persistent_shared_raw);
+        active_im = active_re + max_dim;
+        scratch_re = active_im + max_dim;
+        scratch_im = scratch_re + scratch_dim;
+        condition_words = reinterpret_cast<std::uint64_t*>(scratch_im + scratch_dim);
+    }
     auto* measurement_words = condition_words + program.symbol_words;
     auto* sampled_sampler_words = measurement_words + program.record_words;
     CudaReal* reduction = reinterpret_cast<CudaReal*>(sampled_sampler_words + sampled_sampler_word_count);
@@ -2731,6 +2749,7 @@ struct CudaRuntimeProgram::Impl {
     DeviceArray<std::uint64_t> expression_words;
     DeviceArray<std::uint8_t> discarded_flags;
     DeviceArray<std::uint8_t> logical_flags;
+    DeviceArray<CudaReal> global_state;
     std::vector<std::uint8_t> host_discarded;
     std::vector<std::uint8_t> host_logical;
 
@@ -2892,9 +2911,11 @@ CudaKernelRunResult CudaRuntimeProgram::run(
     const int sampled_sampler_word_count =
         options.lazy_exogenous_on_device ? ((impl_->host.sampler_count + 63) >> 6) : 0;
     const bool use_on_demand_block_cache = options.on_demand_expression_blocks;
-    const std::size_t sampler_shared_bytes =
-        (2 * static_cast<std::size_t>(max_dim) +
-         2 * static_cast<std::size_t>(std::max(1, max_dim >> 1))) * sizeof(CudaReal) +
+    const std::size_t state_reals =
+        2 * static_cast<std::size_t>(max_dim) +
+        2 * static_cast<std::size_t>(std::max(1, max_dim >> 1));
+    const std::size_t state_bytes = state_reals * sizeof(CudaReal);
+    const std::size_t metadata_shared_bytes =
         static_cast<std::size_t>(impl_->host.symbol_words + impl_->host.record_words) * sizeof(std::uint64_t) +
         static_cast<std::size_t>(sampled_sampler_word_count) * sizeof(std::uint64_t) +
         static_cast<std::size_t>(sampler_threads) * sizeof(CudaReal) +
@@ -2902,6 +2923,7 @@ CudaKernelRunResult CudaRuntimeProgram::run(
         (use_on_demand_block_cache
              ? static_cast<std::size_t>(impl_->host.block_expression_count) * (sizeof(int) + sizeof(std::uint8_t))
              : 0);
+    const std::size_t sampler_shared_bytes = state_bytes + metadata_shared_bytes;
     const std::size_t generator_shared_bytes =
         options.generate_expressions_on_device
             ? static_cast<std::size_t>(impl_->host.symbol_words) * sizeof(std::uint64_t) +
@@ -2913,30 +2935,46 @@ CudaKernelRunResult CudaRuntimeProgram::run(
     cudaDeviceProp prop{};
     check_cuda(cudaGetDeviceProperties(&prop, device), "cudaGetDeviceProperties");
     const std::size_t shared_limit = static_cast<std::size_t>(prop.sharedMemPerBlockOptin);
-    if (sampler_shared_bytes > shared_limit || generator_shared_bytes > shared_limit) {
+    const bool use_global_state = sampler_shared_bytes > shared_limit;
+    const std::size_t launch_shared_bytes = use_global_state ? metadata_shared_bytes : sampler_shared_bytes;
+    if (launch_shared_bytes > shared_limit || generator_shared_bytes > shared_limit) {
         throw Error("CUDA sampler needs more shared memory than this device allows for the program max_k");
     }
-    if (sampler_shared_bytes > static_cast<std::size_t>(prop.sharedMemPerBlock)) {
+    if (use_global_state) {
+        if (state_reals != 0 &&
+            static_cast<std::size_t>(shots) > std::numeric_limits<std::size_t>::max() / state_reals) {
+            throw Error("CUDA sampler global state allocation exceeds addressable memory");
+        }
+        impl_->global_state.resize_uninitialized(static_cast<std::size_t>(shots) * state_reals);
+    } else {
+        impl_->global_state.reset();
+    }
+    DeviceProgramView program_view = impl_->view();
+    if (use_global_state) {
+        program_view.global_state = impl_->global_state.ptr;
+        program_view.global_state_stride = state_reals;
+    }
+    if (launch_shared_bytes > static_cast<std::size_t>(prop.sharedMemPerBlock)) {
         if (options.lazy_exogenous_on_device) {
             check_cuda(
                 cudaFuncSetAttribute(
                     symft_persistent_sample_kernel_lazy,
                     cudaFuncAttributeMaxDynamicSharedMemorySize,
-                    static_cast<int>(sampler_shared_bytes)),
+                    static_cast<int>(launch_shared_bytes)),
                 "cudaFuncSetAttribute");
         } else if (options.on_demand_expression_blocks) {
             check_cuda(
                 cudaFuncSetAttribute(
                     symft_persistent_sample_kernel_cached,
                     cudaFuncAttributeMaxDynamicSharedMemorySize,
-                    static_cast<int>(sampler_shared_bytes)),
+                    static_cast<int>(launch_shared_bytes)),
                 "cudaFuncSetAttribute");
         } else {
             check_cuda(
                 cudaFuncSetAttribute(
                     symft_persistent_sample_kernel_fast,
                     cudaFuncAttributeMaxDynamicSharedMemorySize,
-                    static_cast<int>(sampler_shared_bytes)),
+                    static_cast<int>(launch_shared_bytes)),
                 "cudaFuncSetAttribute");
         }
     }
@@ -2981,7 +3019,7 @@ CudaKernelRunResult CudaRuntimeProgram::run(
                 expression_word_count * sizeof(std::uint64_t)),
             "cudaMemset expression words");
         symft_generate_expression_words_kernel<<<shots, threads, generator_shared_bytes>>>(
-            impl_->view(),
+            program_view,
             impl_->aux_view(),
             impl_->expression_words.ptr,
             shot_words,
@@ -2991,7 +3029,7 @@ CudaKernelRunResult CudaRuntimeProgram::run(
         if (use_scalar_small_k_sampler) {
             const int scalar_blocks = (shots + threads - 1) / threads;
             symft_scalar_small_k_sample_kernel<<<scalar_blocks, threads>>>(
-                impl_->view(),
+                program_view,
                 impl_->expression_words.ptr,
                 shot_words,
                 shots,
@@ -3002,8 +3040,8 @@ CudaKernelRunResult CudaRuntimeProgram::run(
                 measurement_output_ptr,
                 expectation_output_ptr);
         } else {
-            symft_persistent_sample_kernel_fast<<<shots, sampler_threads, sampler_shared_bytes>>>(
-                impl_->view(),
+            symft_persistent_sample_kernel_fast<<<shots, sampler_threads, launch_shared_bytes>>>(
+                program_view,
                 impl_->expression_words.ptr,
                 shot_words,
                 shots,
@@ -3016,8 +3054,8 @@ CudaKernelRunResult CudaRuntimeProgram::run(
                 expectation_output_ptr);
         }
     } else if (options.on_demand_expression_blocks) {
-        symft_persistent_sample_kernel_cached<<<shots, threads, sampler_shared_bytes>>>(
-            impl_->view(),
+        symft_persistent_sample_kernel_cached<<<shots, threads, launch_shared_bytes>>>(
+            program_view,
             impl_->aux_view(),
             impl_->expression_words.ptr,
             shot_words,
@@ -3030,8 +3068,8 @@ CudaKernelRunResult CudaRuntimeProgram::run(
             measurement_output_ptr,
             expectation_output_ptr);
     } else if (options.lazy_exogenous_on_device) {
-        symft_persistent_sample_kernel_lazy<<<shots, threads, sampler_shared_bytes>>>(
-            impl_->view(),
+        symft_persistent_sample_kernel_lazy<<<shots, threads, launch_shared_bytes>>>(
+            program_view,
             impl_->aux_view(),
             impl_->expression_words.ptr,
             shot_words,
@@ -3045,8 +3083,8 @@ CudaKernelRunResult CudaRuntimeProgram::run(
             measurement_output_ptr,
             expectation_output_ptr);
     } else {
-        symft_persistent_sample_kernel_fast<<<shots, sampler_threads, sampler_shared_bytes>>>(
-            impl_->view(),
+        symft_persistent_sample_kernel_fast<<<shots, sampler_threads, launch_shared_bytes>>>(
+            program_view,
             impl_->expression_words.ptr,
             shot_words,
             shots,
