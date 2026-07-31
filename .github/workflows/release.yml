@@ -1,0 +1,64 @@
+name: release
+
+  on:
+    workflow_dispatch:
+    push:
+      tags:
+        - "v*"
+
+  jobs:
+    build-wheels:
+      runs-on: ${{ matrix.os }}
+      strategy:
+        matrix:
+          os: [ubuntu-latest, macos-latest, windows-latest]
+
+      steps:
+        - uses: actions/checkout@v4
+
+        - uses: pypa/cibuildwheel@v3.1.2
+          env:
+            CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
+            CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_* pp*"
+            CIBW_ENVIRONMENT: "SYMFT_PY_NATIVE=0 SYMFT_PY_ENABLE_CUDA=0"
+            CIBW_TEST_COMMAND: 'python -c "import symft; assert not symft.cuda_enabled()"'
+          with:
+            package-dir: python
+            output-dir: wheelhouse
+
+        - uses: actions/upload-artifact@v4
+          with:
+            name: wheels-${{ matrix.os }}
+            path: wheelhouse/*.whl
+
+    build-sdist:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: actions/setup-python@v5
+          with:
+            python-version: "3.x"
+        - run: python -m pip install -U build
+        - run: python -m build --sdist
+          working-directory: python
+        - uses: actions/upload-artifact@v4
+          with:
+            name: sdist
+            path: python/dist/*.tar.gz
+
+    publish:
+      needs: [build-wheels, build-sdist]
+      runs-on: ubuntu-latest
+      environment: pypi
+      permissions:
+        id-token: write
+
+      steps:
+        - uses: actions/download-artifact@v4
+          with:
+            path: dist
+            merge-multiple: true
+
+        - uses: pypa/gh-action-pypi-publish@release/v1
+          with:
+            packages-dir: dist
