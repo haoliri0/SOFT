@@ -64,6 +64,7 @@ struct DormantState {
 struct CliffordFrame {
     int nqubits = 0;
     int nwords = 0;
+    // For the represented Clifford U, rows store U^\dagger X_q U and U^\dagger Z_q U.
     std::vector<PauliString> rows;
 
     CliffordFrame() = default;
