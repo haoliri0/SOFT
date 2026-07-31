@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -208,10 +209,21 @@ struct PendingFactoredState {
     int max_k = 0;
     DormantState dormant;
     std::shared_ptr<SymbolicContext> context;
+    CliffordFrame pending_frame;
+    bool pending_frame_active = false;
     std::vector<PendingOperation> pending_operations;
+    std::size_t pending_operation_cursor = 0;
+    std::vector<std::uint64_t> pending_x_operation_blocks;
+    std::vector<std::uint64_t> pending_z_operation_blocks;
+    bool pending_operation_blocks_valid = false;
+    std::vector<SymbolicBool> pending_relations;
+    std::vector<std::vector<std::size_t>> pending_relation_words;
+    std::unordered_map<int, std::vector<std::size_t>> pending_relation_index;
+    std::unordered_map<int, SymbolicBool> pending_substitutions;
     std::vector<FactoredInstruction> instructions;
     std::vector<int> pending_prefix_instruction_indices;
     bool pending_operations_optimized = false;
+    bool has_expectation = false;
     int next_record = 1;
 
     PendingFactoredState() = default;

@@ -2,6 +2,7 @@
 #include "sampler/component_plan.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -10,7 +11,9 @@ namespace symft {
 using namespace detail;
 
 bool has_pending_operations(const PendingFactoredState& state) {
-    return !state.pending_operations.empty();
+    return state.has_expectation
+        ? state.pending_operation_cursor < state.pending_operations.size()
+        : !state.pending_operations.empty();
 }
 
 namespace {
@@ -62,36 +65,21 @@ PendingPauliMeasurement transform_operation_by_frame(const PendingPauliMeasureme
 PendingClassicalRecord transform_operation_by_frame(const PendingClassicalRecord& operation, const CliffordFrame& frame);
 void transform_pending_operations_by_frame(PendingFactoredState& state, const CliffordFrame& frame);
 
-PendingPauliRotation xor_operation_sign_if_anticommutes(
-    const PendingPauliRotation& operation,
+template <typename Operation>
+void xor_operation_sign_if_anticommutes(
+    Operation& operation,
     const PauliString& pauli,
-    const SymbolicBool& sign) {
-    if (!pauli_anticommutes(pauli, operation.pauli.pauli)) {
-        return operation;
+    const SymbolicBool& sign,
+    int single_x_qubit = -1) {
+    if constexpr (requires { operation.pauli.pauli; }) {
+        const bool anticommutes = single_x_qubit >= 0
+            ? ((operation.pauli.pauli.z[static_cast<std::size_t>(single_x_qubit) >> 6] >>
+                (single_x_qubit & 63)) & 1) != 0
+            : pauli_anticommutes(pauli, operation.pauli.pauli);
+        if (anticommutes) {
+            operation.pauli.sign = xor_bool(operation.pauli.sign, sign);
+        }
     }
-    return PendingPauliRotation{operation.kernel_angle, SymbolicPauliString(operation.pauli.pauli, xor_bool(operation.pauli.sign, sign))};
-}
-
-PendingPauliMeasurement xor_operation_sign_if_anticommutes(
-    const PendingPauliMeasurement& operation,
-    const PauliString& pauli,
-    const SymbolicBool& sign) {
-    if (!pauli_anticommutes(pauli, operation.pauli.pauli)) {
-        return operation;
-    }
-    return PendingPauliMeasurement{
-        SymbolicPauliString(operation.pauli.pauli, xor_bool(operation.pauli.sign, sign)),
-        operation.record,
-        operation.record_condition,
-        operation.exp_val,
-    };
-}
-
-PendingClassicalRecord xor_operation_sign_if_anticommutes(
-    const PendingClassicalRecord& operation,
-    const PauliString&,
-    const SymbolicBool&) {
-    return operation;
 }
 
 std::size_t symbolic_word_cost(const SymbolicBool& expr) {
@@ -116,65 +104,212 @@ bool has_lower_sampling_cost(const SymbolicBool& candidate, const SymbolicBool& 
     return candidate.conditions.size() < current.conditions.size();
 }
 
-bool conditions_overlap(const std::vector<int>& lhs, const std::vector<int>& rhs) {
-    std::size_t i = 0;
-    std::size_t j = 0;
-    while (i < lhs.size() && j < rhs.size()) {
-        if (lhs[i] == rhs[j]) {
-            return true;
-        }
-        if (lhs[i] < rhs[j]) {
-            ++i;
-        } else {
-            ++j;
-        }
-    }
-    return false;
-}
-
 SymbolicBool reduce_by_relation_once(const SymbolicBool& expr, const SymbolicBool& relation) {
     if (relation.conditions.empty() && !relation.constant) {
         return expr;
     }
-    if (!conditions_overlap(expr.conditions, relation.conditions)) {
+    std::size_t lhs = 0;
+    std::size_t rhs = 0;
+    std::size_t candidate_size = 0;
+    std::size_t candidate_words = 0;
+    std::size_t previous_word = 0;
+    bool have_word = false;
+    bool overlap = false;
+    const auto add_candidate_condition = [&](int condition) {
+        ++candidate_size;
+        const std::size_t word = symbol_word_index(condition);
+        if (!have_word || word != previous_word) {
+            ++candidate_words;
+            previous_word = word;
+            have_word = true;
+        }
+    };
+    while (lhs < expr.conditions.size() || rhs < relation.conditions.size()) {
+        if (rhs == relation.conditions.size() ||
+            (lhs < expr.conditions.size() && expr.conditions[lhs] < relation.conditions[rhs])) {
+            add_candidate_condition(expr.conditions[lhs++]);
+        } else if (lhs == expr.conditions.size() || relation.conditions[rhs] < expr.conditions[lhs]) {
+            add_candidate_condition(relation.conditions[rhs++]);
+        } else {
+            overlap = true;
+            ++lhs;
+            ++rhs;
+        }
+    }
+    if (!overlap) {
         return expr;
     }
-    const SymbolicBool candidate = xor_bool(expr, relation);
-    return has_lower_sampling_cost(candidate, expr) ? candidate : expr;
+    const std::size_t current_words = symbolic_word_cost(expr);
+    if (candidate_words > current_words ||
+        (candidate_words == current_words && candidate_size >= expr.conditions.size())) {
+        return expr;
+    }
+    return xor_bool(expr, relation);
 }
 
-SymbolicBool reduce_by_relations(SymbolicBool expr, const std::vector<SymbolicBool>& relations) {
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        for (const auto& relation : relations) {
-            const SymbolicBool reduced = reduce_by_relation_once(expr, relation);
-            if (reduced != expr) {
-                expr = reduced;
-                changed = true;
+class SymbolicRelationReducer {
+  public:
+    void add(SymbolicBool relation) {
+        if (relation.conditions.empty()) {
+            return;
+        }
+        if (relation.conditions.size() == 1) {
+            fixed_conditions[relation.conditions[0]] = relation.constant;
+            return;
+        }
+        const std::size_t index = relations.size();
+        relations.push_back(std::move(relation));
+        for (int condition : relations.back().conditions) {
+            relation_index[condition].push_back(index);
+        }
+    }
+
+    SymbolicBool reduce(SymbolicBool expression) const {
+        while (true) {
+            bool changed = false;
+            if (!fixed_conditions.empty()) {
+                std::vector<int> remaining;
+                remaining.reserve(expression.conditions.size());
+                for (int condition : expression.conditions) {
+                    const auto fixed = fixed_conditions.find(condition);
+                    if (fixed == fixed_conditions.end()) {
+                        remaining.push_back(condition);
+                    } else {
+                        expression.constant ^= fixed->second;
+                        changed = true;
+                    }
+                }
+                expression.conditions = std::move(remaining);
+            }
+            if (!expression.conditions.empty() && !relations.empty()) {
+                std::vector<std::size_t> candidates;
+                for (int condition : expression.conditions) {
+                    const auto found = relation_index.find(condition);
+                    if (found != relation_index.end()) {
+                        candidates.insert(candidates.end(), found->second.begin(), found->second.end());
+                    }
+                }
+                std::sort(candidates.begin(), candidates.end());
+                candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
+                for (std::size_t relation : candidates) {
+                    const SymbolicBool reduced = reduce_by_relation_once(expression, relations[relation]);
+                    if (reduced != expression) {
+                        expression = reduced;
+                        changed = true;
+                    }
+                }
+            }
+            if (!changed) {
+                return expression;
             }
         }
     }
-    return expr;
-}
+
+  private:
+    std::vector<SymbolicBool> relations;
+    std::unordered_map<int, std::vector<std::size_t>> relation_index;
+    std::unordered_map<int, bool> fixed_conditions;
+};
 
 SymbolicBool measurement_relation(int record_condition, const SymbolicBool& outcome) {
     return xor_bool(symbolic_bool(record_condition), outcome);
 }
 
-template <typename Operation>
-Operation reduce_pending_operation_sign(const Operation& operation, const SymbolicBool& relation) {
-    Operation out = operation;
-    out.pauli.sign = reduce_by_relation_once(out.pauli.sign, relation);
-    return out;
+void ensure_pending_operation_blocks(PendingFactoredState& state) {
+    if (state.pending_operation_blocks_valid) {
+        return;
+    }
+    const std::size_t blocks = (state.pending_operations.size() + 63) >> 6;
+    const std::size_t n = static_cast<std::size_t>(state.n);
+    state.pending_x_operation_blocks.assign(blocks * n, 0);
+    state.pending_z_operation_blocks.assign(blocks * n, 0);
+    for (std::size_t operation = 0; operation < state.pending_operations.size(); ++operation) {
+        const PauliString* body = std::visit(
+            [](const auto& typed) -> const PauliString* {
+                if constexpr (requires { typed.pauli.pauli; }) {
+                    return &typed.pauli.pauli;
+                }
+                return nullptr;
+            },
+            state.pending_operations[operation]);
+        if (body == nullptr) {
+            continue;
+        }
+        const std::size_t base = (operation >> 6) * n;
+        const std::uint64_t mask = std::uint64_t{1} << (operation & 63);
+        for (std::size_t word = 0; word < body->x.size(); ++word) {
+            std::uint64_t x_bits = body->x[word];
+            std::uint64_t z_bits = body->z[word];
+            while (x_bits) {
+                const std::size_t q = word * 64 + static_cast<std::size_t>(trailing_zeros64(x_bits));
+                if (q < n) {
+                    state.pending_x_operation_blocks[base + q] |= mask;
+                }
+                x_bits &= x_bits - 1;
+            }
+            while (z_bits) {
+                const std::size_t q = word * 64 + static_cast<std::size_t>(trailing_zeros64(z_bits));
+                if (q < n) {
+                    state.pending_z_operation_blocks[base + q] |= mask;
+                }
+                z_bits &= z_bits - 1;
+            }
+        }
+    }
+    state.pending_operation_blocks_valid = true;
 }
 
-PendingClassicalRecord reduce_pending_operation_sign(
-    const PendingClassicalRecord& operation,
-    const SymbolicBool& relation) {
-    PendingClassicalRecord out = operation;
-    out.outcome = reduce_by_relation_once(out.outcome, relation);
-    return out;
+void xor_pending_operation_sign(PendingOperation& operation, const SymbolicBool& sign) {
+    std::visit(
+        [&](auto& typed) {
+            if constexpr (requires { typed.pauli.sign; }) {
+                typed.pauli.sign = xor_bool(typed.pauli.sign, sign);
+            }
+        },
+        operation);
+}
+
+void push_symbolic_pauli_through_indexed_pending(
+    PendingFactoredState& state,
+    std::size_t start,
+    const PauliString& pauli,
+    const SymbolicBool& sign) {
+    ensure_pending_operation_blocks(state);
+    const std::size_t n = static_cast<std::size_t>(state.n);
+    const std::size_t blocks = (state.pending_operations.size() + 63) >> 6;
+    for (std::size_t block = start >> 6; block < blocks; ++block) {
+        const std::size_t base = block * n;
+        std::uint64_t anticommuting = 0;
+        for (std::size_t word = 0; word < pauli.x.size(); ++word) {
+            std::uint64_t x_bits = pauli.x[word];
+            std::uint64_t z_bits = pauli.z[word];
+            while (x_bits) {
+                const std::size_t q = word * 64 + static_cast<std::size_t>(trailing_zeros64(x_bits));
+                if (q < n) {
+                    anticommuting ^= state.pending_z_operation_blocks[base + q];
+                }
+                x_bits &= x_bits - 1;
+            }
+            while (z_bits) {
+                const std::size_t q = word * 64 + static_cast<std::size_t>(trailing_zeros64(z_bits));
+                if (q < n) {
+                    anticommuting ^= state.pending_x_operation_blocks[base + q];
+                }
+                z_bits &= z_bits - 1;
+            }
+        }
+        if (block == (start >> 6) && (start & 63) != 0) {
+            anticommuting &= ~((std::uint64_t{1} << (start & 63)) - 1);
+        }
+        while (anticommuting) {
+            const int bit = trailing_zeros64(anticommuting);
+            const std::size_t operation = block * 64 + static_cast<std::size_t>(bit);
+            if (operation < state.pending_operations.size()) {
+                xor_pending_operation_sign(state.pending_operations[operation], sign);
+            }
+            anticommuting &= anticommuting - 1;
+        }
+    }
 }
 
 void push_symbolic_pauli_through_pending_from(
@@ -183,13 +318,48 @@ void push_symbolic_pauli_through_pending_from(
     const PauliString& pauli,
     const SymbolicBool& sign) {
     state.context->bump_next_condition(sign);
-    const std::size_t start = first_index_one_based <= 1 ? 0 : static_cast<std::size_t>(first_index_one_based - 1);
+    const std::size_t start =
+        (state.has_expectation ? state.pending_operation_cursor : 0) +
+        (first_index_one_based <= 1 ? 0 : static_cast<std::size_t>(first_index_one_based - 1));
+    const std::optional<PauliString> stored_pauli = state.has_expectation && state.pending_frame_active
+        ? std::optional<PauliString>(preimage(state.pending_frame, pauli))
+        : std::nullopt;
+    const PauliString& pending_pauli = stored_pauli ? *stored_pauli : pauli;
+    if (state.has_expectation) {
+        push_symbolic_pauli_through_indexed_pending(state, start, pending_pauli, sign);
+        return;
+    }
+    int single_x_qubit = -1;
+    bool single_x = true;
+    for (std::size_t word = 0; word < pending_pauli.x.size(); ++word) {
+        const std::uint64_t bits = pending_pauli.x[word];
+        if (pending_pauli.z[word] != 0 || (bits != 0 && (bits & (bits - 1)) != 0)) {
+            single_x = false;
+            break;
+        }
+        if (bits != 0) {
+            if (single_x_qubit >= 0) {
+                single_x = false;
+                break;
+            }
+            single_x_qubit = static_cast<int>(word * 64 + std::countr_zero(bits));
+        }
+    }
+    if (!single_x) {
+        single_x_qubit = -1;
+    }
     for (std::size_t idx = start; idx < state.pending_operations.size(); ++idx) {
-        state.pending_operations[idx] = std::visit(
-            [&](const auto& op) -> PendingOperation { return xor_operation_sign_if_anticommutes(op, pauli, sign); },
+        std::visit(
+            [&](auto& op) {
+                xor_operation_sign_if_anticommutes(op, pending_pauli, sign, single_x_qubit);
+            },
             state.pending_operations[idx]);
     }
 }
+
+void substitute_pending_symbols(
+    SymbolicBool& expression,
+    const std::unordered_map<int, SymbolicBool>& substitutions);
 
 void reduce_pending_signs_by_measurement_relation(
     PendingFactoredState& state,
@@ -199,16 +369,154 @@ void reduce_pending_signs_by_measurement_relation(
     if (!record_condition) {
         return;
     }
-    const SymbolicBool relation = measurement_relation(*record_condition, outcome);
+    SymbolicBool reduced_outcome = outcome;
+    substitute_pending_symbols(reduced_outcome, state.pending_substitutions);
+    const SymbolicBool relation = measurement_relation(*record_condition, reduced_outcome);
     state.context->bump_next_condition(relation);
-    const std::size_t start = first_index_one_based <= 1 ? 0 : static_cast<std::size_t>(first_index_one_based - 1);
-    for (std::size_t idx = start; idx < state.pending_operations.size(); ++idx) {
-        state.pending_operations[idx] = std::visit(
-            [&](const auto& op) -> PendingOperation {
-                return reduce_pending_operation_sign(op, relation);
-            },
-            state.pending_operations[idx]);
+    // The current operation is still at the front when queued_first is true;
+    // it is removed by process_next_pending_operation immediately afterwards.
+    // Deferring the equivalent substitution avoids rescanning the whole tail.
+    (void)first_index_one_based;
+    const int pivot = *record_condition;
+    const bool self_reference = std::binary_search(
+        reduced_outcome.conditions.begin(), reduced_outcome.conditions.end(), pivot);
+    if (!self_reference &&
+        (reduced_outcome.conditions.size() <= 1 ||
+         has_lower_sampling_cost(reduced_outcome, symbolic_bool(pivot)))) {
+        state.pending_substitutions[pivot] = std::move(reduced_outcome);
+        return;
     }
+    const std::size_t relation_index = state.pending_relations.size();
+    state.pending_relations.push_back(relation);
+    auto& relation_words = state.pending_relation_words.emplace_back();
+    for (int condition : relation.conditions) {
+        state.pending_relation_index[condition].push_back(relation_index);
+        const std::size_t word = symbol_word_index(condition);
+        if (relation_words.empty() || relation_words.back() != word) {
+            relation_words.push_back(word);
+        }
+    }
+}
+
+void normalize_xor_conditions(std::vector<int>& conditions) {
+    std::sort(conditions.begin(), conditions.end());
+    std::size_t write = 0;
+    for (std::size_t read = 0; read < conditions.size();) {
+        std::size_t end = read + 1;
+        while (end < conditions.size() && conditions[end] == conditions[read]) {
+            ++end;
+        }
+        if ((end - read) & 1u) {
+            conditions[write++] = conditions[read];
+        }
+        read = end;
+    }
+    conditions.resize(write);
+}
+
+void substitute_pending_symbols(
+    SymbolicBool& expression,
+    const std::unordered_map<int, SymbolicBool>& substitutions) {
+    if (expression.conditions.empty() || substitutions.empty()) {
+        return;
+    }
+    std::vector<int> expanded = expression.conditions;
+    while (true) {
+        bool changed = false;
+        std::vector<int> next;
+        next.reserve(expanded.size());
+        for (int condition : expanded) {
+            const auto found = substitutions.find(condition);
+            if (found == substitutions.end()) {
+                next.push_back(condition);
+            } else {
+                changed = true;
+                expression.constant ^= found->second.constant;
+                next.insert(next.end(), found->second.conditions.begin(), found->second.conditions.end());
+            }
+        }
+        normalize_xor_conditions(next);
+        expanded = std::move(next);
+        if (!changed) {
+            break;
+        }
+    }
+    expression.conditions = std::move(expanded);
+}
+
+void reduce_pending_symbolic_bool(
+    SymbolicBool& expression,
+    const PendingFactoredState& state) {
+    substitute_pending_symbols(expression, state.pending_substitutions);
+    if (expression.conditions.empty() || state.pending_relations.empty()) {
+        return;
+    }
+    std::vector<std::size_t> candidates;
+    for (int condition : expression.conditions) {
+        const auto found = state.pending_relation_index.find(condition);
+        if (found != state.pending_relation_index.end()) {
+            candidates.insert(candidates.end(), found->second.begin(), found->second.end());
+        }
+    }
+    std::sort(candidates.begin(), candidates.end());
+    std::vector<std::size_t> expression_words;
+    for (int condition : expression.conditions) {
+        const std::size_t word = symbol_word_index(condition);
+        if (expression_words.empty() || expression_words.back() != word) {
+            expression_words.push_back(word);
+        }
+    }
+    for (std::size_t start = 0; start < candidates.size();) {
+        std::size_t end = start + 1;
+        while (end < candidates.size() && candidates[end] == candidates[start]) {
+            ++end;
+        }
+        const std::size_t relation_index = candidates[start];
+        const std::size_t overlap = end - start;
+        const auto& relation = state.pending_relations[relation_index];
+        bool can_lower_cost = 2 * overlap > relation.conditions.size();
+        if (!can_lower_cost) {
+            const auto& relation_words = state.pending_relation_words[relation_index];
+            std::size_t expr_word = 0;
+            std::size_t relation_word = 0;
+            std::size_t shared_words = 0;
+            std::size_t new_words = 0;
+            while (relation_word < relation_words.size()) {
+                while (expr_word < expression_words.size() &&
+                       expression_words[expr_word] < relation_words[relation_word]) {
+                    ++expr_word;
+                }
+                if (expr_word < expression_words.size() &&
+                    expression_words[expr_word] == relation_words[relation_word]) {
+                    ++shared_words;
+                } else {
+                    ++new_words;
+                }
+                ++relation_word;
+            }
+            can_lower_cost = shared_words > new_words;
+        }
+        if (!can_lower_cost) {
+            start = end;
+            continue;
+        }
+        expression = reduce_by_relation_once(expression, relation);
+        start = end;
+    }
+}
+
+void reduce_pending_operation_signs(
+    PendingOperation& operation,
+    const PendingFactoredState& state) {
+    std::visit(
+        [&](auto& typed) {
+            if constexpr (requires { typed.pauli.sign; }) {
+                reduce_pending_symbolic_bool(typed.pauli.sign, state);
+            } else if constexpr (requires { typed.outcome; }) {
+                reduce_pending_symbolic_bool(typed.outcome, state);
+            }
+        },
+        operation);
 }
 
 std::optional<int> highest_dormant_x_qubit(const PendingFactoredState& state, const PauliString& pauli) {
@@ -488,6 +796,15 @@ PendingClassicalRecord transform_operation_by_frame(const PendingClassicalRecord
 }
 
 void transform_pending_operations_by_frame(PendingFactoredState& state, const CliffordFrame& frame) {
+    if (state.has_expectation) {
+        CliffordFrame composed(frame.nqubits);
+        for (std::size_t row = 0; row < composed.rows.size(); ++row) {
+            composed.rows[row] = preimage(state.pending_frame, frame.rows[row]);
+        }
+        state.pending_frame = std::move(composed);
+        state.pending_frame_active = true;
+        return;
+    }
     for (auto& op : state.pending_operations) {
         op = std::visit([&](const auto& typed) -> PendingOperation { return transform_operation_by_frame(typed, frame); }, op);
     }
@@ -586,7 +903,8 @@ std::optional<FactoredInstruction> process_pending_rotation(PendingFactoredState
 
 std::optional<FactoredInstruction> process_pending_measurement(PendingFactoredState& state, const PendingPauliMeasurement& measurement) {
     state.context->bump_next_condition(max_condition(measurement));
-    const bool queued_first = !state.pending_operations.empty() && state.pending_operations.front() == PendingOperation(measurement);
+    const bool queued_first = state.has_expectation ||
+        (!state.pending_operations.empty() && state.pending_operations.front() == PendingOperation(measurement));
     PendingPauliMeasurement current = measurement;
     const PauliString active_body = project_pauli_body(current.pauli.pauli, 0, state.k);
     const auto picked = highest_dormant_x_qubit(state, current.pauli.pauli);
@@ -618,13 +936,22 @@ std::optional<FactoredInstruction> process_pending_classical_record(
 }
 
 std::optional<FactoredInstruction> process_next_pending_operation(PendingFactoredState& state) {
-    if (state.pending_operations.empty()) {
+    if (!has_pending_operations(state)) {
         return std::nullopt;
     }
     if (state.pending_prefix_instruction_indices.empty()) {
         state.pending_prefix_instruction_indices.push_back(static_cast<int>(state.instructions.size()));
     }
-    const PendingOperation operation = state.pending_operations.front();
+    PendingOperation operation = state.pending_operations[
+        state.has_expectation ? state.pending_operation_cursor : 0];
+    reduce_pending_operation_signs(operation, state);
+    if (state.has_expectation && state.pending_frame_active) {
+        operation = std::visit(
+            [&](const auto& typed) -> PendingOperation {
+                return transform_operation_by_frame(typed, state.pending_frame);
+            },
+            operation);
+    }
     const std::size_t start = state.instructions.size();
     std::optional<FactoredInstruction> result = std::visit(
         [&](const auto& op) -> std::optional<FactoredInstruction> {
@@ -637,7 +964,11 @@ std::optional<FactoredInstruction> process_next_pending_operation(PendingFactore
             }
         },
         operation);
-    state.pending_operations.erase(state.pending_operations.begin());
+    if (state.has_expectation) {
+        ++state.pending_operation_cursor;
+    } else {
+        state.pending_operations.erase(state.pending_operations.begin());
+    }
     state.pending_prefix_instruction_indices.push_back(static_cast<int>(state.instructions.size()));
     if (state.instructions.size() == start) {
         return result;
@@ -670,12 +1001,12 @@ std::vector<FactoredInstruction> process_pending_operations(PendingFactoredState
 namespace {
 
 template <typename T>
-void reduce_instruction_symbolic_expressions(T& instruction, const std::vector<SymbolicBool>& relations) {
+void reduce_instruction_symbolic_expressions(T& instruction, const SymbolicRelationReducer& reducer) {
     if constexpr (requires { instruction.sign; }) {
-        instruction.sign = reduce_by_relations(std::move(instruction.sign), relations);
+        instruction.sign = reducer.reduce(std::move(instruction.sign));
     }
     if constexpr (requires { instruction.outcome; }) {
-        instruction.outcome = reduce_by_relations(std::move(instruction.outcome), relations);
+        instruction.outcome = reducer.reduce(std::move(instruction.outcome));
     }
 }
 
@@ -690,11 +1021,11 @@ std::optional<SymbolicBool> measurement_relation_from_instruction(const T& instr
 }
 
 void reduce_program_symbolic_expressions(std::vector<FactoredInstruction>& instructions) {
-    std::vector<SymbolicBool> relations;
+    SymbolicRelationReducer reducer;
     for (auto& instruction : instructions) {
         std::visit(
             [&](auto& inst) {
-                reduce_instruction_symbolic_expressions(inst, relations);
+                reduce_instruction_symbolic_expressions(inst, reducer);
             },
             instruction);
         const auto relation = std::visit(
@@ -703,7 +1034,7 @@ void reduce_program_symbolic_expressions(std::vector<FactoredInstruction>& instr
             },
             instruction);
         if (relation && (!relation->conditions.empty() || relation->constant)) {
-            relations.push_back(*relation);
+            reducer.add(*relation);
         }
     }
 }

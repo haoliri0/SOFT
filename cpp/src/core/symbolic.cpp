@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <ostream>
 #include <sstream>
 
@@ -56,11 +57,16 @@ SymbolicBool operator!(const SymbolicBool& expr) {
 }
 
 SymbolicBool xor_bool(const SymbolicBool& lhs, const SymbolicBool& rhs) {
-    std::vector<int> conditions = lhs.conditions;
-    for (int condition : rhs.conditions) {
-        toggle_condition(conditions, condition);
-    }
-    return SymbolicBool(lhs.constant != rhs.constant, conditions);
+    SymbolicBool out;
+    out.constant = lhs.constant != rhs.constant;
+    out.conditions.reserve(lhs.conditions.size() + rhs.conditions.size());
+    std::set_symmetric_difference(
+        lhs.conditions.begin(),
+        lhs.conditions.end(),
+        rhs.conditions.begin(),
+        rhs.conditions.end(),
+        std::back_inserter(out.conditions));
+    return out;
 }
 
 SymbolicBool xor_bool(const SymbolicBool& lhs, bool rhs) {

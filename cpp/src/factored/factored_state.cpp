@@ -383,6 +383,7 @@ PendingFactoredState::PendingFactoredState(int n_, int k_, std::shared_ptr<Symbo
         context = std::make_shared<SymbolicContext>();
     }
     dormant = DormantState(n - k, context);
+    pending_frame = CliffordFrame(n);
 }
 
 PendingFactoredState::PendingFactoredState(const FrameFactoredState& state)
@@ -392,9 +393,14 @@ PendingFactoredState::PendingFactoredState(const FrameFactoredState& state)
       max_k(state.k),
       dormant(state.dormant.bits, state.context),
       context(state.context),
+      pending_frame(state.n),
       pending_operations(state.pending_operations) {
     for (const auto& op : pending_operations) {
         context->bump_next_condition(max_condition(op));
+        if (const auto* measurement = std::get_if<PendingPauliMeasurement>(&op);
+            measurement != nullptr && measurement->exp_val) {
+            has_expectation = true;
+        }
         if (auto measurement = std::get_if<PendingPauliMeasurement>(&op); measurement && measurement->record) {
             next_record = std::max(next_record, *measurement->record + 1);
         }

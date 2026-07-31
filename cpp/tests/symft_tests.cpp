@@ -569,6 +569,22 @@ void test_pauli_algebra() {
     require(!ps.xbit(3) && ps.zbit(3), "Z bits");
 }
 
+void test_active_pauli_frame_index() {
+    using namespace symft;
+    ActivePauliFrame frame(65);
+    for (int term = 0; term < 70; ++term) {
+        frame.add_pauli(pauli_x(65, term % 65), term + 1);
+    }
+    frame.add_pauli(pauli_x(65, 0), 100);
+    frame.add_pauli(pauli_x(65, 0), 100);
+    const PauliString query = pauli_z(65, 0);
+    const auto conjugated = conjugate_by(frame, query);
+    require(conjugated.pauli == query, "active frame preserves Pauli body");
+    require(conjugated.sign == SymbolicBool(false, {1, 66}), "active frame block parity");
+    const auto signed_query = conjugate_by(frame, SymbolicPauliString(query, symbolic_bool(66)));
+    require(signed_query.sign == symbolic_bool(1), "active frame combines an existing sign");
+}
+
 void test_active_rotation() {
     using namespace symft;
     ActiveState st(1);
@@ -2013,6 +2029,7 @@ void test_prepared_sampler_multithreading() {
 
 int main() {
     test_pauli_algebra();
+    test_active_pauli_frame_index();
     test_active_rotation();
     test_high_pivot_selection();
     test_pending_operation_optimizer();

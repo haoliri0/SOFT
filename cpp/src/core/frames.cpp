@@ -2,6 +2,7 @@
 
 #include "core/internal.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -46,10 +47,37 @@ ConditionalPauliString ActivePauliFrame::add_pauli(const PauliString& pauli, int
     if (pauli.nqubits != k) {
         fail("Pauli string dimension does not match active Pauli frame");
     }
-    ConditionalPauliString cp(pauli, condition);
-    terms.push_back(cp);
+    const std::size_t term = terms.size();
+    if ((term & 63u) == 0) {
+        x_term_blocks.resize(x_term_blocks.size() + static_cast<std::size_t>(k), 0);
+        z_term_blocks.resize(z_term_blocks.size() + static_cast<std::size_t>(k), 0);
+    }
+    const std::size_t block = term >> 6;
+    const std::size_t base = block * static_cast<std::size_t>(k);
+    const std::uint64_t mask = std::uint64_t{1} << (term & 63u);
+    for (std::size_t word = 0; word < pauli.x.size(); ++word) {
+        std::uint64_t x_bits = pauli.x[word];
+        std::uint64_t z_bits = pauli.z[word];
+        while (x_bits) {
+            const int bit = trailing_zeros64(x_bits);
+            const std::size_t q = word * 64 + static_cast<std::size_t>(bit);
+            if (q < static_cast<std::size_t>(k)) {
+                x_term_blocks[base + q] |= mask;
+            }
+            x_bits &= x_bits - 1;
+        }
+        while (z_bits) {
+            const int bit = trailing_zeros64(z_bits);
+            const std::size_t q = word * 64 + static_cast<std::size_t>(bit);
+            if (q < static_cast<std::size_t>(k)) {
+                z_term_blocks[base + q] |= mask;
+            }
+            z_bits &= z_bits - 1;
+        }
+    }
+    terms.emplace_back(pauli, condition);
     context->bump_next_condition(condition);
-    return cp;
+    return terms.back();
 }
 
 SymbolicPauliString conjugate_by(const ConditionalPauliString& cp, const PauliString& pauli) {
@@ -72,21 +100,66 @@ SymbolicPauliString conjugate_by(const ActivePauliFrame& frame, const PauliStrin
     if (pauli.nqubits != frame.k) {
         fail("Pauli string dimension does not match active Pauli frame");
     }
-    SymbolicPauliString out(pauli);
-    for (const auto& cp : frame.terms) {
-        out = conjugate_by(cp, out);
+    std::vector<int> x_qubits;
+    std::vector<int> z_qubits;
+    for (std::size_t word = 0; word < pauli.x.size(); ++word) {
+        std::uint64_t x_bits = pauli.x[word];
+        std::uint64_t z_bits = pauli.z[word];
+        while (x_bits) {
+            const int bit = trailing_zeros64(x_bits);
+            x_qubits.push_back(static_cast<int>(word * 64 + static_cast<std::size_t>(bit)));
+            x_bits &= x_bits - 1;
+        }
+        while (z_bits) {
+            const int bit = trailing_zeros64(z_bits);
+            z_qubits.push_back(static_cast<int>(word * 64 + static_cast<std::size_t>(bit)));
+            z_bits &= z_bits - 1;
+        }
     }
-    return out;
+    std::vector<int> conditions;
+    const std::size_t blocks = (frame.terms.size() + 63) >> 6;
+    for (std::size_t block = 0; block < blocks; ++block) {
+        const std::size_t base = block * static_cast<std::size_t>(frame.k);
+        std::uint64_t anticommuting = 0;
+        for (int q : x_qubits) {
+            anticommuting ^= frame.z_term_blocks[base + static_cast<std::size_t>(q)];
+        }
+        for (int q : z_qubits) {
+            anticommuting ^= frame.x_term_blocks[base + static_cast<std::size_t>(q)];
+        }
+        while (anticommuting) {
+            const int bit = trailing_zeros64(anticommuting);
+            const std::size_t term = block * 64 + static_cast<std::size_t>(bit);
+            if (term < frame.terms.size()) {
+                conditions.push_back(frame.terms[term].condition);
+            }
+            anticommuting &= anticommuting - 1;
+        }
+    }
+    std::sort(conditions.begin(), conditions.end());
+    std::vector<int> normalized;
+    normalized.reserve(conditions.size());
+    for (std::size_t start = 0; start < conditions.size();) {
+        std::size_t end = start + 1;
+        while (end < conditions.size() && conditions[end] == conditions[start]) {
+            ++end;
+        }
+        if ((end - start) & 1u) {
+            normalized.push_back(conditions[start]);
+        }
+        start = end;
+    }
+    SymbolicBool sign;
+    sign.conditions = std::move(normalized);
+    return SymbolicPauliString(pauli, std::move(sign));
 }
 
 SymbolicPauliString conjugate_by(const ActivePauliFrame& frame, const SymbolicPauliString& pauli) {
     if (pauli.pauli.nqubits != frame.k) {
         fail("Pauli string dimension does not match active Pauli frame");
     }
-    SymbolicPauliString out = pauli;
-    for (const auto& cp : frame.terms) {
-        out = conjugate_by(cp, out);
-    }
+    SymbolicPauliString out = conjugate_by(frame, pauli.pauli);
+    out.sign = xor_bool(out.sign, pauli.sign);
     return out;
 }
 
@@ -153,6 +226,7 @@ void CliffordFrame::copy_pauli_to_row(int row, const PauliString& pauli) {
 
 void CliffordFrame::invalidate_support_cache() {
     support_words_valid = false;
+    coordinate_columns_valid = false;
 }
 
 const std::vector<CliffordFrame::SupportWord>& CliffordFrame::support_for_row(int row) const {
@@ -177,6 +251,37 @@ const std::vector<CliffordFrame::SupportWord>& CliffordFrame::support_for_row(in
         support_words_valid = true;
     }
     return support_words[static_cast<std::size_t>(row)];
+}
+
+void CliffordFrame::ensure_coordinate_columns() const {
+    if (coordinate_columns_valid) {
+        return;
+    }
+    const std::size_t row_words = (rows.size() + 63) >> 6;
+    x_coordinate_columns.assign(static_cast<std::size_t>(nqubits) * row_words, 0);
+    z_coordinate_columns.assign(static_cast<std::size_t>(nqubits) * row_words, 0);
+    for (std::size_t row = 0; row < rows.size(); ++row) {
+        const auto& support = support_for_row(static_cast<int>(row));
+        for (const auto& word : support) {
+            std::uint64_t x_bits = word.x_mask;
+            std::uint64_t z_bits = word.z_mask;
+            while (x_bits) {
+                const std::size_t q = word.index * 64 + static_cast<std::size_t>(trailing_zeros64(x_bits));
+                if (q < static_cast<std::size_t>(nqubits)) {
+                    x_coordinate_columns[q * row_words + (row >> 6)] |= std::uint64_t{1} << (row & 63);
+                }
+                x_bits &= x_bits - 1;
+            }
+            while (z_bits) {
+                const std::size_t q = word.index * 64 + static_cast<std::size_t>(trailing_zeros64(z_bits));
+                if (q < static_cast<std::size_t>(nqubits)) {
+                    z_coordinate_columns[q * row_words + (row >> 6)] |= std::uint64_t{1} << (row & 63);
+                }
+                z_bits &= z_bits - 1;
+            }
+        }
+    }
+    coordinate_columns_valid = true;
 }
 
 bool operator==(const CliffordFrame& lhs, const CliffordFrame& rhs) {
@@ -236,68 +341,86 @@ PauliString preimage(const CliffordFrame& frame, const PauliString& pauli) {
     }
     PauliString out(frame.nqubits);
     out.set_phase(pauli.phase_exponent());
-    for (int q = 0; q < frame.nqubits; ++q) {
-        const auto multiply_row = [&](int row_index) {
-            const auto& row = frame.rows[static_cast<std::size_t>(row_index)];
-            const auto& support = frame.support_for_row(row_index);
-            int carry = 0;
-            if (support.size() * 2 <= pauli.x.size()) {
-                for (const auto& word : support) {
-                    carry += popcount64(out.z[word.index] & word.x_mask);
-                    out.x[word.index] ^= word.x_mask;
-                    out.z[word.index] ^= word.z_mask;
-                }
-            } else {
-                for (std::size_t word = 0; word < row.x.size(); ++word) {
-                    carry += popcount64(out.z[word] & row.x[word]);
-                    out.x[word] ^= row.x[word];
-                    out.z[word] ^= row.z[word];
-                }
+    const auto multiply_row = [&](int row_index) {
+        const auto& row = frame.rows[static_cast<std::size_t>(row_index)];
+        const auto& support = frame.support_for_row(row_index);
+        int carry = 0;
+        if (support.size() * 2 <= pauli.x.size()) {
+            for (const auto& word : support) {
+                carry += popcount64(out.z[word.index] & word.x_mask);
+                out.x[word.index] ^= word.x_mask;
+                out.z[word.index] ^= word.z_mask;
             }
-            out.set_phase(out.phase_exponent() + row.phase_exponent() + 2 * (carry & 1));
-        };
-        if (pauli.xbit(q)) {
-            multiply_row(frame.xrow(q));
+        } else {
+            for (std::size_t word = 0; word < row.x.size(); ++word) {
+                carry += popcount64(out.z[word] & row.x[word]);
+                out.x[word] ^= row.x[word];
+                out.z[word] ^= row.z[word];
+            }
         }
-        if (pauli.zbit(q)) {
-            multiply_row(frame.zrow(q));
+        out.set_phase(out.phase_exponent() + row.phase_exponent() + 2 * (carry & 1));
+    };
+    // The old implementation checked both bits on every qubit. Walking the
+    // set bits keeps the original ascending-q, X-before-Z multiplication
+    // order while avoiding an O(n) scan for sparse Paulis.
+    for (std::size_t word = 0; word < pauli.x.size(); ++word) {
+        std::uint64_t bits = pauli.x[word] | pauli.z[word];
+        while (bits) {
+            const int bit = trailing_zeros64(bits);
+            const int q = static_cast<int>(word * 64 + static_cast<std::size_t>(bit));
+            if (pauli.x[word] & (std::uint64_t{1} << bit)) {
+                multiply_row(frame.xrow(q));
+            }
+            if (pauli.z[word] & (std::uint64_t{1} << bit)) {
+                multiply_row(frame.zrow(q));
+            }
+            bits &= bits - 1;
         }
     }
     return out;
 }
 
-namespace {
-
-bool pauli_anticommutes_with_frame_row(
-    const CliffordFrame& frame,
-    int row_index,
-    const PauliString& pauli) {
-    const auto& support = frame.support_for_row(row_index);
-    if (support.size() * 2 > pauli.x.size()) {
-        return pauli_anticommutes(pauli, frame.rows[static_cast<std::size_t>(row_index)]);
-    }
-    bool parity = false;
-    for (const auto& word : support) {
-        parity ^= is_odd_popcount(
-            (pauli.x[word.index] & word.z_mask) ^ (pauli.z[word.index] & word.x_mask));
-    }
-    return parity;
-}
-
-} // namespace
-
 PauliString coordinates_in_frame(const CliffordFrame& frame, const PauliString& pauli) {
     if (pauli.nqubits != frame.nqubits) {
         fail("Pauli string and Clifford frame have different numbers of qubits");
     }
+    const std::size_t row_words = (frame.rows.size() + 63) >> 6;
+    frame.ensure_coordinate_columns();
+    std::vector<std::uint64_t> parity(row_words, 0);
+    for (std::size_t word = 0; word < pauli.x.size(); ++word) {
+        std::uint64_t x_bits = pauli.x[word];
+        std::uint64_t z_bits = pauli.z[word];
+        while (x_bits) {
+            const std::size_t q = word * 64 + static_cast<std::size_t>(trailing_zeros64(x_bits));
+            const std::size_t base = q * row_words;
+            for (std::size_t row_word = 0; row_word < row_words; ++row_word) {
+                parity[row_word] ^= frame.z_coordinate_columns[base + row_word];
+            }
+            x_bits &= x_bits - 1;
+        }
+        while (z_bits) {
+            const std::size_t q = word * 64 + static_cast<std::size_t>(trailing_zeros64(z_bits));
+            const std::size_t base = q * row_words;
+            for (std::size_t row_word = 0; row_word < row_words; ++row_word) {
+                parity[row_word] ^= frame.x_coordinate_columns[base + row_word];
+            }
+            z_bits &= z_bits - 1;
+        }
+    }
     PauliString out(frame.nqubits);
-    for (int q = 0; q < frame.nqubits; ++q) {
-        if (pauli_anticommutes_with_frame_row(frame, frame.zrow(q), pauli)) {
-            out.set_xbit(q);
+    const std::size_t n = static_cast<std::size_t>(frame.nqubits);
+    const std::size_t n_shift_words = n >> 6;
+    const unsigned n_shift = static_cast<unsigned>(n & 63);
+    for (std::size_t word = 0; word < out.z.size(); ++word) {
+        out.z[word] = parity[word];
+        if (word + 1 == out.z.size() && n_shift != 0) {
+            out.z[word] &= (std::uint64_t{1} << n_shift) - 1;
         }
-        if (pauli_anticommutes_with_frame_row(frame, frame.xrow(q), pauli)) {
-            out.set_zbit(q);
+        std::uint64_t value = parity[n_shift_words + word] >> n_shift;
+        if (n_shift != 0 && n_shift_words + word + 1 < parity.size()) {
+            value |= parity[n_shift_words + word + 1] << (64 - n_shift);
         }
+        out.x[word] = value;
     }
     const PauliString reconstructed = preimage(frame, out);
     if (!reconstructed.same_body(pauli)) {

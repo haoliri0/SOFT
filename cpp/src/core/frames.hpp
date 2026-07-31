@@ -31,6 +31,8 @@ bool operator==(const SymbolicPauliString& lhs, const SymbolicPauliString& rhs);
 struct ActivePauliFrame {
     int k = 0;
     std::vector<ConditionalPauliString> terms;
+    std::vector<std::uint64_t> x_term_blocks;
+    std::vector<std::uint64_t> z_term_blocks;
     std::shared_ptr<SymbolicContext> context;
 
     ActivePauliFrame() = default;
@@ -74,6 +76,9 @@ struct CliffordFrame {
     std::vector<PauliString> rows;
     mutable std::vector<std::vector<SupportWord>> support_words;
     mutable bool support_words_valid = false;
+    mutable std::vector<std::uint64_t> x_coordinate_columns;
+    mutable std::vector<std::uint64_t> z_coordinate_columns;
+    mutable bool coordinate_columns_valid = false;
 
     CliffordFrame() = default;
     explicit CliffordFrame(int nqubits);
@@ -83,6 +88,7 @@ struct CliffordFrame {
     void copy_pauli_to_row(int row, const PauliString& pauli);
     void invalidate_support_cache();
     const std::vector<SupportWord>& support_for_row(int row) const;
+    void ensure_coordinate_columns() const;
 };
 
 bool operator==(const CliffordFrame& lhs, const CliffordFrame& rhs);

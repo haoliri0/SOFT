@@ -199,6 +199,7 @@ PendingOptimizationStats optimize_pending_operations(
             const auto* measurement = std::get_if<PendingPauliMeasurement>(&operation);
             return measurement != nullptr && measurement->exp_val.has_value();
         });
+    state.has_expectation = has_expectation;
     if (has_expectation) {
         // ponytail: EXP_VAL circuits keep source order; add a linear commute pass if profiling proves it matters.
         stats.prefix_remap.resize(static_cast<std::size_t>(operation_count + 1));
