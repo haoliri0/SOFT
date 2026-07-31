@@ -47,6 +47,13 @@ def sample(circuit, shots=1, **kwargs):
     return circuit.sample(shots=shots, **kwargs)
 
 
+def sample_with_expectations(circuit, shots=1, **kwargs):
+    """Sample measurement records together with non-destructive EXP_VAL values."""
+    if not isinstance(circuit, Circuit):
+        circuit = Circuit(circuit)
+    return circuit.sample_with_expectations(shots=shots, **kwargs)
+
+
 __all__ = [
     "Circuit",
     "CompiledCountsSampler",
@@ -57,5 +64,6 @@ __all__ = [
     "cuda_enabled",
     "read_stim_file",
     "sample",
+    "sample_with_expectations",
     "simd_backend",
 ]

@@ -12,7 +12,8 @@ bool operator==(const PendingPauliRotation& lhs, const PendingPauliRotation& rhs
 
 bool operator==(const PendingPauliMeasurement& lhs, const PendingPauliMeasurement& rhs) {
     return lhs.pauli == rhs.pauli && optional_equal(lhs.record, rhs.record) &&
-           optional_equal(lhs.record_condition, rhs.record_condition);
+           optional_equal(lhs.record_condition, rhs.record_condition) &&
+           optional_equal(lhs.exp_val, rhs.exp_val);
 }
 
 bool operator==(const PendingClassicalRecord& lhs, const PendingClassicalRecord& rhs) {
@@ -45,7 +46,8 @@ bool operator==(const PromoteDormantRotation& lhs, const PromoteDormantRotation&
 
 bool operator==(const RecordMeasurement& lhs, const RecordMeasurement& rhs) {
     return lhs.outcome == rhs.outcome && optional_equal(lhs.record, rhs.record) &&
-           optional_equal(lhs.record_condition, rhs.record_condition);
+           optional_equal(lhs.record_condition, rhs.record_condition) &&
+           optional_equal(lhs.exp_val, rhs.exp_val);
 }
 
 bool operator==(const RecordDetector& lhs, const RecordDetector& rhs) {
@@ -54,12 +56,14 @@ bool operator==(const RecordDetector& lhs, const RecordDetector& rhs) {
 
 bool operator==(const MeasurePrecomputedActivePauli& lhs, const MeasurePrecomputedActivePauli& rhs) {
     return lhs.pauli == rhs.pauli && lhs.branch == rhs.branch && lhs.outcome == rhs.outcome &&
-           optional_equal(lhs.record, rhs.record) && optional_equal(lhs.record_condition, rhs.record_condition);
+           optional_equal(lhs.record, rhs.record) && optional_equal(lhs.record_condition, rhs.record_condition) &&
+           optional_equal(lhs.exp_val, rhs.exp_val);
 }
 
 bool operator==(const IntroduceDormantMeasurementBranch& lhs, const IntroduceDormantMeasurementBranch& rhs) {
     return lhs.branch == rhs.branch && lhs.outcome == rhs.outcome && optional_equal(lhs.record, rhs.record) &&
-           optional_equal(lhs.record_condition, rhs.record_condition);
+           optional_equal(lhs.record_condition, rhs.record_condition) &&
+           optional_equal(lhs.exp_val, rhs.exp_val);
 }
 
 bool operator==(const FactoredInstruction& lhs, const FactoredInstruction& rhs) {
@@ -330,6 +334,23 @@ PendingPauliMeasurement apply_pauli_measurement(
         SymbolicPauliString(prepared.pauli, xor_bool(prepared.sign, sign)),
         record,
         record_condition,
+    };
+    state.pending_operations.push_back(measurement);
+    return measurement;
+}
+
+PendingPauliMeasurement apply_pauli_expectation(
+    FrameFactoredState& state,
+    const PauliString& pauli,
+    int exp_val) {
+    if (exp_val < 0) {
+        fail("expectation value index must be nonnegative");
+    }
+    PendingPauliMeasurement measurement{
+        prepare_pending_pauli(state, pauli),
+        std::nullopt,
+        std::nullopt,
+        exp_val,
     };
     state.pending_operations.push_back(measurement);
     return measurement;

@@ -21,6 +21,10 @@ struct PendingPauliMeasurement {
     SymbolicPauliString pauli;
     std::optional<int> record;
     std::optional<int> record_condition;
+    // When set, this is a non-destructive expectation probe instead of a
+    // sampled measurement.  Keeping it on the existing measurement path
+    // avoids a second planner/runtime instruction family.
+    std::optional<int> exp_val;
 };
 
 struct PendingClassicalRecord {
@@ -56,6 +60,7 @@ struct RecordMeasurement {
     std::optional<int> record;
     std::optional<int> record_condition;
     SymbolicBoolEvaluationPlan outcome_plan;
+    std::optional<int> exp_val;
 };
 
 struct RecordDetector {
@@ -73,6 +78,7 @@ struct MeasurePrecomputedActivePauli {
     std::optional<int> record;
     std::optional<int> record_condition;
     SymbolicBoolEvaluationPlan outcome_plan;
+    std::optional<int> exp_val;
 };
 
 struct IntroduceDormantMeasurementBranch {
@@ -81,6 +87,7 @@ struct IntroduceDormantMeasurementBranch {
     std::optional<int> record;
     std::optional<int> record_condition;
     SymbolicBoolEvaluationPlan outcome_plan;
+    std::optional<int> exp_val;
 };
 
 using FactoredInstruction = std::variant<
@@ -182,6 +189,10 @@ PendingPauliMeasurement apply_pauli_measurement(
     const SymbolicBool& sign,
     std::optional<int> record = std::nullopt,
     std::optional<int> record_condition = std::nullopt);
+PendingPauliMeasurement apply_pauli_expectation(
+    FrameFactoredState& state,
+    const PauliString& pauli,
+    int exp_val);
 PendingClassicalRecord apply_classical_record(
     FrameFactoredState& state,
     const SymbolicBool& outcome,
@@ -240,6 +251,7 @@ struct FactoredInstructionProgram {
     int nsymbols = 0;
     int nrecords = 0;
     int ndetectors = 0;
+    int nexpvals = 0;
     std::vector<SymbolicCategoricalDistribution> sampled_categorical_distributions;
     std::vector<RareCategoricalSampleGroup> sampled_rare_categorical_groups;
     std::vector<int> sampled_bernoulli_conditions;

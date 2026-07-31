@@ -70,6 +70,8 @@ class Circuit:
     @property
     def num_measurements(self) -> int: ...
     @property
+    def num_exp_vals(self) -> int: ...
+    @property
     def num_detectors(self) -> int: ...
     @property
     def num_observables(self) -> int: ...
@@ -108,6 +110,13 @@ class Circuit:
         batch_size: int = ...,
         sample_chunk_shots: int = ...,
     ) -> Union[BoolSamples, PackedSamples]: ...
+    def sample_with_expectations(
+        self,
+        shots: int = ...,
+        seed: int = ...,
+        bit_packed: bool = ...,
+        sample_chunk_shots: int = ...,
+    ) -> Tuple[Union[BoolSamples, PackedSamples], npt.NDArray[np.float64]]: ...
     def sample_counts(
         self,
         shots: int = ...,

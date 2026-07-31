@@ -367,6 +367,15 @@ std::shared_ptr<const ActiveComponentPlan> build_active_component_plan(
 
         if (const auto* measurement =
                 std::get_if<MeasurePrecomputedActivePauli>(&instruction)) {
+            if (measurement->exp_val) {
+                // Expectations are read-only barriers; keep the dense runtime
+                // path so no component coordinates are collapsed.
+                plan->instruction_steps[instruction_index] = {
+                    ActiveComponentStepKind::None,
+                    0,
+                };
+                continue;
+            }
             if (measurement->kernel.action.nqubits != global_k) {
                 fail("component planner saw a measurement with the wrong active width");
             }

@@ -11,6 +11,11 @@ namespace symft {
 struct PresampledExogenous;
 struct PackedPresampledExogenous;
 
+struct MeasurementExpectationSamples {
+    std::vector<std::vector<std::uint64_t>> measurements;
+    std::vector<std::vector<double>> expectations;
+};
+
 struct SingleShotActiveComponent {
     int k = 0;
     bool active = false;
@@ -27,6 +32,7 @@ struct FactoredExecutorState {
     int nsymbols = 0;
     int nrecords = 0;
     int ndetectors = 0;
+    int nexpvals = 0;
     std::vector<double> active_re;
     std::vector<double> active_im;
     std::vector<double> active_scratch_re;
@@ -35,6 +41,7 @@ struct FactoredExecutorState {
     std::vector<std::uint64_t> assigned_words;
     std::vector<std::uint64_t> measurement_words;
     std::vector<std::uint64_t> detector_words;
+    std::vector<double> exp_values;
     bool active_components_enabled = false;
     std::vector<SingleShotActiveComponent> active_components;
     std::uint64_t rng_state = 1;
@@ -59,6 +66,7 @@ void execute_in_place(
     const PresampledExpressionBlock& expression_block,
     int shot_index);
 std::vector<std::uint64_t> execute(FactoredExecutorState& runtime, const FactoredInstructionProgram& program);
+const std::vector<double>& expectation_values(const FactoredExecutorState& runtime);
 std::vector<std::uint64_t> sample_measurements(const FactoredInstructionProgram& program, std::uint64_t seed = 1);
 std::vector<std::vector<std::uint64_t>> sample_measurements(const FactoredInstructionProgram& program, int shots, std::uint64_t seed = 1);
 void assign_presampled_exogenous_in_place(
@@ -85,4 +93,9 @@ std::vector<std::vector<std::uint64_t>> sample_measurements(
     int shots,
     std::uint64_t seed,
     int sample_chunk_shots);
+MeasurementExpectationSamples sample_measurements_and_expectations(
+    const FactoredInstructionProgram& program,
+    int shots,
+    std::uint64_t seed = 1,
+    int sample_chunk_shots = 0);
 } // namespace symft
