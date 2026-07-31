@@ -1,13 +1,7 @@
-cmake_minimum_required(VERSION 3.22)
-project(soft-cuda
-    LANGUAGES CXX CUDA
-    VERSION 1.1.0)
+cmake_minimum_required(VERSION 3.20)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CUDA_STANDARD 20)
+project(SymFT LANGUAGES CXX)
 
-find_package(CUDAToolkit REQUIRED)
-include_directories("${CUDAToolkit_INCLUDE_DIRS}")
+enable_testing()
 
-add_subdirectory(soft-cuda-lib)
-add_subdirectory(soft-cuda-cli)
+add_subdirectory(cpp)

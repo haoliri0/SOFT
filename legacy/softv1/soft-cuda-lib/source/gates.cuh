@@ -1,6 +1,7 @@
 #ifndef SOFT_CUDA_GATES_CUH
 #define SOFT_CUDA_GATES_CUH
 
+#include <cuda/std/utility>
 #include <simulator.hpp>
 #include "./dimsop.cuh"
 
