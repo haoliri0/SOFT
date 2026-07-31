@@ -1,7 +1,6 @@
 
 SOFT v2 is powered by SymFT, a second-generation compiled sampler architecture replacing the original SOFT per-shot simulator.
 
-
 # SymFT
 
 SymFT is an exact, high-throughput Python/C++ simulator for noisy, adaptive Clifford-dominated quantum circuits.
@@ -243,3 +242,4 @@ The project authors reviewed and verified the resulting code, tests, benchmark r
 
 SymFT is licensed under the [Apache License 2.0](LICENSE).
 The Clifft-derived benchmark inputs retain their original attribution and are accompanied by a separate [Apache-2.0 license](benchmark/LICENSE-Clifft-paper).
+
