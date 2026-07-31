@@ -40,6 +40,13 @@ void test_clifford_frame() {
     left_H(h, 0);
     left_S(h, 0);
     require(preimage(h, pauli_x(1, 0)) == pauli_y(1, 0), "left composition order");
+
+    CliffordFrame wide(65);
+    auto wide_pauli = pauli_identity(65);
+    wide_pauli.set_xbit(0);
+    wide_pauli.set_zbit(64);
+    require(coordinates_in_frame(wide, wide_pauli) == wide_pauli, "sparse frame coordinates");
+    require(preimage(wide, wide_pauli) == wide_pauli, "sparse frame preimage");
 }
 
 void test_extended_clifford_frame_preimages() {
