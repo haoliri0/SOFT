@@ -235,6 +235,9 @@ void append_instruction(
     (void)expression_plan;
     inst.record = optional_id(source.record);
     inst.record_condition = optional_id(source.record_condition);
+    if (source.exp_val) {
+        inst.exp_val = *source.exp_val;
+    }
     out.instructions.push_back(inst);
 }
 
@@ -266,6 +269,9 @@ void append_instruction(
     inst.branch_condition = source.branch;
     inst.record = optional_id(source.record);
     inst.record_condition = optional_id(source.record_condition);
+    if (source.exp_val) {
+        inst.exp_val = *source.exp_val;
+    }
     out.instructions.push_back(inst);
 }
 
@@ -281,6 +287,9 @@ void append_instruction(
     inst.branch_condition = source.branch;
     inst.record = optional_id(source.record);
     inst.record_condition = optional_id(source.record_condition);
+    if (source.exp_val) {
+        inst.exp_val = *source.exp_val;
+    }
     out.instructions.push_back(inst);
 }
 
@@ -539,6 +548,7 @@ CudaProgramData build_cuda_program_data(
     out.max_k = program.max_k;
     out.symbol_words = checked_i32(symbol_word_count(program.nsymbols), "symbol word count");
     out.record_words = checked_i32(symbol_word_count(program.nrecords), "record word count");
+    out.nexpvals = program.nexpvals;
     out.block_expression_count = checked_i32(
         expression_plan.block_expressions.size(),
         "block expression count");
@@ -567,6 +577,7 @@ CudaProgramData build_cuda_program_data_device_exogenous(
     out.max_k = program.max_k;
     out.symbol_words = checked_i32(symbol_word_count(program.nsymbols), "symbol word count");
     out.record_words = checked_i32(symbol_word_count(program.nrecords), "record word count");
+    out.nexpvals = program.nexpvals;
     out.block_expression_count = 0;
 
     out.instructions.reserve(program.instructions.size());

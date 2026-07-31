@@ -116,6 +116,10 @@ class Circuit:
         seed: int = ...,
         bit_packed: bool = ...,
         sample_chunk_shots: int = ...,
+        cuda: bool = ...,
+        cuda_mode: str = ...,
+        shots_per_launch: int = ...,
+        threads_per_block: int = ...,
     ) -> Tuple[Union[BoolSamples, PackedSamples], npt.NDArray[np.float64]]: ...
     def sample_counts(
         self,

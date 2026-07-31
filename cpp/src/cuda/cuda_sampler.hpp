@@ -20,6 +20,12 @@ struct CudaSamplingOptions {
     int threads_per_block = 0;
 };
 
+struct CudaSampleRecordsResult {
+    std::vector<std::vector<std::uint64_t>> measurements;
+    std::vector<std::vector<double>> expectations;
+    CircuitSamplingTiming timing;
+};
+
 class PreparedCircuitCudaSampler {
   public:
     PreparedCircuitCudaSampler(CircuitSamplingInput input, CudaSamplingOptions options = {});
@@ -40,6 +46,7 @@ class PreparedCircuitCudaSampler {
 
     CircuitSamplingRunResult sample(std::uint64_t shots);
     CircuitSamplingRunResult sample(std::uint64_t shots, std::uint64_t stream_id);
+    CudaSampleRecordsResult sample_records(std::uint64_t shots, std::uint64_t stream_id = 0);
 
   private:
     struct Impl;
