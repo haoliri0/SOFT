@@ -35,6 +35,12 @@ void test_clifford_frame() {
     left_CX(cf, 0, 1);
     require(preimage(cf, pauli_x(2, 0)) == pauli_string("XX"), "CX maps Xc");
     require(preimage(cf, pauli_z(2, 1)) == pauli_string("ZZ"), "CX maps Zt");
+    const auto stored_body = pauli_z(2, 1);
+    const auto current_correction = pauli_x(2, 0);
+    require(
+        pauli_anticommutes(stored_body, preimage(cf, current_correction)) ==
+            pauli_anticommutes(coordinates_in_frame(cf, stored_body), current_correction),
+        "deferred frame preserves commutation");
 
     CliffordFrame h(1);
     left_H(h, 0);
@@ -47,6 +53,16 @@ void test_clifford_frame() {
     wide_pauli.set_zbit(64);
     require(coordinates_in_frame(wide, wide_pauli) == wide_pauli, "sparse frame coordinates");
     require(preimage(wide, wide_pauli) == wide_pauli, "sparse frame preimage");
+
+    CliffordFrame columns(1024);
+    for (int q = 1; q < 1024; ++q) {
+        left_CX(columns, 0, q);
+    }
+    const auto column_query = pauli_z(1024, 0);
+    const auto column_first = coordinates_in_frame(columns, column_query);
+    const auto column_second = coordinates_in_frame(columns, column_query);
+    const auto column_third = coordinates_in_frame(columns, column_query);
+    require(column_first == column_second && column_second == column_third, "column frame coordinate cache");
 }
 
 void test_extended_clifford_frame_preimages() {
