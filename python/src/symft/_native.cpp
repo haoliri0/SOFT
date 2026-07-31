@@ -64,9 +64,14 @@ struct PyCircuit {
 struct PyCompiledMeasurementSampler {
     PyObject_HEAD
     symft::FactoredInstructionProgram* program;
+#ifdef SYMFT_CPP_ENABLE_CUDA
+    symft::cuda::PreparedCircuitCudaSampler* cuda;
+#endif
+    int use_cuda;
     int use_batch;
     int batch_size;
     int sample_chunk_shots;
+    PyThread_type_lock lock;
 };
 
 struct PyCompiledCountsSampler {
@@ -465,15 +470,44 @@ PyObject* create_measurement_sampler(
     symft::FactoredInstructionProgram&& program,
     int use_batch,
     int batch_size,
-    int sample_chunk_shots) {
+    int sample_chunk_shots,
+    int use_cuda,
+    const PyCudaSamplingOptions& cuda_options) {
+#ifndef SYMFT_CPP_ENABLE_CUDA
+    if (use_cuda) {
+        PyErr_SetString(
+            SymFTError,
+            "CUDA support was not compiled into symft._native; rebuild with SYMFT_PY_ENABLE_CUDA=1");
+        return nullptr;
+    }
+#endif
     auto* self = reinterpret_cast<PyCompiledMeasurementSampler*>(
         CompiledMeasurementSamplerType.tp_alloc(&CompiledMeasurementSamplerType, 0));
     if (self == nullptr) {
         return nullptr;
     }
     self->program = nullptr;
+#ifdef SYMFT_CPP_ENABLE_CUDA
+    self->cuda = nullptr;
+#endif
+    self->use_cuda = use_cuda;
+    self->lock = PyThread_allocate_lock();
+    if (self->lock == nullptr) {
+        Py_DECREF(reinterpret_cast<PyObject*>(self));
+        return PyErr_NoMemory();
+    }
     try {
-        self->program = new symft::FactoredInstructionProgram(std::move(program));
+        AllowThreads allow;
+        if (use_cuda) {
+#ifdef SYMFT_CPP_ENABLE_CUDA
+            self->cuda = new symft::cuda::PreparedCircuitCudaSampler(
+                std::move(program),
+                {},
+                cpp_cuda_options_from_py(cuda_options));
+#endif
+        } else {
+            self->program = new symft::FactoredInstructionProgram(std::move(program));
+        }
     } catch (...) {
         Py_DECREF(reinterpret_cast<PyObject*>(self));
         return set_cpp_exception_null();
@@ -609,22 +643,52 @@ PyObject* Circuit_compile_sampler(PyCircuit* self, PyObject* args, PyObject* kwa
     int use_batch = 0;
     long long batch_size_value = 0;
     long long sample_chunk_value = 0;
-    static const char* kwlist[] = {"batch", "batch_size", "sample_chunk_shots", nullptr};
+    int use_cuda = 0;
+    PyObject* cuda_mode_object = Py_None;
+    long long shots_per_launch_value = 0;
+    long long threads_per_block_value = 0;
+    static const char* kwlist[] = {
+        "batch",
+        "batch_size",
+        "sample_chunk_shots",
+        "cuda",
+        "cuda_mode",
+        "shots_per_launch",
+        "threads_per_block",
+        nullptr};
     if (!PyArg_ParseTupleAndKeywords(
             args,
             kwargs,
-            "|pLL:compile_sampler",
+            "|pLLpOLL:compile_sampler",
             const_cast<char**>(kwlist),
             &use_batch,
             &batch_size_value,
-            &sample_chunk_value)) {
+            &sample_chunk_value,
+            &use_cuda,
+            &cuda_mode_object,
+            &shots_per_launch_value,
+            &threads_per_block_value)) {
         return nullptr;
     }
 
     int batch_size = 0;
     int sample_chunk_shots = 0;
+    int shots_per_launch = 0;
+    int threads_per_block = 0;
     if (!parse_nonnegative_int_arg(batch_size_value, batch_size, "batch_size") ||
-        !parse_nonnegative_int_arg(sample_chunk_value, sample_chunk_shots, "sample_chunk_shots")) {
+        !parse_nonnegative_int_arg(sample_chunk_value, sample_chunk_shots, "sample_chunk_shots") ||
+        !parse_nonnegative_int_arg(shots_per_launch_value, shots_per_launch, "shots_per_launch") ||
+        !parse_nonnegative_int_arg(threads_per_block_value, threads_per_block, "threads_per_block")) {
+        return nullptr;
+    }
+
+    PyCudaSamplingOptions cuda_options;
+    if (!make_py_cuda_options(
+            0,
+            shots_per_launch != 0 ? shots_per_launch : sample_chunk_shots,
+            threads_per_block,
+            cuda_mode_object,
+            cuda_options)) {
         return nullptr;
     }
 
@@ -636,7 +700,12 @@ PyObject* Circuit_compile_sampler(PyCircuit* self, PyObject* args, PyObject* kwa
         }
         const bool batch_backend = use_batch && program.nexpvals == 0;
         return create_measurement_sampler(
-            std::move(program), batch_backend, batch_size, sample_chunk_shots);
+            std::move(program),
+            batch_backend,
+            batch_size,
+            sample_chunk_shots,
+            use_cuda,
+            cuda_options);
     } catch (...) {
         return set_cpp_exception_null();
     }
@@ -1130,10 +1199,27 @@ PyObject* Circuit_get_observables(PyCircuit* self, void*) {
 
 void CompiledMeasurementSampler_dealloc(PyCompiledMeasurementSampler* self) {
     delete self->program;
+#ifdef SYMFT_CPP_ENABLE_CUDA
+    delete self->cuda;
+#endif
+    if (self->lock != nullptr) {
+        PyThread_free_lock(self->lock);
+    }
     Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
 PyObject* CompiledMeasurementSampler_repr(PyCompiledMeasurementSampler* self) {
+#ifdef SYMFT_CPP_ENABLE_CUDA
+    if (self->use_cuda) {
+        const auto& program = self->cuda->program();
+        return PyUnicode_FromFormat(
+            "<symft.CompiledMeasurementSampler qubits=%d measurements=%d detectors=%d max_active_qubits=%d cuda=True>",
+            program.n,
+            program.nrecords,
+            program.ndetectors,
+            program.max_k);
+    }
+#endif
     return PyUnicode_FromFormat(
         "<symft.CompiledMeasurementSampler qubits=%d measurements=%d detectors=%d max_active_qubits=%d batch=%s>",
         self->program->n,
@@ -1166,8 +1252,17 @@ PyObject* CompiledMeasurementSampler_sample(PyCompiledMeasurementSampler* self, 
 
     std::vector<std::vector<std::uint64_t>> rows;
     try {
-        AllowThreads allow;
+        AllowThreadsWithLock allow(self->lock);
+#ifdef SYMFT_CPP_ENABLE_CUDA
+        if (self->use_cuda) {
+            auto result = self->cuda->sample_records(
+                static_cast<std::uint64_t>(shots),
+                static_cast<std::uint64_t>(seed));
+            rows = std::move(result.measurements);
+        } else if (self->use_batch) {
+#else
         if (self->use_batch) {
+#endif
             rows = symft::sample_measurements_batch(
                 *self->program,
                 shots,
@@ -1183,7 +1278,76 @@ PyObject* CompiledMeasurementSampler_sample(PyCompiledMeasurementSampler* self, 
     } catch (...) {
         return set_cpp_exception_null();
     }
-    return words_to_numpy(rows, self->program->nrecords, bit_packed != 0);
+#ifdef SYMFT_CPP_ENABLE_CUDA
+    const int nrecords = self->use_cuda ? self->cuda->program().nrecords : self->program->nrecords;
+#else
+    const int nrecords = self->program->nrecords;
+#endif
+    return words_to_numpy(rows, nrecords, bit_packed != 0);
+}
+
+PyObject* CompiledMeasurementSampler_sample_with_expectations(
+    PyCompiledMeasurementSampler* self,
+    PyObject* args,
+    PyObject* kwargs) {
+    long long shots_value = 1;
+    unsigned long long seed = 1;
+    int bit_packed = 0;
+    static const char* kwlist[] = {"shots", "seed", "bit_packed", nullptr};
+    if (!PyArg_ParseTupleAndKeywords(
+            args,
+            kwargs,
+            "|LKp:sample_with_expectations",
+            const_cast<char**>(kwlist),
+            &shots_value,
+            &seed,
+            &bit_packed)) {
+        return nullptr;
+    }
+    int shots = 0;
+    if (!parse_nonnegative_int_arg(shots_value, shots, "shots")) {
+        return nullptr;
+    }
+
+    symft::MeasurementExpectationSamples samples;
+    int nrecords = 0;
+    int nexpvals = 0;
+    try {
+        AllowThreadsWithLock allow(self->lock);
+#ifdef SYMFT_CPP_ENABLE_CUDA
+        if (self->use_cuda) {
+            auto result = self->cuda->sample_records(
+                static_cast<std::uint64_t>(shots),
+                static_cast<std::uint64_t>(seed));
+            samples.measurements = std::move(result.measurements);
+            samples.expectations = std::move(result.expectations);
+            nrecords = self->cuda->program().nrecords;
+            nexpvals = self->cuda->program().nexpvals;
+        } else {
+#endif
+            nrecords = self->program->nrecords;
+            nexpvals = self->program->nexpvals;
+            samples = symft::sample_measurements_and_expectations(
+                *self->program,
+                shots,
+                static_cast<std::uint64_t>(seed),
+                self->sample_chunk_shots);
+#ifdef SYMFT_CPP_ENABLE_CUDA
+        }
+#endif
+    } catch (...) {
+        return set_cpp_exception_null();
+    }
+    PyObject* measurements = words_to_numpy(samples.measurements, nrecords, bit_packed != 0);
+    if (measurements == nullptr) {
+        return nullptr;
+    }
+    PyObject* expectations = doubles_to_numpy(samples.expectations, nexpvals);
+    if (expectations == nullptr) {
+        Py_DECREF(measurements);
+        return nullptr;
+    }
+    return Py_BuildValue("NN", measurements, expectations);
 }
 
 PyObject* CompiledMeasurementSampler_sample_detectors(
@@ -1212,7 +1376,11 @@ PyObject* CompiledMeasurementSampler_sample_detectors(
 
     std::vector<std::vector<std::uint64_t>> rows;
     try {
-        AllowThreads allow;
+        if (self->use_cuda) {
+            PyErr_SetString(PyExc_NotImplementedError, "CUDA compiled samplers do not expose detector records");
+            return nullptr;
+        }
+        AllowThreadsWithLock allow(self->lock);
         rows = sample_detector_words_single_shot(
             *self->program,
             shots,
@@ -1220,23 +1388,52 @@ PyObject* CompiledMeasurementSampler_sample_detectors(
     } catch (...) {
         return set_cpp_exception_null();
     }
-    return words_to_numpy(rows, self->program->ndetectors, bit_packed != 0);
+#ifdef SYMFT_CPP_ENABLE_CUDA
+    const int ndetectors = self->use_cuda ? self->cuda->program().ndetectors : self->program->ndetectors;
+#else
+    const int ndetectors = self->program->ndetectors;
+#endif
+    return words_to_numpy(rows, ndetectors, bit_packed != 0);
 }
 
 PyObject* CompiledMeasurementSampler_get_num_qubits(PyCompiledMeasurementSampler* self, void*) {
+#ifdef SYMFT_CPP_ENABLE_CUDA
+    return PyLong_FromLong(self->use_cuda ? self->cuda->program().n : self->program->n);
+#else
     return PyLong_FromLong(self->program->n);
+#endif
 }
 
 PyObject* CompiledMeasurementSampler_get_num_measurements(PyCompiledMeasurementSampler* self, void*) {
+#ifdef SYMFT_CPP_ENABLE_CUDA
+    return PyLong_FromLong(self->use_cuda ? self->cuda->program().nrecords : self->program->nrecords);
+#else
     return PyLong_FromLong(self->program->nrecords);
+#endif
+}
+
+PyObject* CompiledMeasurementSampler_get_num_exp_vals(PyCompiledMeasurementSampler* self, void*) {
+#ifdef SYMFT_CPP_ENABLE_CUDA
+    return PyLong_FromLong(self->use_cuda ? self->cuda->program().nexpvals : self->program->nexpvals);
+#else
+    return PyLong_FromLong(self->program->nexpvals);
+#endif
 }
 
 PyObject* CompiledMeasurementSampler_get_num_detectors(PyCompiledMeasurementSampler* self, void*) {
+#ifdef SYMFT_CPP_ENABLE_CUDA
+    return PyLong_FromLong(self->use_cuda ? self->cuda->program().ndetectors : self->program->ndetectors);
+#else
     return PyLong_FromLong(self->program->ndetectors);
+#endif
 }
 
 PyObject* CompiledMeasurementSampler_get_max_active_qubits(PyCompiledMeasurementSampler* self, void*) {
+#ifdef SYMFT_CPP_ENABLE_CUDA
+    return PyLong_FromLong(self->use_cuda ? self->cuda->program().max_k : self->program->max_k);
+#else
     return PyLong_FromLong(self->program->max_k);
+#endif
 }
 
 void CompiledCountsSampler_dealloc(PyCompiledCountsSampler* self) {
@@ -1391,7 +1588,8 @@ PyMethodDef Circuit_methods[] = {
         "compile_sampler",
         reinterpret_cast<PyCFunction>(Circuit_compile_sampler),
         METH_VARARGS | METH_KEYWORDS,
-        "compile_sampler($self, /, batch=False, batch_size=0, sample_chunk_shots=0)\n"
+        "compile_sampler($self, /, batch=False, batch_size=0, sample_chunk_shots=0, "
+        "cuda=False, cuda_mode='gpu', shots_per_launch=0, threads_per_block=0)\n"
         "--\n\n"
         "Compile a reusable measurement sampler.\n\n"
         "A value of 0 selects the runtime default for batch_size or "
@@ -1507,6 +1705,14 @@ PyMethodDef CompiledMeasurementSampler_methods[] = {
         "Sample measurement records using the compiled program.",
     },
     {
+        "sample_with_expectations",
+        reinterpret_cast<PyCFunction>(CompiledMeasurementSampler_sample_with_expectations),
+        METH_VARARGS | METH_KEYWORDS,
+        "sample_with_expectations($self, /, shots=1, seed=1, bit_packed=False)\n"
+        "--\n\n"
+        "Sample measurement records and non-destructive EXP_VAL values.",
+    },
+    {
         "sample_detectors",
         reinterpret_cast<PyCFunction>(CompiledMeasurementSampler_sample_detectors),
         METH_VARARGS | METH_KEYWORDS,
@@ -1530,6 +1736,13 @@ PyGetSetDef CompiledMeasurementSampler_getsets[] = {
         reinterpret_cast<getter>(CompiledMeasurementSampler_get_num_measurements),
         nullptr,
         "Number of measurement records.",
+        nullptr,
+    },
+    {
+        "num_exp_vals",
+        reinterpret_cast<getter>(CompiledMeasurementSampler_get_num_exp_vals),
+        nullptr,
+        "Number of EXP_VAL probes.",
         nullptr,
     },
     {
