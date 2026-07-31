@@ -14,14 +14,12 @@ jobs:
         include:
           - os: ubuntu-latest
           - os: windows-latest
-          - os: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: pypa/cibuildwheel@v3.1.2
         env:
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
           CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_* pp*"
-          CIBW_ARCHS_MACOS: "x86_64"
           CIBW_ENVIRONMENT: "SYMFT_PY_NATIVE=0 SYMFT_PY_ENABLE_CUDA=0"
           CIBW_TEST_COMMAND: 'python -c "import symft; assert not symft.cuda_enabled()"'
         with:
