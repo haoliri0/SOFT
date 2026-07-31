@@ -192,6 +192,23 @@ PendingOptimizationStats optimize_pending_operations(
     PendingOptimizationStats stats;
     const int operation_count = static_cast<int>(state.pending_operations.size());
     stats.input_operations = operation_count;
+    const bool has_expectation = std::any_of(
+        state.pending_operations.begin(),
+        state.pending_operations.end(),
+        [](const PendingOperation& operation) {
+            const auto* measurement = std::get_if<PendingPauliMeasurement>(&operation);
+            return measurement != nullptr && measurement->exp_val.has_value();
+        });
+    if (has_expectation) {
+        // ponytail: EXP_VAL circuits keep source order; add a linear commute pass if profiling proves it matters.
+        stats.prefix_remap.resize(static_cast<std::size_t>(operation_count + 1));
+        for (int prefix = 0; prefix <= operation_count; ++prefix) {
+            stats.prefix_remap[static_cast<std::size_t>(prefix)] = prefix;
+        }
+        state.pending_operations_optimized = true;
+        stats.output_operations = operation_count;
+        return stats;
+    }
     stats.prefix_remap.assign(static_cast<std::size_t>(operation_count + 1), -1);
     stats.prefix_remap[0] = 0;
 
