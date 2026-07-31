@@ -553,6 +553,15 @@ void test_pauli_algebra() {
     xz.phase_shift(3);
     require(pauli_x(1, 0) * pauli_z(1, 0) == xz, "packed XZ phase");
     require(pauli_anticommutes(pauli_x(1, 0), pauli_z(1, 0)), "X anticommutes with Z");
+    auto xx = pauli_identity(65);
+    xx.set_xbit(0);
+    xx.set_xbit(64);
+    auto zz = pauli_identity(65);
+    zz.set_zbit(0);
+    zz.set_zbit(64);
+    require(!pauli_anticommutes(xx, zz), "two cross-word anticommutations cancel");
+    zz.set_zbit(0, false);
+    require(pauli_anticommutes(xx, zz), "one cross-word anticommutation remains");
     const auto ps = pauli_string("IXYZ");
     require(!ps.xbit(0) && !ps.zbit(0), "I bits");
     require(ps.xbit(1) && !ps.zbit(1), "X bits");
