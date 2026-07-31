@@ -220,4 +220,77 @@ CircuitSamplingRunResult PreparedCircuitCudaSampler::sample(
     return result;
 }
 
+CudaSampleRecordsResult PreparedCircuitCudaSampler::sample_records(
+    std::uint64_t shots,
+    std::uint64_t stream_id) {
+    CudaSampleRecordsResult result;
+    const std::uint64_t nchunks =
+        ceil_div_u64(shots, static_cast<std::uint64_t>(impl_->options.shots_per_launch));
+    const auto sample_start = Clock::now();
+
+    for (std::uint64_t chunk_index = 0; chunk_index < nchunks; ++chunk_index) {
+        const std::uint64_t offset =
+            chunk_index * static_cast<std::uint64_t>(impl_->options.shots_per_launch);
+        const int chunk = static_cast<int>(std::min<std::uint64_t>(
+            static_cast<std::uint64_t>(impl_->options.shots_per_launch), shots - offset));
+
+        const auto presample_start = Clock::now();
+        const bool cpu_presample_exogenous =
+            !impl_->options.sample_exogenous_on_device &&
+            !impl_->options.gpu_presample_expressions &&
+            !impl_->options.lazy_exogenous_on_device &&
+            !impl_->options.gpu_on_demand_expressions;
+        if (cpu_presample_exogenous) {
+            resample_prepared_exogenous_packed_in_place(
+                impl_->samples,
+                impl_->program,
+                chunk,
+                block_seed(0x7eed0000ULL, stream_id, chunk_index));
+            evaluate_presampled_expression_block(
+                impl_->expression_block,
+                impl_->expression_plan,
+                impl_->samples);
+        }
+        result.timing.presample_s += seconds_between(presample_start, Clock::now());
+
+        const auto execute_start = Clock::now();
+        CudaLaunchOptions launch_options;
+        launch_options.sample_exogenous_on_device = impl_->options.sample_exogenous_on_device;
+        launch_options.generate_expressions_on_device = impl_->options.gpu_presample_expressions;
+        launch_options.lazy_exogenous_on_device = impl_->options.lazy_exogenous_on_device;
+        launch_options.on_demand_expression_blocks = impl_->options.gpu_on_demand_expressions;
+        launch_options.capture_records = true;
+        launch_options.threads_per_block = impl_->options.threads_per_block;
+        const std::uint64_t* expression_words =
+            cpu_presample_exogenous ? impl_->expression_block.expression_words.data() : nullptr;
+        const std::size_t expression_word_count =
+            cpu_presample_exogenous ? impl_->expression_block.expression_words.size() : 0;
+        const std::size_t shot_words =
+            cpu_presample_exogenous
+                ? impl_->expression_block.shot_words
+                : (impl_->options.gpu_presample_expressions ? static_cast<std::size_t>((chunk + 63) >> 6) : 0);
+        auto kernel_result = impl_->runtime->run(
+            expression_words,
+            expression_word_count,
+            shot_words,
+            chunk,
+            block_seed(
+                cpu_presample_exogenous ? 0x5eed1234ULL : 0x7eed0000ULL,
+                stream_id,
+                chunk_index),
+            launch_options);
+        result.timing.execute_s += seconds_between(execute_start, Clock::now());
+        result.timing.accumulate_s += kernel_result.elapsed_s;
+        for (auto& row : kernel_result.measurements) {
+            result.measurements.push_back(std::move(row));
+        }
+        for (auto& row : kernel_result.expectations) {
+            result.expectations.push_back(std::move(row));
+        }
+    }
+
+    result.timing.sample_s = seconds_between(sample_start, Clock::now());
+    return result;
+}
+
 } // namespace symft::cuda

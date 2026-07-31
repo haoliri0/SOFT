@@ -785,38 +785,91 @@ PyObject* Circuit_sample_with_expectations(PyCircuit* self, PyObject* args, PyOb
     unsigned long long seed = 1;
     int bit_packed = 0;
     long long sample_chunk_value = 0;
-    static const char* kwlist[] = {"shots", "seed", "bit_packed", "sample_chunk_shots", nullptr};
+    int use_cuda = 0;
+    PyObject* cuda_mode_object = Py_None;
+    long long shots_per_launch_value = 0;
+    long long threads_per_block_value = 0;
+    static const char* kwlist[] = {
+        "shots",
+        "seed",
+        "bit_packed",
+        "sample_chunk_shots",
+        "cuda",
+        "cuda_mode",
+        "shots_per_launch",
+        "threads_per_block",
+        nullptr};
     if (!PyArg_ParseTupleAndKeywords(
             args,
             kwargs,
-            "|LKpL:sample_with_expectations",
+            "|LKpLpOLL:sample_with_expectations",
             const_cast<char**>(kwlist),
             &shots_value,
             &seed,
             &bit_packed,
-            &sample_chunk_value)) {
+            &sample_chunk_value,
+            &use_cuda,
+            &cuda_mode_object,
+            &shots_per_launch_value,
+            &threads_per_block_value)) {
         return nullptr;
     }
     int shots = 0;
     int sample_chunk_shots = 0;
+    int shots_per_launch = 0;
+    int threads_per_block = 0;
     if (!parse_nonnegative_int_arg(shots_value, shots, "shots") ||
-        !parse_nonnegative_int_arg(sample_chunk_value, sample_chunk_shots, "sample_chunk_shots")) {
+        !parse_nonnegative_int_arg(sample_chunk_value, sample_chunk_shots, "sample_chunk_shots") ||
+        !parse_nonnegative_int_arg(shots_per_launch_value, shots_per_launch, "shots_per_launch") ||
+        !parse_nonnegative_int_arg(threads_per_block_value, threads_per_block, "threads_per_block")) {
         return nullptr;
     }
+
+    PyCudaSamplingOptions cuda_options;
+    if (!make_py_cuda_options(
+            0,
+            shots_per_launch,
+            threads_per_block,
+            cuda_mode_object,
+            cuda_options)) {
+        return nullptr;
+    }
+#ifndef SYMFT_CPP_ENABLE_CUDA
+    if (use_cuda) {
+        PyErr_SetString(
+            SymFTError,
+            "CUDA support was not compiled into symft._native; rebuild with SYMFT_PY_ENABLE_CUDA=1");
+        return nullptr;
+    }
+#endif
 
     symft::MeasurementExpectationSamples samples;
     int nrecords = 0;
     int nexpvals = 0;
     try {
         AllowThreads allow;
-        const symft::FactoredInstructionProgram program = make_program_from_circuit(*self->circuit);
+        symft::FactoredInstructionProgram program = make_program_from_circuit(*self->circuit);
         nrecords = program.nrecords;
         nexpvals = program.nexpvals;
-        samples = symft::sample_measurements_and_expectations(
-            program,
-            shots,
-            static_cast<std::uint64_t>(seed),
-            sample_chunk_shots);
+        if (use_cuda) {
+#ifdef SYMFT_CPP_ENABLE_CUDA
+            symft::cuda::PreparedCircuitCudaSampler sampler(
+                std::move(program),
+                {},
+                cpp_cuda_options_from_py(cuda_options));
+            auto cuda_samples = sampler.sample_records(
+                static_cast<std::uint64_t>(shots),
+                static_cast<std::uint64_t>(seed));
+            samples.measurements = std::move(cuda_samples.measurements);
+            samples.expectations = std::move(cuda_samples.expectations);
+#endif
+        } else {
+            samples = symft::sample_measurements_and_expectations(
+                program,
+                shots,
+                static_cast<std::uint64_t>(seed),
+                sample_chunk_shots);
+        }
     } catch (...) {
         return set_cpp_exception_null();
     }
@@ -1374,11 +1427,12 @@ PyMethodDef Circuit_methods[] = {
         reinterpret_cast<PyCFunction>(Circuit_sample_with_expectations),
         METH_VARARGS | METH_KEYWORDS,
         "sample_with_expectations($self, /, shots=1, seed=1, bit_packed=False, "
-        "sample_chunk_shots=0)\n"
+        "sample_chunk_shots=0, cuda=False, cuda_mode='gpu', "
+        "shots_per_launch=0, threads_per_block=0)\n"
         "--\n\n"
         "Sample measurement records and non-destructive EXP_VAL values. "
         "Returns (measurements, expectations), with expectations shaped "
-        "(shots, num_exp_vals).",
+        "(shots, num_exp_vals). Set cuda=True to run both outputs on the GPU.",
     },
     {
         "sample_counts",

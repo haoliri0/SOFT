@@ -122,6 +122,7 @@ struct DeviceProgramView {
     int max_k = 0;
     int symbol_words = 0;
     int record_words = 0;
+    int nexpvals = 0;
     int instruction_count = 0;
     int expression_count = 0;
     int rotation_count = 0;
@@ -1351,6 +1352,48 @@ __device__ void write_measurement_record(
     }
 }
 
+__device__ void write_expectation_value(
+    const CudaInstruction& instruction,
+    bool sign,
+    int shot,
+    int nexpvals,
+    double* expectation_out) {
+    if (expectation_out == nullptr || instruction.exp_val < 0 || instruction.exp_val >= nexpvals) {
+        return;
+    }
+    expectation_out[static_cast<std::size_t>(shot) * static_cast<std::size_t>(nexpvals) +
+                    static_cast<std::size_t>(instruction.exp_val)] = sign ? -1.0 : 1.0;
+}
+
+__device__ void write_expectation_value(
+    const CudaInstruction& instruction,
+    CudaReal value,
+    int shot,
+    int nexpvals,
+    double* expectation_out) {
+    if (expectation_out == nullptr || instruction.exp_val < 0 || instruction.exp_val >= nexpvals) {
+        return;
+    }
+    expectation_out[static_cast<std::size_t>(shot) * static_cast<std::size_t>(nexpvals) +
+                    static_cast<std::size_t>(instruction.exp_val)] = static_cast<double>(value);
+}
+
+__device__ void copy_shot_outputs(
+    const DeviceProgramView& program,
+    int shot,
+    const std::uint64_t* measurement_words,
+    std::uint64_t* measurement_out) {
+    if (threadIdx.x != 0) {
+        return;
+    }
+    if (measurement_out != nullptr) {
+        for (int idx = 0; idx < program.record_words; ++idx) {
+            measurement_out[static_cast<std::size_t>(shot) * static_cast<std::size_t>(program.record_words) +
+                            static_cast<std::size_t>(idx)] = measurement_words[idx];
+        }
+    }
+}
+
 template <bool Lazy, bool BlockCache, bool OnDemandBlockCache>
 __device__ bool detector_outcome(
     const DeviceProgramView& program,
@@ -1665,7 +1708,9 @@ extern "C" __global__ void symft_scalar_small_k_sample_kernel(
     std::uint64_t seed,
     int postselect_detectors,
     std::uint8_t* discarded_out,
-    std::uint8_t* logical_out) {
+    std::uint8_t* logical_out,
+    std::uint64_t* measurement_out,
+    double* expectation_out) {
     const int shot = static_cast<int>(blockIdx.x * blockDim.x + threadIdx.x);
     if (shot >= shots) {
         return;
@@ -1737,7 +1782,11 @@ extern "C" __global__ void symft_scalar_small_k_sample_kernel(
             ++k;
             break;
         case CudaInstructionKind::RecordMeasurement:
-            write_measurement_record(instruction, expression_value, condition_words, measurement_words);
+            if (instruction.exp_val >= 0) {
+                write_expectation_value(instruction, expression_value, shot, program.nexpvals, expectation_out);
+            } else {
+                write_measurement_record(instruction, expression_value, condition_words, measurement_words);
+            }
             break;
         case CudaInstructionKind::RecordDetector: {
             const bool outcome = scalar_detector_outcome(
@@ -1759,39 +1808,57 @@ extern "C" __global__ void symft_scalar_small_k_sample_kernel(
             break;
         }
         case CudaInstructionKind::ActiveMeasurement:
-            scalar_apply_active_measurement(
-                program,
-                instruction,
-                rng_state,
-                k,
-                condition_words,
-                active_re,
-                active_im,
-                scratch_re,
-                scratch_im);
-            write_measurement_record(
-                instruction,
-                scalar_eval_expression_bit_fast(
+            if (instruction.exp_val >= 0) {
+                const auto& kernel = program.measurements[instruction.measurement];
+                const CudaReal p_true = scalar_measurement_true_probability(program, kernel, active_re, active_im);
+                const bool sign = scalar_eval_expression_bit_fast(
+                    program, expression_words, shot_words, shot, condition_words, instruction.expression);
+                write_expectation_value(
+                    instruction,
+                    (sign ? static_cast<CudaReal>(-1.0) : static_cast<CudaReal>(1.0)) *
+                        (static_cast<CudaReal>(1.0) - static_cast<CudaReal>(2.0) * p_true),
+                    shot,
+                    program.nexpvals,
+                    expectation_out);
+            } else {
+                scalar_apply_active_measurement(
+                    program,
+                    instruction,
+                    rng_state,
+                    k,
+                    condition_words,
+                    active_re,
+                    active_im,
+                    scratch_re,
+                    scratch_im);
+                write_measurement_record(
+                    instruction,
+                    scalar_eval_expression_bit_fast(
+                        program,
+                        expression_words,
+                        shot_words,
+                        shot,
+                        condition_words,
+                        instruction.expression),
+                    condition_words,
+                    measurement_words);
+            }
+            break;
+        case CudaInstructionKind::IntroduceDormantBranch: {
+            if (instruction.exp_val >= 0) {
+                write_expectation_value(instruction, static_cast<CudaReal>(0.0), shot, program.nexpvals, expectation_out);
+            } else {
+                const bool branch = (device_next_random_u64(rng_state) & 1ULL) != 0;
+                device_set_bit(condition_words, instruction.branch_condition, branch);
+                const bool outcome = scalar_eval_expression_bit_fast(
                     program,
                     expression_words,
                     shot_words,
                     shot,
                     condition_words,
-                    instruction.expression),
-                condition_words,
-                measurement_words);
-            break;
-        case CudaInstructionKind::IntroduceDormantBranch: {
-            const bool branch = (device_next_random_u64(rng_state) & 1ULL) != 0;
-            device_set_bit(condition_words, instruction.branch_condition, branch);
-            const bool outcome = scalar_eval_expression_bit_fast(
-                program,
-                expression_words,
-                shot_words,
-                shot,
-                condition_words,
-                instruction.expression);
-            write_measurement_record(instruction, outcome, condition_words, measurement_words);
+                    instruction.expression);
+                write_measurement_record(instruction, outcome, condition_words, measurement_words);
+            }
             break;
         }
         }
@@ -1800,6 +1867,7 @@ extern "C" __global__ void symft_scalar_small_k_sample_kernel(
     discarded_out[shot] = detector_any ? 1 : 0;
     logical_out[shot] =
         !detector_any && logical_error_outcome(program, measurement_words) ? 1 : 0;
+    copy_shot_outputs(program, shot, measurement_words, measurement_out);
 }
 
 __device__ __forceinline__ bool assignment_bit(std::uint64_t assignment, int bit) {
@@ -2141,7 +2209,9 @@ __device__ __forceinline__ void symft_persistent_sample_body(
     int sample_exogenous_on_device,
     int sampled_sampler_word_count,
     std::uint8_t* discarded_out,
-    std::uint8_t* logical_out) {
+    std::uint8_t* logical_out,
+    std::uint64_t* measurement_out,
+    double* expectation_out) {
     const int shot = static_cast<int>(blockIdx.x);
     if (shot >= shots) {
         return;
@@ -2300,7 +2370,20 @@ __device__ __forceinline__ void symft_persistent_sample_body(
             break;
         case CudaInstructionKind::RecordMeasurement:
             if (threadIdx.x == 0) {
-                write_measurement_record(instruction, expression_shared != 0, condition_words, measurement_words);
+                if (instruction.exp_val >= 0) {
+                    write_expectation_value(
+                        instruction,
+                        expression_shared != 0,
+                        shot,
+                        program.nexpvals,
+                        expectation_out);
+                } else {
+                    write_measurement_record(
+                        instruction,
+                        expression_shared != 0,
+                        condition_words,
+                        measurement_words);
+                }
             }
             sample_sync();
             break;
@@ -2339,33 +2422,28 @@ __device__ __forceinline__ void symft_persistent_sample_body(
             }
             break;
         case CudaInstructionKind::ActiveMeasurement:
-            apply_active_measurement(
-                program,
-                instruction,
-                rng_state,
-                k,
-                condition_words,
-                active_re,
-                active_im,
-                scratch_re,
-                scratch_im,
-                reduction);
-            if constexpr (BlockCache && OnDemandBlockCache) {
-                const bool outcome = eval_expression_bit_block_cache_on_demand_coop(
+            if (instruction.exp_val >= 0) {
+                const auto& kernel = program.measurements[instruction.measurement];
+                const CudaReal p_true = measurement_true_probability(
                     program,
-                    aux,
-                    condition_words,
-                    block_expression_values,
-                    block_expression_ready,
-                    instruction.expression);
-                if (threadIdx.x == 0) {
-                    write_measurement_record(instruction, outcome, condition_words, measurement_words);
-                }
-            } else {
-                if (threadIdx.x == 0) {
-                    bool outcome = false;
+                    kernel,
+                    active_re,
+                    active_im,
+                    scratch_re,
+                    scratch_im,
+                    reduction);
+                bool sign = false;
+                if constexpr (BlockCache && OnDemandBlockCache) {
+                    sign = eval_expression_bit_block_cache_on_demand_coop(
+                        program,
+                        aux,
+                        condition_words,
+                        block_expression_values,
+                        block_expression_ready,
+                        instruction.expression);
+                } else if (threadIdx.x == 0) {
                     if constexpr (Lazy) {
-                        outcome = eval_expression_bit_lazy(
+                        sign = eval_expression_bit_lazy(
                             program,
                             aux,
                             expression_words,
@@ -2376,13 +2454,13 @@ __device__ __forceinline__ void symft_persistent_sample_body(
                             exogenous_seed,
                             sampled_sampler_words);
                     } else if constexpr (BlockCache) {
-                        outcome = eval_expression_bit_cached(
+                        sign = eval_expression_bit_cached(
                             program,
                             block_expression_values,
                             condition_words,
                             instruction.expression);
                     } else {
-                        outcome = eval_expression_bit_fast(
+                        sign = eval_expression_bit_fast(
                             program,
                             expression_words,
                             shot_words,
@@ -2390,13 +2468,88 @@ __device__ __forceinline__ void symft_persistent_sample_body(
                             condition_words,
                             instruction.expression);
                     }
-                    write_measurement_record(instruction, outcome, condition_words, measurement_words);
+                }
+                if constexpr (!(BlockCache && OnDemandBlockCache)) {
+                    sample_sync();
+                }
+                if (threadIdx.x == 0) {
+                    write_expectation_value(
+                        instruction,
+                        (sign ? static_cast<CudaReal>(-1.0) : static_cast<CudaReal>(1.0)) *
+                            (static_cast<CudaReal>(1.0) - static_cast<CudaReal>(2.0) * p_true),
+                        shot,
+                        program.nexpvals,
+                        expectation_out);
+                }
+            } else {
+                apply_active_measurement(
+                    program,
+                    instruction,
+                    rng_state,
+                    k,
+                    condition_words,
+                    active_re,
+                    active_im,
+                    scratch_re,
+                    scratch_im,
+                    reduction);
+                if constexpr (BlockCache && OnDemandBlockCache) {
+                    const bool outcome = eval_expression_bit_block_cache_on_demand_coop(
+                        program,
+                        aux,
+                        condition_words,
+                        block_expression_values,
+                        block_expression_ready,
+                        instruction.expression);
+                    if (threadIdx.x == 0) {
+                        write_measurement_record(instruction, outcome, condition_words, measurement_words);
+                    }
+                } else {
+                    if (threadIdx.x == 0) {
+                        bool outcome = false;
+                        if constexpr (Lazy) {
+                            outcome = eval_expression_bit_lazy(
+                                program,
+                                aux,
+                                expression_words,
+                                shot_words,
+                                shot,
+                                condition_words,
+                                instruction.expression,
+                                exogenous_seed,
+                                sampled_sampler_words);
+                        } else if constexpr (BlockCache) {
+                            outcome = eval_expression_bit_cached(
+                                program,
+                                block_expression_values,
+                                condition_words,
+                                instruction.expression);
+                        } else {
+                            outcome = eval_expression_bit_fast(
+                                program,
+                                expression_words,
+                                shot_words,
+                                shot,
+                                condition_words,
+                                instruction.expression);
+                        }
+                        write_measurement_record(instruction, outcome, condition_words, measurement_words);
+                    }
                 }
             }
             sample_sync();
             break;
         case CudaInstructionKind::IntroduceDormantBranch:
-            if constexpr (BlockCache && OnDemandBlockCache) {
+            if (instruction.exp_val >= 0) {
+                if (threadIdx.x == 0) {
+                    write_expectation_value(
+                        instruction,
+                        static_cast<CudaReal>(0.0),
+                        shot,
+                        program.nexpvals,
+                        expectation_out);
+                }
+            } else if constexpr (BlockCache && OnDemandBlockCache) {
                 if (threadIdx.x == 0) {
                     const bool branch = (device_next_random_u64(rng_state) & 1ULL) != 0;
                     device_set_bit(condition_words, instruction.branch_condition, branch);
@@ -2456,6 +2609,7 @@ __device__ __forceinline__ void symft_persistent_sample_body(
         discarded_out[shot] = discarded ? 1 : 0;
         logical_out[shot] = !discarded && logical_error_outcome(program, measurement_words) ? 1 : 0;
     }
+    copy_shot_outputs(program, shot, measurement_words, measurement_out);
 }
 
 extern "C" __global__ void symft_persistent_sample_kernel_fast(
@@ -2467,7 +2621,9 @@ extern "C" __global__ void symft_persistent_sample_kernel_fast(
     int postselect_detectors,
     int sample_exogenous_on_device,
     std::uint8_t* discarded_out,
-    std::uint8_t* logical_out) {
+    std::uint8_t* logical_out,
+    std::uint64_t* measurement_out,
+    double* expectation_out) {
     DeviceAuxiliaryView aux;
     symft_persistent_sample_body<false, false, false>(
         program,
@@ -2480,7 +2636,9 @@ extern "C" __global__ void symft_persistent_sample_kernel_fast(
         sample_exogenous_on_device,
         0,
         discarded_out,
-        logical_out);
+        logical_out,
+        measurement_out,
+        expectation_out);
 }
 
 extern "C" __global__ void symft_persistent_sample_kernel_cached(
@@ -2493,7 +2651,9 @@ extern "C" __global__ void symft_persistent_sample_kernel_cached(
     int postselect_detectors,
     int sampled_sampler_word_count,
     std::uint8_t* discarded_out,
-    std::uint8_t* logical_out) {
+    std::uint8_t* logical_out,
+    std::uint64_t* measurement_out,
+    double* expectation_out) {
     symft_persistent_sample_body<false, true, true>(
         program,
         aux,
@@ -2505,7 +2665,9 @@ extern "C" __global__ void symft_persistent_sample_kernel_cached(
         1,
         0,
         discarded_out,
-        logical_out);
+        logical_out,
+        measurement_out,
+        expectation_out);
 }
 
 extern "C" __global__ void symft_persistent_sample_kernel_lazy(
@@ -2519,7 +2681,9 @@ extern "C" __global__ void symft_persistent_sample_kernel_lazy(
     int sample_exogenous_on_device,
     int sampled_sampler_word_count,
     std::uint8_t* discarded_out,
-    std::uint8_t* logical_out) {
+    std::uint8_t* logical_out,
+    std::uint64_t* measurement_out,
+    double* expectation_out) {
     symft_persistent_sample_body<true, false, false>(
         program,
         aux,
@@ -2531,7 +2695,9 @@ extern "C" __global__ void symft_persistent_sample_kernel_lazy(
         sample_exogenous_on_device,
         sampled_sampler_word_count,
         discarded_out,
-        logical_out);
+        logical_out,
+        measurement_out,
+        expectation_out);
 }
 
 } // namespace
@@ -2601,6 +2767,7 @@ struct CudaRuntimeProgram::Impl {
         out.max_k = host.max_k;
         out.symbol_words = host.symbol_words;
         out.record_words = host.record_words;
+        out.nexpvals = host.nexpvals;
         out.instruction_count = static_cast<int>(host.instructions.size());
         out.expression_count = static_cast<int>(host.expressions.size());
         out.rotation_count = static_cast<int>(host.rotations.size());
@@ -2790,6 +2957,16 @@ CudaKernelRunResult CudaRuntimeProgram::run(
     }
     impl_->discarded_flags.reserve(static_cast<std::size_t>(shots));
     impl_->logical_flags.reserve(static_cast<std::size_t>(shots));
+    DeviceArray<std::uint64_t> measurement_output;
+    DeviceArray<double> expectation_output;
+    if (options.capture_records) {
+        measurement_output.resize_uninitialized(
+            static_cast<std::size_t>(shots) * static_cast<std::size_t>(impl_->host.record_words));
+        expectation_output.resize_uninitialized(
+            static_cast<std::size_t>(shots) * static_cast<std::size_t>(impl_->host.nexpvals));
+    }
+    auto* measurement_output_ptr = options.capture_records ? measurement_output.ptr : nullptr;
+    auto* expectation_output_ptr = options.capture_records ? expectation_output.ptr : nullptr;
 
     cudaEvent_t start{};
     cudaEvent_t stop{};
@@ -2821,7 +2998,9 @@ CudaKernelRunResult CudaRuntimeProgram::run(
                 seed,
                 options.postselect_detectors ? 1 : 0,
                 impl_->discarded_flags.ptr,
-                impl_->logical_flags.ptr);
+                impl_->logical_flags.ptr,
+                measurement_output_ptr,
+                expectation_output_ptr);
         } else {
             symft_persistent_sample_kernel_fast<<<shots, sampler_threads, sampler_shared_bytes>>>(
                 impl_->view(),
@@ -2832,7 +3011,9 @@ CudaKernelRunResult CudaRuntimeProgram::run(
                 options.postselect_detectors ? 1 : 0,
                 0,
                 impl_->discarded_flags.ptr,
-                impl_->logical_flags.ptr);
+                impl_->logical_flags.ptr,
+                measurement_output_ptr,
+                expectation_output_ptr);
         }
     } else if (options.on_demand_expression_blocks) {
         symft_persistent_sample_kernel_cached<<<shots, threads, sampler_shared_bytes>>>(
@@ -2845,7 +3026,9 @@ CudaKernelRunResult CudaRuntimeProgram::run(
             options.postselect_detectors ? 1 : 0,
             0,
             impl_->discarded_flags.ptr,
-            impl_->logical_flags.ptr);
+            impl_->logical_flags.ptr,
+            measurement_output_ptr,
+            expectation_output_ptr);
     } else if (options.lazy_exogenous_on_device) {
         symft_persistent_sample_kernel_lazy<<<shots, threads, sampler_shared_bytes>>>(
             impl_->view(),
@@ -2858,7 +3041,9 @@ CudaKernelRunResult CudaRuntimeProgram::run(
             options.sample_exogenous_on_device ? 1 : 0,
             sampled_sampler_word_count,
             impl_->discarded_flags.ptr,
-            impl_->logical_flags.ptr);
+            impl_->logical_flags.ptr,
+            measurement_output_ptr,
+            expectation_output_ptr);
     } else {
         symft_persistent_sample_kernel_fast<<<shots, sampler_threads, sampler_shared_bytes>>>(
             impl_->view(),
@@ -2869,7 +3054,9 @@ CudaKernelRunResult CudaRuntimeProgram::run(
             options.postselect_detectors ? 1 : 0,
             options.sample_exogenous_on_device ? 1 : 0,
             impl_->discarded_flags.ptr,
-            impl_->logical_flags.ptr);
+            impl_->logical_flags.ptr,
+            measurement_output_ptr,
+            expectation_output_ptr);
     }
     check_cuda(cudaGetLastError(), "CUDA sampler launch");
     check_cuda(cudaEventRecord(stop), "cudaEventRecord");
@@ -2896,6 +3083,47 @@ CudaKernelRunResult CudaRuntimeProgram::run(
             static_cast<std::size_t>(shots) * sizeof(std::uint8_t),
             cudaMemcpyDeviceToHost),
         "cudaMemcpy device-to-host");
+
+    if (options.capture_records) {
+        result.measurements.assign(
+            static_cast<std::size_t>(shots),
+            std::vector<std::uint64_t>(static_cast<std::size_t>(impl_->host.record_words)));
+        result.expectations.assign(
+            static_cast<std::size_t>(shots),
+            std::vector<double>(static_cast<std::size_t>(impl_->host.nexpvals)));
+        if (measurement_output.count != 0) {
+            std::vector<std::uint64_t> flat(measurement_output.count);
+            check_cuda(
+                cudaMemcpy(
+                    flat.data(),
+                    measurement_output.ptr,
+                    flat.size() * sizeof(std::uint64_t),
+                    cudaMemcpyDeviceToHost),
+                "cudaMemcpy measurement records");
+            for (int shot = 0; shot < shots; ++shot) {
+                std::copy_n(
+                    flat.data() + static_cast<std::size_t>(shot) * static_cast<std::size_t>(impl_->host.record_words),
+                    static_cast<std::size_t>(impl_->host.record_words),
+                    result.measurements[static_cast<std::size_t>(shot)].begin());
+            }
+        }
+        if (expectation_output.count != 0) {
+            std::vector<double> flat(expectation_output.count);
+            check_cuda(
+                cudaMemcpy(
+                    flat.data(),
+                    expectation_output.ptr,
+                    flat.size() * sizeof(double),
+                    cudaMemcpyDeviceToHost),
+                "cudaMemcpy expectation values");
+            for (int shot = 0; shot < shots; ++shot) {
+                std::copy_n(
+                    flat.data() + static_cast<std::size_t>(shot) * static_cast<std::size_t>(impl_->host.nexpvals),
+                    static_cast<std::size_t>(impl_->host.nexpvals),
+                    result.expectations[static_cast<std::size_t>(shot)].begin());
+            }
+        }
+    }
 
     for (int shot = 0; shot < shots; ++shot) {
         if (impl_->host_discarded[static_cast<std::size_t>(shot)] != 0) {
