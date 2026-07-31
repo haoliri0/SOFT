@@ -245,7 +245,7 @@ std::shared_ptr<const ActiveComponentPlan> build_active_component_plan(
     // Small active states are already cache-resident and cannot repay
     // component dispatch. Avoid even constructing per-instruction metadata for
     // the overwhelmingly common pure-Clifford/small-active fallback.
-    if (program.max_k < 8) {
+    if (program.max_k < 8 || program.nexpvals != 0) {
         return plan;
     }
     plan->instruction_steps.resize(program.instructions.size());

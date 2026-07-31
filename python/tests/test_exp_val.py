@@ -16,3 +16,14 @@ def test_exp_val_pauli_products_and_dormant_support():
     circuit = symft.Circuit("\n".join(("H 0", "CX 0 1", "EXP_VAL Z0*Z1 X0*X1 X2")))
     _, values = circuit.sample_with_expectations(1)
     assert np.allclose(values[0], (1.0, 1.0, 0.0))
+
+
+def test_exp_val_uses_dense_state_when_component_planning_would_apply():
+    circuit = symft.Circuit(
+        "\n".join(
+            [*(f"H {q}" for q in range(13)), *(f"T {q}" for q in range(13))]
+            + ["EXP_VAL " + "*".join(f"X{q}" for q in range(13))]
+        )
+    )
+    _, values = circuit.sample_with_expectations(1)
+    assert np.allclose(values, 2 ** (-13 / 2))
