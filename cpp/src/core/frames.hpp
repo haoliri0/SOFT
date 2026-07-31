@@ -62,10 +62,18 @@ struct DormantState {
 };
 
 struct CliffordFrame {
+    struct SupportWord {
+        std::size_t index = 0;
+        std::uint64_t x_mask = 0;
+        std::uint64_t z_mask = 0;
+    };
+
     int nqubits = 0;
     int nwords = 0;
     // For the represented Clifford U, rows store U^\dagger X_q U and U^\dagger Z_q U.
     std::vector<PauliString> rows;
+    mutable std::vector<std::vector<SupportWord>> support_words;
+    mutable bool support_words_valid = false;
 
     CliffordFrame() = default;
     explicit CliffordFrame(int nqubits);
@@ -73,6 +81,8 @@ struct CliffordFrame {
     int xrow(int q) const;
     int zrow(int q) const;
     void copy_pauli_to_row(int row, const PauliString& pauli);
+    void invalidate_support_cache();
+    const std::vector<SupportWord>& support_for_row(int row) const;
 };
 
 bool operator==(const CliffordFrame& lhs, const CliffordFrame& rhs);

@@ -148,6 +148,35 @@ void CliffordFrame::copy_pauli_to_row(int row, const PauliString& pauli) {
         fail("invalid Clifford frame row assignment");
     }
     rows[static_cast<std::size_t>(row)] = pauli;
+    invalidate_support_cache();
+}
+
+void CliffordFrame::invalidate_support_cache() {
+    support_words_valid = false;
+}
+
+const std::vector<CliffordFrame::SupportWord>& CliffordFrame::support_for_row(int row) const {
+    if (row < 0 || row >= static_cast<int>(rows.size())) {
+        fail("invalid Clifford frame row");
+    }
+    if (!support_words_valid) {
+        support_words.clear();
+        support_words.resize(rows.size());
+        for (std::size_t r = 0; r < rows.size(); ++r) {
+            const auto& pauli = rows[r];
+            auto& support = support_words[r];
+            support.reserve(pauli.x.size());
+            for (std::size_t word = 0; word < pauli.x.size(); ++word) {
+                const std::uint64_t x_mask = pauli.x[word];
+                const std::uint64_t z_mask = pauli.z[word];
+                if (x_mask || z_mask) {
+                    support.push_back(SupportWord{word, x_mask, z_mask});
+                }
+            }
+        }
+        support_words_valid = true;
+    }
+    return support_words[static_cast<std::size_t>(row)];
 }
 
 bool operator==(const CliffordFrame& lhs, const CliffordFrame& rhs) {
@@ -159,6 +188,7 @@ namespace {
 void swap_rows(CliffordFrame& frame, int a, int b) {
     if (a != b) {
         std::swap(frame.rows[static_cast<std::size_t>(a)], frame.rows[static_cast<std::size_t>(b)]);
+        frame.invalidate_support_cache();
     }
 }
 
@@ -170,6 +200,7 @@ void mul_rows(CliffordFrame& frame, int dst, int lhs, int rhs, int extra_phase =
     PauliString out = frame.rows[static_cast<std::size_t>(lhs)] * frame.rows[static_cast<std::size_t>(rhs)];
     out.phase_shift(extra_phase);
     frame.rows[static_cast<std::size_t>(dst)] = out;
+    frame.invalidate_support_cache();
 }
 
 void check_two_qubit_gate(const CliffordFrame& frame, int a, int b) {
@@ -187,6 +218,7 @@ void right_apply_clifford(CliffordFrame& frame, const CliffordFrame& gate) {
     for (auto& row : frame.rows) {
         row = preimage(gate, row);
     }
+    frame.invalidate_support_cache();
 }
 
 template <class Fn>
@@ -205,15 +237,54 @@ PauliString preimage(const CliffordFrame& frame, const PauliString& pauli) {
     PauliString out(frame.nqubits);
     out.set_phase(pauli.phase_exponent());
     for (int q = 0; q < frame.nqubits; ++q) {
+        const auto multiply_row = [&](int row_index) {
+            const auto& row = frame.rows[static_cast<std::size_t>(row_index)];
+            const auto& support = frame.support_for_row(row_index);
+            int carry = 0;
+            if (support.size() * 2 <= pauli.x.size()) {
+                for (const auto& word : support) {
+                    carry += popcount64(out.z[word.index] & word.x_mask);
+                    out.x[word.index] ^= word.x_mask;
+                    out.z[word.index] ^= word.z_mask;
+                }
+            } else {
+                for (std::size_t word = 0; word < row.x.size(); ++word) {
+                    carry += popcount64(out.z[word] & row.x[word]);
+                    out.x[word] ^= row.x[word];
+                    out.z[word] ^= row.z[word];
+                }
+            }
+            out.set_phase(out.phase_exponent() + row.phase_exponent() + 2 * (carry & 1));
+        };
         if (pauli.xbit(q)) {
-            out = out * frame.rows[static_cast<std::size_t>(frame.xrow(q))];
+            multiply_row(frame.xrow(q));
         }
         if (pauli.zbit(q)) {
-            out = out * frame.rows[static_cast<std::size_t>(frame.zrow(q))];
+            multiply_row(frame.zrow(q));
         }
     }
     return out;
 }
+
+namespace {
+
+bool pauli_anticommutes_with_frame_row(
+    const CliffordFrame& frame,
+    int row_index,
+    const PauliString& pauli) {
+    const auto& support = frame.support_for_row(row_index);
+    if (support.size() * 2 > pauli.x.size()) {
+        return pauli_anticommutes(pauli, frame.rows[static_cast<std::size_t>(row_index)]);
+    }
+    bool parity = false;
+    for (const auto& word : support) {
+        parity ^= is_odd_popcount(
+            (pauli.x[word.index] & word.z_mask) ^ (pauli.z[word.index] & word.x_mask));
+    }
+    return parity;
+}
+
+} // namespace
 
 PauliString coordinates_in_frame(const CliffordFrame& frame, const PauliString& pauli) {
     if (pauli.nqubits != frame.nqubits) {
@@ -221,10 +292,10 @@ PauliString coordinates_in_frame(const CliffordFrame& frame, const PauliString& 
     }
     PauliString out(frame.nqubits);
     for (int q = 0; q < frame.nqubits; ++q) {
-        if (pauli_anticommutes(pauli, frame.rows[static_cast<std::size_t>(frame.zrow(q))])) {
+        if (pauli_anticommutes_with_frame_row(frame, frame.zrow(q), pauli)) {
             out.set_xbit(q);
         }
-        if (pauli_anticommutes(pauli, frame.rows[static_cast<std::size_t>(frame.xrow(q))])) {
+        if (pauli_anticommutes_with_frame_row(frame, frame.xrow(q), pauli)) {
             out.set_zbit(q);
         }
     }
