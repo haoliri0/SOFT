@@ -17,8 +17,10 @@
 #endif
 
 #include <algorithm>
+#include <bit>
 #include <cctype>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <memory>
 #include <string>
@@ -305,11 +307,38 @@ PyObject* words_to_numpy(
         const auto& row = rows[shot];
         if (bit_packed) {
             unsigned char* out = data + shot * static_cast<std::size_t>(width);
-            for (int bit = 0; bit < nbits; ++bit) {
-                if (symft::packed_bit(row, bit)) {
-                    out[static_cast<std::size_t>(bit >> 3)] |=
-                        static_cast<unsigned char>(1u << (bit & 7));
+            // The native sampler stores records as little-endian 64-bit
+            // words, with bit zero in the least-significant bit.  NumPy's
+            // packed convention uses the same byte/bit order, so copy whole
+            // bytes instead of visiting every record bit.  The old bit loop
+            // made packed output slower than unpacked output for wide CCZ
+            // records and added no semantic work.
+            const std::size_t available =
+                row.size() * sizeof(std::uint64_t);
+            const std::size_t copy_bytes = std::min(
+                static_cast<std::size_t>(width), available);
+            if constexpr (std::endian::native == std::endian::little) {
+                if (copy_bytes != 0) {
+                    std::memcpy(out, row.data(), copy_bytes);
                 }
+            } else {
+                for (std::size_t byte = 0; byte < copy_bytes; ++byte) {
+                    const std::size_t word = byte / sizeof(std::uint64_t);
+                    const unsigned shift =
+                        8u * static_cast<unsigned>(byte % sizeof(std::uint64_t));
+                    out[byte] = static_cast<unsigned char>(row[word] >> shift);
+                }
+            }
+            if (copy_bytes < static_cast<std::size_t>(width)) {
+                std::memset(
+                    out + copy_bytes,
+                    0,
+                    static_cast<std::size_t>(width) - copy_bytes);
+            }
+            const int remainder = nbits & 7;
+            if (remainder != 0) {
+                out[static_cast<std::size_t>(width) - 1] &=
+                    static_cast<unsigned char>((1u << remainder) - 1u);
             }
         } else {
             unsigned char* out = data + shot * static_cast<std::size_t>(width);
