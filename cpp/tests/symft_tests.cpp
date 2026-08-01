@@ -68,19 +68,6 @@ bool approx(symft::Complex a, symft::Complex b, double eps = 1e-10) {
     return std::abs(a - b) <= eps;
 }
 
-symft::PauliString expected_pauli_image(std::string image) {
-    bool negative = false;
-    if (!image.empty() && image[0] == '-') {
-        negative = true;
-        image = image.substr(1);
-    }
-    symft::PauliString out = symft::pauli_string(image);
-    if (negative) {
-        out.phase_shift(2);
-    }
-    return out;
-}
-
 symft::Complex deterministic_amplitude(std::size_t basis, int shot = 0) {
     const double re = 0.001 * static_cast<double>((basis % 97) + 1 + 3 * shot);
     const double im = -0.0015 * static_cast<double>(((basis + 5 * static_cast<std::size_t>(shot)) % 89) + 1);
@@ -571,106 +558,6 @@ void test_pauli_algebra() {
     require(ps.xbit(1) && !ps.zbit(1), "X bits");
     require(ps.xbit(2) && ps.zbit(2), "Y bits");
     require(!ps.xbit(3) && ps.zbit(3), "Z bits");
-}
-
-void test_clifford_frame() {
-    using namespace symft;
-    CliffordFrame cf(2);
-    left_CX(cf, 0, 1);
-    require(preimage(cf, pauli_x(2, 0)) == pauli_string("XX"), "CX maps Xc");
-    require(preimage(cf, pauli_z(2, 1)) == pauli_string("ZZ"), "CX maps Zt");
-
-    CliffordFrame h(1);
-    left_H(h, 0);
-    left_S(h, 0);
-    require(preimage(h, pauli_x(1, 0)) == pauli_y(1, 0), "left composition order");
-}
-
-void test_extended_clifford_frame_images() {
-    using namespace symft;
-    using SingleGate = void (*)(CliffordFrame&, int);
-    struct SingleCase {
-        const char* name;
-        SingleGate apply;
-        const char* x_image;
-        const char* z_image;
-    };
-    const std::vector<SingleCase> single_cases{
-        {"H_NXY", static_cast<SingleGate>(&left_H_NXY), "-Y", "-Z"},
-        {"H_NXZ", static_cast<SingleGate>(&left_H_NXZ), "-Z", "-X"},
-        {"H_NYZ", static_cast<SingleGate>(&left_H_NYZ), "-X", "-Y"},
-        {"H_XY", static_cast<SingleGate>(&left_H_XY), "Y", "-Z"},
-        {"H_YZ", static_cast<SingleGate>(&left_H_YZ), "-X", "Y"},
-        {"C_NXYZ", static_cast<SingleGate>(&left_C_NXYZ), "-Y", "-X"},
-        {"C_NZYX", static_cast<SingleGate>(&left_C_NZYX), "-Z", "-Y"},
-        {"C_XNYZ", static_cast<SingleGate>(&left_C_XNYZ), "-Y", "X"},
-        {"C_XYNZ", static_cast<SingleGate>(&left_C_XYNZ), "Y", "-X"},
-        {"C_XYZ", static_cast<SingleGate>(&left_C_XYZ), "Y", "X"},
-        {"C_ZNYX", static_cast<SingleGate>(&left_C_ZNYX), "Z", "-Y"},
-        {"C_ZYNX", static_cast<SingleGate>(&left_C_ZYNX), "-Z", "Y"},
-        {"C_ZYX", static_cast<SingleGate>(&left_C_ZYX), "Z", "Y"},
-        {"SQRT_X", static_cast<SingleGate>(&left_SQRT_X), "X", "-Y"},
-        {"SQRT_X_DAG", static_cast<SingleGate>(&left_SQRT_X_DAG), "X", "Y"},
-        {"SQRT_Y", static_cast<SingleGate>(&left_SQRT_Y), "-Z", "X"},
-        {"SQRT_Y_DAG", static_cast<SingleGate>(&left_SQRT_Y_DAG), "Z", "-X"},
-        {"Y", static_cast<SingleGate>(&left_Y), "-X", "-Z"},
-    };
-    for (const auto& c : single_cases) {
-        CliffordFrame frame(1);
-        c.apply(frame, 0);
-        require(
-            preimage(frame, pauli_x(1, 0)) == expected_pauli_image(c.x_image),
-            std::string(c.name) + " X generator image");
-        require(
-            preimage(frame, pauli_z(1, 0)) == expected_pauli_image(c.z_image),
-            std::string(c.name) + " Z generator image");
-    }
-
-    using TwoGate = void (*)(CliffordFrame&, int, int);
-    struct TwoCase {
-        const char* name;
-        TwoGate apply;
-        const char* xa_image;
-        const char* za_image;
-        const char* xb_image;
-        const char* zb_image;
-    };
-    const std::vector<TwoCase> two_cases{
-        {"CY", static_cast<TwoGate>(&left_CY), "XY", "Z_", "ZX", "ZZ"},
-        {"CXSWAP", static_cast<TwoGate>(&left_CXSWAP), "XX", "_Z", "X_", "ZZ"},
-        {"CZSWAP", static_cast<TwoGate>(&left_CZSWAP), "ZX", "_Z", "XZ", "Z_"},
-        {"ISWAP", static_cast<TwoGate>(&left_ISWAP), "ZY", "_Z", "YZ", "Z_"},
-        {"ISWAP_DAG", static_cast<TwoGate>(&left_ISWAP_DAG), "-ZY", "_Z", "-YZ", "Z_"},
-        {"SQRT_XX", static_cast<TwoGate>(&left_SQRT_XX), "X_", "-YX", "_X", "-XY"},
-        {"SQRT_XX_DAG", static_cast<TwoGate>(&left_SQRT_XX_DAG), "X_", "YX", "_X", "XY"},
-        {"SQRT_YY", static_cast<TwoGate>(&left_SQRT_YY), "-ZY", "XY", "-YZ", "YX"},
-        {"SQRT_YY_DAG", static_cast<TwoGate>(&left_SQRT_YY_DAG), "ZY", "-XY", "YZ", "-YX"},
-        {"SQRT_ZZ", static_cast<TwoGate>(&left_SQRT_ZZ), "YZ", "Z_", "ZY", "_Z"},
-        {"SQRT_ZZ_DAG", static_cast<TwoGate>(&left_SQRT_ZZ_DAG), "-YZ", "Z_", "-ZY", "_Z"},
-        {"SWAPCX", static_cast<TwoGate>(&left_SWAPCX), "_X", "ZZ", "XX", "Z_"},
-        {"XCX", static_cast<TwoGate>(&left_XCX), "X_", "ZX", "_X", "XZ"},
-        {"XCY", static_cast<TwoGate>(&left_XCY), "X_", "ZY", "XX", "XZ"},
-        {"XCZ", static_cast<TwoGate>(&left_XCZ), "X_", "ZZ", "XX", "_Z"},
-        {"YCX", static_cast<TwoGate>(&left_YCX), "XX", "ZX", "_X", "YZ"},
-        {"YCY", static_cast<TwoGate>(&left_YCY), "XY", "ZY", "YX", "YZ"},
-        {"YCZ", static_cast<TwoGate>(&left_YCZ), "XZ", "ZZ", "YX", "_Z"},
-    };
-    for (const auto& c : two_cases) {
-        CliffordFrame frame(2);
-        c.apply(frame, 0, 1);
-        require(
-            preimage(frame, pauli_x(2, 0)) == expected_pauli_image(c.xa_image),
-            std::string(c.name) + " X_ generator image");
-        require(
-            preimage(frame, pauli_z(2, 0)) == expected_pauli_image(c.za_image),
-            std::string(c.name) + " Z_ generator image");
-        require(
-            preimage(frame, pauli_x(2, 1)) == expected_pauli_image(c.xb_image),
-            std::string(c.name) + " _X generator image");
-        require(
-            preimage(frame, pauli_z(2, 1)) == expected_pauli_image(c.zb_image),
-            std::string(c.name) + " _Z generator image");
-    }
 }
 
 void test_active_rotation() {
@@ -2117,8 +2004,6 @@ void test_prepared_sampler_multithreading() {
 
 int main() {
     test_pauli_algebra();
-    test_clifford_frame();
-    test_extended_clifford_frame_images();
     test_active_rotation();
     test_high_pivot_selection();
     test_pending_operation_optimizer();

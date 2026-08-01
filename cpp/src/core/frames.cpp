@@ -289,8 +289,8 @@ void left_C_NXYZ(CliffordFrame& frame, int q) {
     const int qi = check_qubit(frame.nqubits, q);
     const int x = frame.xrow(qi);
     const int z = frame.zrow(qi);
-    swap_rows(frame, x, z);
     mul_rows(frame, x, x, z, 3);
+    swap_rows(frame, x, z);
     add_row_phase(frame, x, 2);
     add_row_phase(frame, z, 2);
 }
@@ -299,12 +299,37 @@ void left_C_NZYX(CliffordFrame& frame, int q) {
     const int qi = check_qubit(frame.nqubits, q);
     const int x = frame.xrow(qi);
     const int z = frame.zrow(qi);
+    swap_rows(frame, x, z);
+    mul_rows(frame, x, x, z, 3);
+    add_row_phase(frame, z, 2);
+}
+
+void left_C_XNYZ(CliffordFrame& frame, int q) {
+    const int qi = check_qubit(frame.nqubits, q);
+    const int x = frame.xrow(qi);
+    const int z = frame.zrow(qi);
+    mul_rows(frame, x, x, z, 3);
+    swap_rows(frame, x, z);
+}
+
+void left_C_XYNZ(CliffordFrame& frame, int q) {
+    const int qi = check_qubit(frame.nqubits, q);
+    const int x = frame.xrow(qi);
+    const int z = frame.zrow(qi);
     mul_rows(frame, x, x, z, 3);
     swap_rows(frame, x, z);
     add_row_phase(frame, x, 2);
 }
 
-void left_C_XNYZ(CliffordFrame& frame, int q) {
+void left_C_XYZ(CliffordFrame& frame, int q) {
+    const int qi = check_qubit(frame.nqubits, q);
+    const int x = frame.xrow(qi);
+    const int z = frame.zrow(qi);
+    mul_rows(frame, x, x, z, 1);
+    swap_rows(frame, x, z);
+}
+
+void left_C_ZNYX(CliffordFrame& frame, int q) {
     const int qi = check_qubit(frame.nqubits, q);
     const int x = frame.xrow(qi);
     const int z = frame.zrow(qi);
@@ -312,37 +337,12 @@ void left_C_XNYZ(CliffordFrame& frame, int q) {
     mul_rows(frame, x, x, z, 1);
 }
 
-void left_C_XYNZ(CliffordFrame& frame, int q) {
-    const int qi = check_qubit(frame.nqubits, q);
-    const int x = frame.xrow(qi);
-    const int z = frame.zrow(qi);
-    swap_rows(frame, x, z);
-    mul_rows(frame, x, x, z, 3);
-    add_row_phase(frame, z, 2);
-}
-
-void left_C_XYZ(CliffordFrame& frame, int q) {
-    const int qi = check_qubit(frame.nqubits, q);
-    const int x = frame.xrow(qi);
-    const int z = frame.zrow(qi);
-    swap_rows(frame, x, z);
-    mul_rows(frame, x, x, z, 3);
-}
-
-void left_C_ZNYX(CliffordFrame& frame, int q) {
-    const int qi = check_qubit(frame.nqubits, q);
-    const int x = frame.xrow(qi);
-    const int z = frame.zrow(qi);
-    mul_rows(frame, x, x, z, 3);
-    swap_rows(frame, x, z);
-}
-
 void left_C_ZYNX(CliffordFrame& frame, int q) {
     const int qi = check_qubit(frame.nqubits, q);
     const int x = frame.xrow(qi);
     const int z = frame.zrow(qi);
-    mul_rows(frame, x, x, z, 3);
     swap_rows(frame, x, z);
+    mul_rows(frame, x, x, z, 3);
     add_row_phase(frame, x, 2);
     add_row_phase(frame, z, 2);
 }
@@ -351,8 +351,8 @@ void left_C_ZYX(CliffordFrame& frame, int q) {
     const int qi = check_qubit(frame.nqubits, q);
     const int x = frame.xrow(qi);
     const int z = frame.zrow(qi);
-    mul_rows(frame, x, x, z, 1);
     swap_rows(frame, x, z);
+    mul_rows(frame, x, x, z, 3);
 }
 
 void left_S(CliffordFrame& frame, int q) {
@@ -370,7 +370,7 @@ void left_SQRT_X(CliffordFrame& frame, int q) {
     const int x = frame.xrow(qi);
     const int z = frame.zrow(qi);
     swap_rows(frame, x, z);
-    mul_rows(frame, x, x, z, 1);
+    mul_rows(frame, x, x, z, 3);
     swap_rows(frame, x, z);
 }
 
@@ -379,7 +379,7 @@ void left_SQRT_X_DAG(CliffordFrame& frame, int q) {
     const int x = frame.xrow(qi);
     const int z = frame.zrow(qi);
     swap_rows(frame, x, z);
-    mul_rows(frame, x, x, z, 3);
+    mul_rows(frame, x, x, z, 1);
     swap_rows(frame, x, z);
 }
 
@@ -388,7 +388,7 @@ void left_SQRT_Y(CliffordFrame& frame, int q) {
     const int x = frame.xrow(qi);
     const int z = frame.zrow(qi);
     swap_rows(frame, x, z);
-    add_row_phase(frame, x, 2);
+    add_row_phase(frame, z, 2);
 }
 
 void left_SQRT_Y_DAG(CliffordFrame& frame, int q) {
@@ -396,7 +396,7 @@ void left_SQRT_Y_DAG(CliffordFrame& frame, int q) {
     const int x = frame.xrow(qi);
     const int z = frame.zrow(qi);
     swap_rows(frame, x, z);
-    add_row_phase(frame, z, 2);
+    add_row_phase(frame, x, 2);
 }
 
 void left_X(CliffordFrame& frame, int q) {
@@ -470,8 +470,8 @@ void left_CXSWAP(CliffordFrame& frame, int a, int b) {
     const int zb = frame.zrow(bi);
     mul_rows(frame, xa, xa, xb);
     mul_rows(frame, zb, za, zb);
-    mul_rows(frame, xb, xb, xa);
-    mul_rows(frame, za, zb, za);
+    swap_rows(frame, xa, xb);
+    swap_rows(frame, za, zb);
 }
 
 void left_CZSWAP(CliffordFrame& frame, int a, int b) {
@@ -496,8 +496,8 @@ void left_ISWAP(CliffordFrame& frame, int a, int b) {
     const int za = frame.zrow(ai);
     const int xb = frame.xrow(bi);
     const int zb = frame.zrow(bi);
-    mul_rows(frame, xa, xa, za, 1);
-    mul_rows(frame, xb, xb, zb, 1);
+    mul_rows(frame, xa, xa, za, 3);
+    mul_rows(frame, xb, xb, zb, 3);
     mul_rows(frame, xa, xa, zb);
     mul_rows(frame, xb, za, xb);
     swap_rows(frame, xa, xb);
@@ -512,8 +512,8 @@ void left_ISWAP_DAG(CliffordFrame& frame, int a, int b) {
     const int za = frame.zrow(ai);
     const int xb = frame.xrow(bi);
     const int zb = frame.zrow(bi);
-    mul_rows(frame, xa, xa, za, 3);
-    mul_rows(frame, xb, xb, zb, 3);
+    mul_rows(frame, xa, xa, za, 1);
+    mul_rows(frame, xb, xb, zb, 1);
     mul_rows(frame, xa, xa, zb);
     mul_rows(frame, xb, za, xb);
     swap_rows(frame, xa, xb);
@@ -528,11 +528,11 @@ void left_SQRT_XX(CliffordFrame& frame, int a, int b) {
     const int za = frame.zrow(ai);
     const int xb = frame.xrow(bi);
     const int zb = frame.zrow(bi);
-    mul_rows(frame, xa, xa, za, 3);
+    mul_rows(frame, xa, xa, za, 1);
     mul_rows(frame, xa, xa, xb);
     mul_rows(frame, zb, za, zb);
     swap_rows(frame, xa, za);
-    mul_rows(frame, xa, xa, za, 3);
+    mul_rows(frame, xa, xa, za, 1);
     mul_rows(frame, xa, xa, xb);
     mul_rows(frame, zb, za, zb);
 }
@@ -545,34 +545,16 @@ void left_SQRT_XX_DAG(CliffordFrame& frame, int a, int b) {
     const int za = frame.zrow(ai);
     const int xb = frame.xrow(bi);
     const int zb = frame.zrow(bi);
-    mul_rows(frame, xa, xa, za, 1);
+    mul_rows(frame, xa, xa, za, 3);
     mul_rows(frame, xa, xa, xb);
     mul_rows(frame, zb, za, zb);
     swap_rows(frame, xa, za);
-    mul_rows(frame, xa, xa, za, 1);
+    mul_rows(frame, xa, xa, za, 3);
     mul_rows(frame, xa, xa, xb);
     mul_rows(frame, zb, za, zb);
 }
 
 void left_SQRT_YY(CliffordFrame& frame, int a, int b) {
-    check_two_qubit_gate(frame, a, b);
-    const int ai = check_qubit(frame.nqubits, a);
-    const int bi = check_qubit(frame.nqubits, b);
-    const int xa = frame.xrow(ai);
-    const int za = frame.zrow(ai);
-    const int xb = frame.xrow(bi);
-    const int zb = frame.zrow(bi);
-    mul_rows(frame, xa, xa, za, 3);
-    add_row_phase(frame, xb, 2);
-    mul_rows(frame, xb, xb, xa);
-    mul_rows(frame, za, zb, za);
-    swap_rows(frame, xb, zb);
-    mul_rows(frame, xb, xb, xa);
-    mul_rows(frame, za, zb, za);
-    mul_rows(frame, xa, xa, za, 1);
-}
-
-void left_SQRT_YY_DAG(CliffordFrame& frame, int a, int b) {
     check_two_qubit_gate(frame, a, b);
     const int ai = check_qubit(frame.nqubits, a);
     const int bi = check_qubit(frame.nqubits, b);
@@ -590,6 +572,24 @@ void left_SQRT_YY_DAG(CliffordFrame& frame, int a, int b) {
     mul_rows(frame, xa, xa, za, 3);
 }
 
+void left_SQRT_YY_DAG(CliffordFrame& frame, int a, int b) {
+    check_two_qubit_gate(frame, a, b);
+    const int ai = check_qubit(frame.nqubits, a);
+    const int bi = check_qubit(frame.nqubits, b);
+    const int xa = frame.xrow(ai);
+    const int za = frame.zrow(ai);
+    const int xb = frame.xrow(bi);
+    const int zb = frame.zrow(bi);
+    mul_rows(frame, xa, xa, za, 3);
+    add_row_phase(frame, xb, 2);
+    mul_rows(frame, xb, xb, xa);
+    mul_rows(frame, za, zb, za);
+    swap_rows(frame, xb, zb);
+    mul_rows(frame, xb, xb, xa);
+    mul_rows(frame, za, zb, za);
+    mul_rows(frame, xa, xa, za, 1);
+}
+
 void left_SQRT_ZZ(CliffordFrame& frame, int a, int b) {
     check_two_qubit_gate(frame, a, b);
     const int ai = check_qubit(frame.nqubits, a);
@@ -598,8 +598,8 @@ void left_SQRT_ZZ(CliffordFrame& frame, int a, int b) {
     const int za = frame.zrow(ai);
     const int xb = frame.xrow(bi);
     const int zb = frame.zrow(bi);
-    mul_rows(frame, xa, xa, za, 1);
-    mul_rows(frame, xb, xb, zb, 1);
+    mul_rows(frame, xa, xa, za, 3);
+    mul_rows(frame, xb, xb, zb, 3);
     mul_rows(frame, xa, xa, zb);
     mul_rows(frame, xb, za, xb);
 }
@@ -612,8 +612,8 @@ void left_SQRT_ZZ_DAG(CliffordFrame& frame, int a, int b) {
     const int za = frame.zrow(ai);
     const int xb = frame.xrow(bi);
     const int zb = frame.zrow(bi);
-    mul_rows(frame, xa, xa, za, 3);
-    mul_rows(frame, xb, xb, zb, 3);
+    mul_rows(frame, xa, xa, za, 1);
+    mul_rows(frame, xb, xb, zb, 1);
     mul_rows(frame, xa, xa, zb);
     mul_rows(frame, xb, za, xb);
 }
@@ -628,8 +628,8 @@ void left_SWAPCX(CliffordFrame& frame, int a, int b) {
     const int zb = frame.zrow(bi);
     mul_rows(frame, xa, xa, xb);
     mul_rows(frame, zb, za, zb);
-    swap_rows(frame, xa, xb);
-    swap_rows(frame, za, zb);
+    mul_rows(frame, xb, xb, xa);
+    mul_rows(frame, za, zb, za);
 }
 
 void left_XCX(CliffordFrame& frame, int control, int target) {
