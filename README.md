@@ -30,6 +30,69 @@ SymFT replaces this per-shot evolution with three design features:
   Sampling evaluates symbolic signs, updates active coefficients and measurement records, and accumulates detector and observable results without revisiting the original
   circuit or reconstructing the planning stabilizer tableau.
 
+## Installation
+
+Install the prebuilt package from PyPI:
+
+```bash
+pip install symft
+```
+
+| Platform / CPU family | PyPI wheel |
+| --- | --- |
+| Linux `x86_64` with runtime-dispatched AVX2/AVX-512 acceleration | ✅ |
+| Linux `aarch64` | ✅ |
+| macOS `arm64` | ✅ |
+| Windows `amd64` | ✅ |
+
+### Manual installation from source
+
+A source build requires Python 3.9 or newer, NumPy 1.20 or newer, and a C++20
+compiler. To build the latest version from the repository:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install ./python
+```
+
+The extension compiles the C++ sources directly, so CMake is not required for
+the Python build.
+
+To include the optional CUDA counts backend, install a CUDA toolkit with
+`nvcc` and run:
+
+```bash
+SYMFT_PY_ENABLE_CUDA=1 python -m pip install ./python
+```
+
+See the [Python interface guide](python/README.md#cuda-counts-backend) for CUDA
+architecture, precision, and execution-mode options.
+
+## Quick start
+
+```python
+import symft
+
+circuit = symft.Circuit("""
+H 0
+T 0
+M 0
+OBSERVABLE_INCLUDE(0) rec[-1]
+""")
+
+sampler = circuit.compile_counts_sampler(batch=True, observable=0)
+result = sampler.sample(shots=100_000, stream_id=42)
+
+print(result["logical_error_rate"])
+print(result["timing"])
+```
+
+Use `Circuit.sample` when full measurement records are needed,
+`Circuit.sample_detectors` for detector records, and `Circuit.sample_counts`
+or a compiled counts sampler for high-throughput aggregate statistics.
+
 ## Performance
 
 The following results are taken from the current
@@ -71,54 +134,6 @@ The compared tools expose different output forms, so these numbers compare the
 tested public sampling paths rather than identical-width output kernels. See
 the [benchmark documentation](benchmark/README.md) for the circuits,
 configuration, hardware details, and measurement protocol.
-
-## Installation
-
-The Python package requires Python 3.9 or newer, NumPy 1.20 or newer, and a
-C++20 compiler. From the repository root:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ./python
-```
-
-The extension compiles the C++ sources directly; CMake is not required for the
-Python build.
-
-To include the optional CUDA counts backend, install a CUDA toolkit with
-`nvcc` and run:
-
-```bash
-SYMFT_PY_ENABLE_CUDA=1 python -m pip install -e ./python
-```
-
-See the [Python interface guide](python/README.md#cuda-counts-backend) for CUDA
-architecture, precision, and execution-mode options.
-
-## Quick start
-
-```python
-import symft
-
-circuit = symft.Circuit("""
-H 0
-T 0
-M 0
-OBSERVABLE_INCLUDE(0) rec[-1]
-""")
-
-sampler = circuit.compile_counts_sampler(batch=True, observable=0)
-result = sampler.sample(shots=100_000, stream_id=42)
-
-print(result["logical_error_rate"])
-print(result["timing"])
-```
-
-Use `Circuit.sample` when full measurement records are needed,
-`Circuit.sample_detectors` for detector records, and `Circuit.sample_counts`
-or a compiled counts sampler for high-throughput aggregate statistics.
 
 ## Supported circuit model
 
@@ -242,4 +257,3 @@ The project authors reviewed and verified the resulting code, tests, benchmark r
 
 SymFT is licensed under the [Apache License 2.0](LICENSE).
 The Clifft-derived benchmark inputs retain their original attribution and are accompanied by a separate [Apache-2.0 license](benchmark/LICENSE-Clifft-paper).
-
