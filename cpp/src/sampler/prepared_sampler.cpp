@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
+#include "sampler/jthread_compat.hpp"
 
 namespace symft {
 namespace {
@@ -272,7 +273,7 @@ void run_workers(int worker_count, WorkerFn&& worker) {
 
     std::vector<std::exception_ptr> failures(static_cast<std::size_t>(worker_count));
     {
-        std::vector<std::jthread> threads;
+        std::vector<symft::jthread> threads;
         threads.reserve(static_cast<std::size_t>(worker_count));
         for (int worker_id = 0; worker_id < worker_count; ++worker_id) {
             threads.emplace_back([&, worker_id] {
