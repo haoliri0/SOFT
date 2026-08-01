@@ -2,9 +2,15 @@ name: release
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - "python/**"
+      - "cpp/src/**"
   push:
     tags:
       - "v*"
+
 jobs:
   build-wheels:
     runs-on: ${{ matrix.os }}
@@ -12,23 +18,39 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-          - os: windows-latest
+          - name: linux-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+          - name: linux-aarch64
+            os: ubuntu-24.04-arm
+            arch: aarch64
+          - name: macos-arm64
+            os: macos-14
+            arch: arm64
+          - name: windows-amd64
+            os: windows-latest
+            arch: AMD64
     steps:
       - uses: actions/checkout@v4
       - uses: pypa/cibuildwheel@v3.1.2
         env:
-          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
+          CIBW_BUILD: "${{ github.event_name == 'pull_request' && 'cp313-*' || 'cp39-* cp310-* cp311-* cp312-* cp313-*' }}"
+          CIBW_ARCHS: "${{ matrix.arch }}"
           CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_* pp*"
           CIBW_ENVIRONMENT: "SYMFT_PY_NATIVE=0 SYMFT_PY_ENABLE_CUDA=0"
-          CIBW_TEST_COMMAND: 'python -c "import symft; assert not symft.cuda_enabled()"'
+          CIBW_TEST_COMMAND: >-
+            python -c "import symft;
+            assert symft.simd_backend();
+            assert not symft.cuda_enabled();
+            print(symft.simd_backend())"
         with:
           package-dir: python
           output-dir: wheelhouse
       - uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}
+          name: wheels-${{ matrix.name }}
           path: wheelhouse/*.whl
+
   build-sdist:
     runs-on: ubuntu-latest
     steps:
@@ -43,7 +65,9 @@ jobs:
         with:
           name: sdist
           path: python/dist/*.tar.gz
+
   publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [build-wheels, build-sdist]
     runs-on: ubuntu-latest
     environment: pypi

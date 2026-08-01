@@ -4,15 +4,15 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <immintrin.h>
-
-namespace symft::detail {
 
 #if defined(__AVX2__) && defined(__FMA__)
+#include <immintrin.h>
 #define SYMFT_INLINE_AVX2 1
 #else
 #define SYMFT_INLINE_AVX2 0
 #endif
+
+namespace symft::detail {
 
 
 inline void rotate_uniform_imag_pairs_scalar(
