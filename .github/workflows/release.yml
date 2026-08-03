@@ -37,7 +37,7 @@ jobs:
           CIBW_BUILD: "${{ github.event_name == 'pull_request' && 'cp313-*' || 'cp39-* cp310-* cp311-* cp312-* cp313-*' }}"
           CIBW_ARCHS: "${{ matrix.arch }}"
           CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_* pp*"
-          CIBW_ENVIRONMENT: "SYMFT_PY_NATIVE=0 SYMFT_PY_ENABLE_CUDA=0"
+          CIBW_ENVIRONMENT: "SYMFT_PY_ENABLE_CUDA=0"
           CIBW_TEST_COMMAND: >-
             python -c "import symft;
             assert symft.simd_backend();
@@ -67,7 +67,6 @@ jobs:
           path: python/dist/*.tar.gz
 
   publish:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [build-wheels, build-sdist]
     runs-on: ubuntu-latest
     environment: pypi
