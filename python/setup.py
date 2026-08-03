@@ -375,7 +375,7 @@ extensions = [
 
 setup(
     name="symft",
-    version="0.1.0",
+    version="0.1.1",
     description="Python bindings for the SymFT Clifford+T simulator",
     license="Apache-2.0",
     license_files=["LICENSE"],

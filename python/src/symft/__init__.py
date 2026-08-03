@@ -13,7 +13,7 @@ from ._native import (
     simd_backend,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 def read_stim_file(path: Union[str, bytes, PathLike]) -> Circuit:

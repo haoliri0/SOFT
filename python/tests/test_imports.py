@@ -36,7 +36,7 @@ class ImportApiTest(unittest.TestCase):
         self.assertIn("stream_id=None", str(inspect.signature(symft.CompiledCountsSampler.sample)))
 
     def test_version_is_exported(self):
-        self.assertEqual(symft.__version__, "0.1.0")
+        self.assertEqual(symft.__version__, "0.1.1")
 
 
 if __name__ == "__main__":

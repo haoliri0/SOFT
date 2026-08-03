@@ -15,7 +15,7 @@ It supports:
 - optionally using the C++ CUDA counts sampler when built with CUDA support;
 - returning either regular boolean NumPy arrays or bit-packed arrays.
 
-Package version `0.1.0` requires Python 3.9+, NumPy 1.20+, and a C++20-capable
+Package version `0.1.1` requires Python 3.9+, NumPy 1.20+, and a C++20-capable
 compiler.
 
 ## Contents
