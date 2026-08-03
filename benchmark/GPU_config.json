@@ -25,7 +25,7 @@
       "msc_d5": 5000000,
       "coherent_d3_r1": 1000000,
       "coherent_d3_r3": 1000000,
-      "coherent_d5_r1": 100,
+      "coherent_d5_r1": 1048576,
       "coherent_d5_r5": 2,
       "distillation": 2000000,
       "surface_d7_r7": 5000000,
