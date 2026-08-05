@@ -182,13 +182,10 @@ def clifft_sampler(case: dict[str, Any], path: Path) -> tuple[Sample, dict[str, 
     circuit = clifft.parse_file(str(path))
     hir = clifft.trace(circuit)
     clifft.default_hir_pass_manager().run(hir)
-    reference = clifft.compute_reference_syndrome(hir)
-    mask = [1] * len(reference["detectors"]) if case["postselect"] else []
+    mask = [1] * hir.num_detectors if case["postselect"] else []
     program = clifft.lower(
         hir,
         postselection_mask=mask,
-        expected_detectors=reference["detectors"],
-        expected_observables=reference["observables"],
     )
     clifft.default_bytecode_pass_manager().run(program)
     clifft.sample_survivors(
