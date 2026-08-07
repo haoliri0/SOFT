@@ -27,3 +27,27 @@ def test_exp_val_uses_dense_state_when_component_planning_would_apply():
     )
     _, values = circuit.sample_with_expectations(1)
     assert np.allclose(values, 2 ** (-13 / 2))
+
+
+def test_exp_val_compiled_batch_sampler():
+    circuit = symft.Circuit(
+        "\n".join(
+            (
+                "EXP_VAL Z0 X0",
+                "H 0",
+                "T 0",
+                "EXP_VAL X0 Y0 Z0",
+                "T_DAG 0",
+                "H 0",
+                "M 0",
+            )
+        )
+    )
+    sampler = circuit.compile_sampler(batch=True, batch_size=3)
+
+    records, values = sampler.sample_with_expectations(7, seed=23)
+
+    assert "batch=True" in repr(sampler)
+    assert not np.any(records)
+    assert np.allclose(values[:, :2], (1.0, 0.0))
+    assert np.allclose(values[:, 2:], (2**-0.5, 2**-0.5, 0.0))

@@ -37,6 +37,8 @@ enum class BatchSignMode {
     Mixed,
 };
 
+bool batch_bit_at(const std::vector<std::uint64_t>& bits, int shot);
+
 using detail::active_length;
 using detail::check_probability;
 using detail::fail;
@@ -236,6 +238,11 @@ void measure_precomputed_active_pauli_batch(
     const SymbolicBoolEvaluationPlan& outcome_plan,
     std::optional<int> record,
     std::optional<int> record_condition);
+void measure_precomputed_active_pauli_expectation_batch(
+    BatchFactoredExecutorState& runtime,
+    const PrecomputedActivePauliMeasurementKernel& kernel,
+    const std::vector<std::uint64_t>& outcome_bits,
+    int exp_val);
 void measure_precomputed_active_pauli_branch_batch(
     BatchFactoredExecutorState& runtime,
     const PrecomputedActivePauliMeasurementKernel& kernel,

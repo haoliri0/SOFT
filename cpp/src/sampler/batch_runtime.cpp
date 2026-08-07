@@ -13,6 +13,30 @@
 
 namespace symft {
 
+void write_batch_expectation(
+    BatchFactoredExecutorState& runtime,
+    int exp_val,
+    const std::vector<std::uint64_t>& outcome_bits) {
+    if (exp_val < 0 || exp_val >= runtime.nexpvals) {
+        fail("expectation value index is out of range");
+    }
+    const std::size_t base =
+        static_cast<std::size_t>(exp_val) * static_cast<std::size_t>(runtime.batches);
+    for (int shot = 0; shot < runtime.active_shots; ++shot) {
+        runtime.exp_values[base + static_cast<std::size_t>(shot)] =
+            batch_bit_at(outcome_bits, shot) ? -1.0 : 1.0;
+    }
+}
+
+void write_zero_batch_expectation(BatchFactoredExecutorState& runtime, int exp_val) {
+    if (exp_val < 0 || exp_val >= runtime.nexpvals) {
+        fail("expectation value index is out of range");
+    }
+    const std::size_t base =
+        static_cast<std::size_t>(exp_val) * static_cast<std::size_t>(runtime.batches);
+    std::fill_n(runtime.exp_values.data() + base, runtime.active_shots, 0.0);
+}
+
 void execute_batch_instruction(BatchFactoredExecutorState& runtime, const ApplyPrecomputedActivePauliRotation& instruction) {
     eval_symbolic_bool_batch(runtime.eval_scratch, instruction.sign_plan, runtime);
     rotate_pauli_batch(runtime, instruction.rotation_kernel, runtime.eval_scratch);
@@ -25,6 +49,10 @@ void execute_batch_instruction(BatchFactoredExecutorState& runtime, const Promot
 
 void execute_batch_instruction(BatchFactoredExecutorState& runtime, const RecordMeasurement& instruction) {
     eval_symbolic_bool_batch(runtime.eval_scratch, instruction.outcome_plan, runtime);
+    if (instruction.exp_val) {
+        write_batch_expectation(runtime, *instruction.exp_val, runtime.eval_scratch);
+        return;
+    }
     write_batch_measurement_record(runtime, instruction.record, runtime.eval_scratch, instruction.record_condition);
 }
 
@@ -34,6 +62,15 @@ void execute_batch_instruction(BatchFactoredExecutorState& runtime, const Record
 }
 
 void execute_batch_instruction(BatchFactoredExecutorState& runtime, const MeasurePrecomputedActivePauli& instruction) {
+    if (instruction.exp_val) {
+        eval_symbolic_bool_batch(runtime.eval_scratch, instruction.outcome_plan, runtime);
+        measure_precomputed_active_pauli_expectation_batch(
+            runtime,
+            instruction.kernel,
+            runtime.eval_scratch,
+            *instruction.exp_val);
+        return;
+    }
     measure_precomputed_active_pauli_batch(
         runtime,
         instruction.kernel,
@@ -44,6 +81,10 @@ void execute_batch_instruction(BatchFactoredExecutorState& runtime, const Measur
 }
 
 void execute_batch_instruction(BatchFactoredExecutorState& runtime, const IntroduceDormantMeasurementBranch& instruction) {
+    if (instruction.exp_val) {
+        write_zero_batch_expectation(runtime, *instruction.exp_val);
+        return;
+    }
     fill_batch_random_half_bits(runtime.eval_scratch, runtime);
     const auto& branch_bits = runtime.eval_scratch;
     assign_batch_symbol(runtime, instruction.branch, branch_bits);
@@ -1631,6 +1672,10 @@ void execute_batch_instruction_presampled(
     const BatchExpressionEvaluator& evaluator,
     std::size_t instruction_index) {
     const auto& outcome_bits = evaluator.eval(instruction_index, runtime);
+    if (instruction.exp_val) {
+        write_batch_expectation(runtime, *instruction.exp_val, outcome_bits);
+        return;
+    }
     write_batch_measurement_record(runtime, instruction.record, outcome_bits, instruction.record_condition);
 }
 
@@ -1695,6 +1740,15 @@ void execute_batch_instruction_presampled(
     const MeasurePrecomputedActivePauli& instruction,
     const BatchExpressionEvaluator& evaluator,
     std::size_t instruction_index) {
+    if (instruction.exp_val) {
+        const auto& outcome_bits = evaluator.eval(instruction_index, runtime);
+        measure_precomputed_active_pauli_expectation_batch(
+            runtime,
+            instruction.kernel,
+            outcome_bits,
+            *instruction.exp_val);
+        return;
+    }
     measure_precomputed_active_pauli_branch_batch(runtime, instruction.kernel, instruction.branch);
     if (write_direct_branch_measurement_record(
             runtime,
@@ -1713,6 +1767,10 @@ void execute_batch_instruction_presampled(
     const IntroduceDormantMeasurementBranch& instruction,
     const BatchExpressionEvaluator& evaluator,
     std::size_t instruction_index) {
+    if (instruction.exp_val) {
+        write_zero_batch_expectation(runtime, *instruction.exp_val);
+        return;
+    }
     fill_batch_random_half_bits(runtime.eval_scratch, runtime);
     const auto& branch_bits = runtime.eval_scratch;
     assign_batch_symbol(runtime, instruction.branch, branch_bits);
@@ -2086,6 +2144,7 @@ void reset_batch_executor(
     runtime.nsymbols = program.nsymbols;
     runtime.nrecords = program.nrecords;
     runtime.ndetectors = program.ndetectors;
+    runtime.nexpvals = program.nexpvals;
     runtime.max_k = program.max_k;
     runtime.batch_words = batch_word_count(runtime.batches);
 
@@ -2122,6 +2181,12 @@ void reset_batch_executor(
         runtime.detector_any_words.resize(runtime.batch_words, 0);
     }
     std::fill(runtime.detector_any_words.begin(), runtime.detector_any_words.end(), 0);
+    const std::size_t expectation_size =
+        static_cast<std::size_t>(program.nexpvals) * static_cast<std::size_t>(runtime.batches);
+    if (runtime.exp_values.size() != expectation_size) {
+        runtime.exp_values.resize(expectation_size, 0.0);
+    }
+    std::fill(runtime.exp_values.begin(), runtime.exp_values.end(), 0.0);
     if (runtime.eval_scratch.size() != runtime.batch_words) {
         runtime.eval_scratch.resize(runtime.batch_words, 0);
     }
@@ -2332,6 +2397,52 @@ std::vector<std::vector<std::uint64_t>> sample_measurements_batch(
                     row[static_cast<std::size_t>(record_bit >> 6)] |=
                         std::uint64_t{1} << (record_bit & 63);
                 }
+            }
+        }
+        offset += block;
+    }
+    return out;
+}
+
+MeasurementExpectationSamples sample_measurements_and_expectations_batch(
+    const FactoredInstructionProgram& program,
+    int shots,
+    int batches,
+    std::uint64_t seed) {
+    if (shots < 0) {
+        fail("shot count must be nonnegative");
+    }
+    BatchFactoredExecutorState runtime(program, batches, seed);
+    MeasurementExpectationSamples out;
+    out.measurements.assign(
+        static_cast<std::size_t>(shots),
+        std::vector<std::uint64_t>(symbol_word_count(program.nrecords), 0));
+    out.expectations.assign(
+        static_cast<std::size_t>(shots),
+        std::vector<double>(static_cast<std::size_t>(program.nexpvals), 0.0));
+
+    int offset = 0;
+    while (offset < shots) {
+        const int block = std::min(runtime.batches, shots - offset);
+        reset_batch_executor(runtime, program, block);
+        execute_batch_in_place(runtime, program);
+        for (int shot = 0; shot < block; ++shot) {
+            auto& measurement_row = out.measurements[static_cast<std::size_t>(offset + shot)];
+            for (int record = 1; record <= runtime.nrecords; ++record) {
+                const std::size_t word = batch_shot_word(shot);
+                if ((runtime.measurement_words[batch_record_offset(runtime, record, word)] &
+                     batch_shot_mask(shot)) != 0) {
+                    const int record_bit = record - 1;
+                    measurement_row[static_cast<std::size_t>(record_bit >> 6)] |=
+                        std::uint64_t{1} << (record_bit & 63);
+                }
+            }
+            auto& expectation_row = out.expectations[static_cast<std::size_t>(offset + shot)];
+            for (int exp_val = 0; exp_val < runtime.nexpvals; ++exp_val) {
+                expectation_row[static_cast<std::size_t>(exp_val)] =
+                    runtime.exp_values[
+                        static_cast<std::size_t>(exp_val) * static_cast<std::size_t>(runtime.batches) +
+                        static_cast<std::size_t>(shot)];
             }
         }
         offset += block;

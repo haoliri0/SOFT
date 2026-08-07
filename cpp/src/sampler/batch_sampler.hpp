@@ -2,6 +2,7 @@
 
 #include "factored/factored.hpp"
 #include "sampler/presampled_expression.hpp"
+#include "sampler/single_shot.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -62,6 +63,7 @@ struct BatchFactoredExecutorState {
     int nsymbols = 0;
     int nrecords = 0;
     int ndetectors = 0;
+    int nexpvals = 0;
     int max_k = 0;
     std::size_t batch_words = 0;
     bool store_detector_records = true;
@@ -75,6 +77,7 @@ struct BatchFactoredExecutorState {
     std::vector<std::uint64_t> measurement_words;
     std::vector<std::uint64_t> detector_words;
     std::vector<std::uint64_t> detector_any_words;
+    std::vector<double> exp_values;
     std::vector<std::uint64_t> eval_scratch;
     std::vector<std::uint64_t> rotation_run_sign_words;
     // Per-shot scalar directions; O(active_pitch), never O(2^k).
@@ -133,6 +136,11 @@ BatchDetectorPostselectionResult execute_batch_postselected_in_place(
 // Prepared batches use the same runtime-dispatched kernels as single-shot.
 const char* active_batch_backend();
 std::vector<std::vector<std::uint64_t>> sample_measurements_batch(
+    const FactoredInstructionProgram& program,
+    int shots,
+    int batches = 0,
+    std::uint64_t seed = 1);
+MeasurementExpectationSamples sample_measurements_and_expectations_batch(
     const FactoredInstructionProgram& program,
     int shots,
     int batches = 0,
