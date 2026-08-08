@@ -88,6 +88,7 @@ FrameFactoredState::FrameFactoredState(int n_, int k_, std::shared_ptr<SymbolicC
     : n(checked_nqubits(n_)),
       k(checked_nqubits(k_)),
       clifford(n),
+      pauli_frame(n),
       context(std::move(context_)) {
     if (k > n) {
         fail("active qubit count exceeds total qubit count");
@@ -95,8 +96,6 @@ FrameFactoredState::FrameFactoredState(int n_, int k_, std::shared_ptr<SymbolicC
     if (!context) {
         context = std::make_shared<SymbolicContext>();
     }
-    active_frame = ActivePauliFrame(n, context);
-    dormant = DormantState(n - k, context);
 }
 
 void left_H(FrameFactoredState& state, int q) {
@@ -282,24 +281,23 @@ SymbolicPauliString prepare_pending_pauli(FrameFactoredState& state, const Pauli
         fail("Pauli string dimension does not match frame-factored state");
     }
     const PauliString pre = preimage(state.clifford, pauli);
-    return conjugate_by(state.active_frame, pre);
+    return conjugate_by(state.pauli_frame, pre);
 }
 
 } // namespace
 
-void apply_pauli(FrameFactoredState& state, const ConditionalPauliString& pauli) {
-    if (pauli.pauli.nqubits != state.n) {
+void apply_pauli(FrameFactoredState& state, const PauliString& pauli, int condition) {
+    if (pauli.nqubits != state.n) {
         fail("Pauli string dimension does not match frame-factored state");
     }
-    state.context->bump_next_condition(pauli.condition);
-    const PauliString pre = preimage(state.clifford, pauli.pauli);
-    if (pre.has_nonidentity_body()) {
-        state.active_frame.add_pauli(pre, pauli.condition);
+    if (condition <= 0) {
+        fail("condition id must be positive");
     }
-}
-
-void apply_pauli(FrameFactoredState& state, const PauliString& pauli, int condition) {
-    apply_pauli(state, ConditionalPauliString(pauli, condition));
+    state.context->bump_next_condition(condition);
+    const PauliString pre = preimage(state.clifford, pauli);
+    if (pre.has_nonidentity_body()) {
+        state.pauli_frame.add_pauli(pre, condition);
+    }
 }
 
 void apply_pauli(FrameFactoredState& state, const PauliString& pauli, const SymbolicBool& condition) {
@@ -318,7 +316,8 @@ PendingPauliRotation apply_pauli_rotation(FrameFactoredState& state, const Pauli
 }
 
 PendingPauliMeasurement apply_pauli_measurement(FrameFactoredState& state, const PauliString& pauli) {
-    PendingPauliMeasurement measurement{prepare_pending_pauli(state, pauli), std::nullopt, std::nullopt};
+    PendingPauliMeasurement measurement{
+        prepare_pending_pauli(state, pauli), std::nullopt, std::nullopt, std::nullopt};
     state.pending_operations.push_back(measurement);
     return measurement;
 }
@@ -334,6 +333,7 @@ PendingPauliMeasurement apply_pauli_measurement(
         SymbolicPauliString(prepared.pauli, xor_bool(prepared.sign, sign)),
         record,
         record_condition,
+        std::nullopt,
     };
     state.pending_operations.push_back(measurement);
     return measurement;
@@ -375,15 +375,14 @@ PendingFactoredState::PendingFactoredState(int n_, int k_, std::shared_ptr<Symbo
       initial_k(checked_nqubits(k_)),
       k(checked_nqubits(k_)),
       max_k(k),
-      context(std::move(context_)) {
+      context(std::move(context_)),
+      tableau(n) {
     if (k > n) {
         fail("active qubit count exceeds total qubit count");
     }
     if (!context) {
         context = std::make_shared<SymbolicContext>();
     }
-    dormant = DormantState(n - k, context);
-    pending_frame = CliffordFrame(n);
 }
 
 PendingFactoredState::PendingFactoredState(const FrameFactoredState& state)
@@ -391,16 +390,11 @@ PendingFactoredState::PendingFactoredState(const FrameFactoredState& state)
       initial_k(state.k),
       k(state.k),
       max_k(state.k),
-      dormant(state.dormant.bits, state.context),
       context(state.context),
-      pending_frame(state.n),
+      tableau(state.n),
       pending_operations(state.pending_operations) {
     for (const auto& op : pending_operations) {
         context->bump_next_condition(max_condition(op));
-        if (const auto* measurement = std::get_if<PendingPauliMeasurement>(&op);
-            measurement != nullptr && measurement->exp_val) {
-            has_expectation = true;
-        }
         if (auto measurement = std::get_if<PendingPauliMeasurement>(&op); measurement && measurement->record) {
             next_record = std::max(next_record, *measurement->record + 1);
         }

@@ -63,6 +63,19 @@ void test_clifford_frame() {
     const auto column_second = coordinates_in_frame(columns, column_query);
     const auto column_third = coordinates_in_frame(columns, column_query);
     require(column_first == column_second && column_second == column_third, "column frame coordinate cache");
+
+    CliffordFrame phaseful(1);
+    left_S(phaseful, 0);
+    require(
+        (phaseful.generator(phaseful.xrow(0)).phase_exponent() & 1) != 0,
+        "Clifford frame retains an odd Pauli phase exponent");
+    require(
+        coordinates_in_frame(phaseful, pauli_y(1, 0)) == neg(pauli_x(1, 0)),
+        "body decomposition reconstructs an odd Clifford-frame phase");
+    left_Z(phaseful, 0);
+    require(
+        coordinates_in_frame(phaseful, pauli_y(1, 0)) == pauli_x(1, 0),
+        "phase-only frame updates reuse the body index without losing the sign");
 }
 
 void test_extended_clifford_frame_preimages() {

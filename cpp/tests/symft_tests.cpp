@@ -569,9 +569,9 @@ void test_pauli_algebra() {
     require(!ps.xbit(3) && ps.zbit(3), "Z bits");
 }
 
-void test_active_pauli_frame_index() {
+void test_symbolic_pauli_frame_index() {
     using namespace symft;
-    ActivePauliFrame frame(65);
+    SymbolicPauliFrame frame(65);
     for (int term = 0; term < 70; ++term) {
         frame.add_pauli(pauli_x(65, term % 65), term + 1);
     }
@@ -579,10 +579,10 @@ void test_active_pauli_frame_index() {
     frame.add_pauli(pauli_x(65, 0), 100);
     const PauliString query = pauli_z(65, 0);
     const auto conjugated = conjugate_by(frame, query);
-    require(conjugated.pauli == query, "active frame preserves Pauli body");
-    require(conjugated.sign == SymbolicBool(false, {1, 66}), "active frame block parity");
+    require(conjugated.pauli == query, "symbolic Pauli frame preserves Pauli body");
+    require(conjugated.sign == SymbolicBool(false, {1, 66}), "symbolic Pauli frame block parity");
     const auto signed_query = conjugate_by(frame, SymbolicPauliString(query, symbolic_bool(66)));
-    require(signed_query.sign == symbolic_bool(1), "active frame combines an existing sign");
+    require(signed_query.sign == symbolic_bool(1), "symbolic Pauli frame combines an existing sign");
 }
 
 void test_active_rotation() {
@@ -656,11 +656,16 @@ void test_high_pivot_selection() {
 
     PendingFactoredState pending(4, 0);
     pending.pending_operations.push_back(PendingPauliRotation{0.25, SymbolicPauliString(pauli_x(4, 0) * pauli_x(4, 2))});
-    pending.pending_operations.push_back(PendingPauliMeasurement{SymbolicPauliString(pauli_z(4, 2)), std::nullopt, std::nullopt});
+    const PauliString later_physical_pauli = pauli_z(4, 2);
+    pending.pending_operations.push_back(PendingPauliMeasurement{
+        SymbolicPauliString(later_physical_pauli), std::nullopt, std::nullopt, std::nullopt});
     process_next_pending_operation(pending);
     require(pending.k == 1, "dormant rotation promotion creates one active qubit");
-    const auto& transformed = std::get<PendingPauliMeasurement>(pending.pending_operations.front()).pauli.pauli;
-    require(transformed == pauli_z(4, 0), "dormant promotion uses highest dormant pivot");
+    const auto& stored = std::get<PendingPauliMeasurement>(pending.pending_operations[1]).pauli.pauli;
+    require(stored == later_physical_pauli, "dormant promotion leaves later physical Paulis unchanged");
+    require(
+        pending.tableau.decompose(stored) == pauli_z(4, 0),
+        "dormant promotion uses highest dormant pivot in the planning tableau");
 }
 
 symft::FactoredInstructionProgram plan_without_pending_optimization(
@@ -1184,6 +1189,31 @@ void test_dormant_measurement_tableau_reuse() {
     }
 }
 
+void test_planner_keeps_pending_paulis_physical() {
+    using namespace symft;
+    PendingFactoredState pending(1, 0);
+    const PauliString measured_body = pauli_x(1, 0);
+    const PauliString commuting_body = pauli_z(1, 0);
+    pending.pending_operations.push_back(PendingPauliMeasurement{
+        SymbolicPauliString(measured_body), std::nullopt, std::nullopt, std::nullopt});
+    pending.pending_operations.push_back(PendingPauliRotation{
+        0.125, SymbolicPauliString(commuting_body)});
+    pending.pending_operations.push_back(PendingPauliMeasurement{
+        SymbolicPauliString(measured_body), std::nullopt, std::nullopt, std::nullopt});
+
+    process_next_pending_operation(pending);
+
+    const auto& later_rotation = std::get<PendingPauliRotation>(pending.pending_operations[1]);
+    const auto& later_measurement = std::get<PendingPauliMeasurement>(pending.pending_operations[2]);
+    require(later_rotation.pauli.pauli == commuting_body, "tableau updates do not rewrite a later rotation body");
+    require(later_measurement.pauli.pauli == measured_body, "tableau updates do not rewrite a later measurement body");
+    require(later_rotation.pauli.sign.conditions.empty(), "commuting correction leaves a later sign unchanged");
+    require(later_measurement.pauli.sign.conditions.size() == 1, "anticommuting correction updates only the later sign");
+    require(
+        pending.tableau.decompose(later_measurement.pauli.pauli) == pauli_z(1, 0),
+        "later physical Pauli is decomposed against the updated tableau");
+}
+
 void test_dormant_measurement_sign_feeds_promotion() {
     using namespace symft;
     FrameFactoredState state(1, 0);
@@ -1199,6 +1229,28 @@ void test_dormant_measurement_sign_feeds_promotion() {
         require(
             packed_bit(shot, 0) != packed_bit(shot, 1),
             "dormant measurement sign feeds later promotion");
+    }
+}
+
+void test_expectation_after_random_measurement_uses_current_tableau() {
+    using namespace symft;
+    const auto parsed = parse_stim_text(
+        "MX 0\n"
+        "EXP_VAL X0\n"
+        "MX 0\n");
+    PendingFactoredState pending(parsed.state);
+    const auto program = plan_factored_updates(pending);
+    const auto samples = sample_measurements_and_expectations(program, 64, 8128);
+
+    require(program.nexpvals == 1, "random-measurement expectation emits one probe");
+    for (std::size_t shot = 0; shot < samples.measurements.size(); ++shot) {
+        const bool first = packed_bit(samples.measurements[shot], 0);
+        const bool second = packed_bit(samples.measurements[shot], 1);
+        require(first == second, "repeated physical measurement preserves its branch");
+        require(samples.expectations[shot].size() == 1, "expectation row has one value");
+        require(
+            std::abs(samples.expectations[shot][0] - (first ? -1.0 : 1.0)) < 1e-12,
+            "expectation is decomposed in the post-measurement tableau");
     }
 }
 
@@ -2029,7 +2081,7 @@ void test_prepared_sampler_multithreading() {
 
 int main() {
     test_pauli_algebra();
-    test_active_pauli_frame_index();
+    test_symbolic_pauli_frame_index();
     test_active_rotation();
     test_high_pivot_selection();
     test_pending_operation_optimizer();
@@ -2040,7 +2092,9 @@ int main() {
     test_dense_backend_reporting();
     test_active_h_rewrite_stays_virtual();
     test_dormant_measurement_tableau_reuse();
+    test_planner_keeps_pending_paulis_physical();
     test_dormant_measurement_sign_feeds_promotion();
+    test_expectation_after_random_measurement_uses_current_tableau();
     test_measurement_record_substitution_cancels_reset();
     test_measurement_relation_reduces_dense_suffix_sign();
     test_measurement_relation_keeps_sparse_record_sign();

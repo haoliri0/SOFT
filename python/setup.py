@@ -300,6 +300,7 @@ sources = [
     "src/symft/_native.cpp",
     cpp_source("core/common.cpp"),
     cpp_source("core/pauli.cpp"),
+    cpp_source("core/tableau.cpp"),
     cpp_source("core/symbolic.cpp"),
     cpp_source("core/frames.cpp"),
     cpp_source("circuit/circuit_lowering.cpp"),

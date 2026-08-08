@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/frames.hpp"
+#include "core/tableau.hpp"
 #include "sampler/active.hpp"
 
 #include <memory>
@@ -126,8 +127,7 @@ struct FrameFactoredState {
     int n = 0;
     int k = 0;
     CliffordFrame clifford;
-    ActivePauliFrame active_frame;
-    DormantState dormant;
+    SymbolicPauliFrame pauli_frame;
     std::shared_ptr<SymbolicContext> context;
     std::vector<PendingOperation> pending_operations;
 
@@ -179,7 +179,6 @@ void left_XCZ(FrameFactoredState& state, int control, int target);
 void left_YCX(FrameFactoredState& state, int control, int target);
 void left_YCY(FrameFactoredState& state, int control, int target);
 void left_YCZ(FrameFactoredState& state, int control, int target);
-void apply_pauli(FrameFactoredState& state, const ConditionalPauliString& pauli);
 void apply_pauli(FrameFactoredState& state, const PauliString& pauli, int condition);
 void apply_pauli(FrameFactoredState& state, const PauliString& pauli, const SymbolicBool& condition);
 PendingPauliRotation apply_pauli_rotation(FrameFactoredState& state, const PauliString& pauli, double kernel_angle);
@@ -207,10 +206,8 @@ struct PendingFactoredState {
     int initial_k = 0;
     int k = 0;
     int max_k = 0;
-    DormantState dormant;
     std::shared_ptr<SymbolicContext> context;
-    CliffordFrame pending_frame;
-    bool pending_frame_active = false;
+    PlanningTableau tableau;
     std::vector<PendingOperation> pending_operations;
     std::size_t pending_operation_cursor = 0;
     std::vector<std::uint64_t> pending_x_operation_blocks;
@@ -223,7 +220,6 @@ struct PendingFactoredState {
     std::vector<FactoredInstruction> instructions;
     std::vector<int> pending_prefix_instruction_indices;
     bool pending_operations_optimized = false;
-    bool has_expectation = false;
     int next_record = 1;
 
     PendingFactoredState() = default;

@@ -28,6 +28,7 @@ endif()
 add_library(symft_cpp
     src/core/common.cpp
     src/core/pauli.cpp
+    src/core/tableau.cpp
     src/core/symbolic.cpp
     src/core/frames.cpp
     src/circuit/circuit_lowering.cpp
@@ -152,6 +153,9 @@ if(SYMFT_CPP_BUILD_TESTS)
     add_executable(symft_frames_tests tests/frames_tests.cpp)
     target_link_libraries(symft_frames_tests PRIVATE symft_cpp)
     add_test(NAME symft_frames_tests COMMAND symft_frames_tests)
+    add_executable(symft_tableau_tests tests/tableau_tests.cpp)
+    target_link_libraries(symft_tableau_tests PRIVATE symft_cpp)
+    add_test(NAME symft_tableau_tests COMMAND symft_tableau_tests)
     if(SYMFT_CPP_ENABLE_CUDA)
         add_executable(symft_cuda_tests tests/symft_cuda_tests.cpp)
         target_link_libraries(symft_cuda_tests PRIVATE symft_cpp)

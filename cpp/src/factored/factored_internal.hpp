@@ -30,20 +30,6 @@ inline PauliString project_pauli_body(const PauliString& pauli, int qstart, int 
     return out;
 }
 
-inline PauliString embed_active_pauli(int n, const PauliString& active_body) {
-    PauliString out(n);
-    for (int q = 0; q < active_body.nqubits; ++q) {
-        if (active_body.xbit(q)) {
-            out.set_xbit(q);
-        }
-        if (active_body.zbit(q)) {
-            out.set_zbit(q);
-        }
-    }
-    out.set_phase(active_body.phase_exponent());
-    return out;
-}
-
 inline int max_condition(const SymbolicPauliString& pauli) {
     return pauli.sign.max_condition();
 }
