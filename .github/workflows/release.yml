@@ -67,6 +67,7 @@ jobs:
           path: python/dist/*.tar.gz
 
   publish:
+    if: github.event_name != 'pull_request'
     needs: [build-wheels, build-sdist]
     runs-on: ubuntu-latest
     environment: pypi
