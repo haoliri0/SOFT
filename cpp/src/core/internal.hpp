@@ -117,24 +117,38 @@ inline double check_probability(double probability) {
     return probability;
 }
 
-inline void toggle_condition(std::vector<int>& conditions, int condition) {
-    if (condition <= 0) {
-        fail("condition id must be positive");
-    }
-    auto it = std::lower_bound(conditions.begin(), conditions.end(), condition);
-    if (it != conditions.end() && *it == condition) {
-        conditions.erase(it);
-    } else {
-        conditions.insert(it, condition);
-    }
-}
-
-inline std::vector<int> normalize_conditions(const std::vector<int>& conditions) {
-    std::vector<int> out;
+inline std::vector<int> normalize_conditions(std::vector<int> conditions) {
     for (int condition : conditions) {
-        toggle_condition(out, condition);
+        if (condition <= 0) {
+            fail("condition id must be positive");
+        }
     }
-    return out;
+    bool nondecreasing = true;
+    bool nonincreasing = true;
+    for (std::size_t index = 1; index < conditions.size(); ++index) {
+        nondecreasing &= conditions[index - 1] <= conditions[index];
+        nonincreasing &= conditions[index - 1] >= conditions[index];
+    }
+    if (!nondecreasing) {
+        if (nonincreasing) {
+            std::reverse(conditions.begin(), conditions.end());
+        } else {
+            std::sort(conditions.begin(), conditions.end());
+        }
+    }
+    std::size_t output = 0;
+    for (std::size_t begin = 0; begin < conditions.size();) {
+        std::size_t end = begin + 1;
+        while (end < conditions.size() && conditions[end] == conditions[begin]) {
+            ++end;
+        }
+        if ((end - begin) & 1u) {
+            conditions[output++] = conditions[begin];
+        }
+        begin = end;
+    }
+    conditions.resize(output);
+    return conditions;
 }
 
 inline bool optional_equal(const std::optional<int>& lhs, const std::optional<int>& rhs) {

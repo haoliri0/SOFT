@@ -11,7 +11,6 @@ using namespace detail;
 
 CliffordFrame::CliffordFrame(int nqubits_)
     : nqubits(checked_nqubits(nqubits_)),
-      nwords(nwords_for(nqubits)),
       tableau_core(nqubits) {}
 
 int CliffordFrame::xrow(int q) const {
@@ -38,23 +37,14 @@ void CliffordFrame::copy_pauli_to_row(int row, const PauliString& pauli) {
         static_cast<std::size_t>(row) >= tableau_core.row_count()) {
         fail("invalid Clifford frame row assignment");
     }
-    tableau_core.assign_generator(
-        static_cast<std::size_t>(row),
-        pauli,
-        CoordinateIndexUpdate::Invalidate);
-    support_words_valid = false;
-}
-
-void CliffordFrame::invalidate_support_cache() {
-    support_words_valid = false;
-    tableau_core.invalidate_coordinate_columns();
+    tableau_core.assign_generator(static_cast<std::size_t>(row), pauli);
 }
 
 const std::vector<CliffordFrame::SupportWord>& CliffordFrame::support_for_row(int row) const {
     if (row < 0 || static_cast<std::size_t>(row) >= tableau_core.row_count()) {
         fail("invalid Clifford frame row");
     }
-    if (!support_words_valid) {
+    if (support_generation != tableau_core.body_generation()) {
         support_words.clear();
         support_words.resize(tableau_core.row_count());
         for (std::size_t r = 0; r < tableau_core.row_count(); ++r) {
@@ -69,13 +59,9 @@ const std::vector<CliffordFrame::SupportWord>& CliffordFrame::support_for_row(in
                 }
             }
         }
-        support_words_valid = true;
+        support_generation = tableau_core.body_generation();
     }
     return support_words[static_cast<std::size_t>(row)];
-}
-
-void CliffordFrame::ensure_coordinate_columns() const {
-    tableau_core.ensure_coordinate_columns();
 }
 
 bool operator==(const CliffordFrame& lhs, const CliffordFrame& rhs) {

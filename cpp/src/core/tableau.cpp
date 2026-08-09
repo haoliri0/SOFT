@@ -8,9 +8,10 @@
 
 namespace symft::detail {
 
-TableauCore::TableauCore(int nqubits)
+TableauCore::TableauCore(int nqubits, CoordinateIndexMode index_mode)
     : nqubits_(checked_nqubits(nqubits)),
       row_words_((2 * static_cast<std::size_t>(nqubits_) + 63) >> 6),
+      index_mode_(index_mode),
       generators_(row_count(), PauliString(nqubits_)),
       x_coordinate_columns_(static_cast<std::size_t>(nqubits_) * row_words_, 0),
       z_coordinate_columns_(static_cast<std::size_t>(nqubits_) * row_words_, 0) {
@@ -47,6 +48,10 @@ std::size_t TableauCore::row_words() const {
     return row_words_;
 }
 
+std::uint64_t TableauCore::body_generation() const {
+    return body_generation_;
+}
+
 const PauliString& TableauCore::generator(std::size_t row) const {
     require_row(row);
     return generators_[row];
@@ -56,20 +61,18 @@ const std::vector<PauliString>& TableauCore::generators() const {
     return generators_;
 }
 
-void TableauCore::assign_generator(
-    std::size_t row,
-    PauliString generator,
-    CoordinateIndexUpdate index_update) {
+void TableauCore::assign_generator(std::size_t row, PauliString generator) {
     require_row(row);
     if (generator.nqubits != nqubits_) {
         fail("Pauli tableau row has the wrong number of qubits");
     }
-    if (index_update == CoordinateIndexUpdate::Maintain) {
+    if (index_mode_ == CoordinateIndexMode::Incremental) {
         assign_row_body(row, generators_[row], generator);
     } else {
         invalidate_coordinate_columns();
     }
     generators_[row] = std::move(generator);
+    ++body_generation_;
 }
 
 void TableauCore::replace_generators(std::vector<PauliString> generators) {
@@ -82,7 +85,11 @@ void TableauCore::replace_generators(std::vector<PauliString> generators) {
         }
     }
     generators_ = std::move(generators);
+    ++body_generation_;
     invalidate_coordinate_columns();
+    if (index_mode_ == CoordinateIndexMode::Incremental) {
+        ensure_coordinate_columns();
+    }
 }
 
 void TableauCore::phase_shift_generator(std::size_t row, int delta) {
@@ -90,21 +97,19 @@ void TableauCore::phase_shift_generator(std::size_t row, int delta) {
     generators_[row].phase_shift(delta);
 }
 
-void TableauCore::swap_generators(
-    std::size_t row_a,
-    std::size_t row_b,
-    CoordinateIndexUpdate index_update) {
+void TableauCore::swap_generators(std::size_t row_a, std::size_t row_b) {
     require_row(row_a);
     require_row(row_b);
     if (row_a == row_b) {
         return;
     }
-    if (index_update == CoordinateIndexUpdate::Maintain) {
+    if (index_mode_ == CoordinateIndexMode::Incremental) {
         swap_row_columns(row_a, row_b);
     } else {
         invalidate_coordinate_columns();
     }
     std::swap(generators_[row_a], generators_[row_b]);
+    ++body_generation_;
 }
 
 void TableauCore::multiply_selected_generator_bodies(
@@ -113,7 +118,7 @@ void TableauCore::multiply_selected_generator_bodies(
     if (factor.nqubits != nqubits_ || selected_rows.size() != row_words_) {
         fail("invalid Pauli tableau row update");
     }
-    require_valid_columns();
+    ensure_coordinate_columns();
     for (std::size_t row_word = 0; row_word < selected_rows.size(); ++row_word) {
         std::uint64_t rows = selected_rows[row_word];
         while (rows) {
@@ -132,6 +137,7 @@ void TableauCore::multiply_selected_generator_bodies(
         }
     }
     xor_selected_rows(factor, selected_rows);
+    ++body_generation_;
 }
 
 void TableauCore::invalidate_coordinate_columns() const {
@@ -177,13 +183,13 @@ PauliString TableauCore::decompose_body(const PauliString& physical_pauli) const
 
 std::span<const std::uint64_t> TableauCore::x_column(int q) const {
     const std::size_t base = static_cast<std::size_t>(check_qubit(nqubits_, q)) * row_words_;
-    require_valid_columns();
+    ensure_coordinate_columns();
     return std::span<const std::uint64_t>(x_coordinate_columns_.data() + base, row_words_);
 }
 
 std::span<const std::uint64_t> TableauCore::z_column(int q) const {
     const std::size_t base = static_cast<std::size_t>(check_qubit(nqubits_, q)) * row_words_;
-    require_valid_columns();
+    ensure_coordinate_columns();
     return std::span<const std::uint64_t>(z_coordinate_columns_.data() + base, row_words_);
 }
 
@@ -193,7 +199,7 @@ void TableauCore::xor_selected_rows(
     if (factor.nqubits != nqubits_ || selected_rows.size() != row_words_) {
         fail("invalid Pauli tableau row update");
     }
-    require_valid_columns();
+    ensure_coordinate_columns();
     for (std::size_t word = 0; word < factor.x.size(); ++word) {
         std::uint64_t x_bits = factor.x[word];
         std::uint64_t z_bits = factor.z[word];
@@ -226,7 +232,7 @@ void TableauCore::assign_row_body(
     if (old_body.nqubits != nqubits_ || new_body.nqubits != nqubits_) {
         fail("Pauli tableau row has the wrong number of qubits");
     }
-    require_valid_columns();
+    ensure_coordinate_columns();
     const std::size_t row_word = row >> 6;
     const std::uint64_t row_mask = std::uint64_t{1} << (row & 63);
     for (std::size_t word = 0; word < old_body.x.size(); ++word) {
@@ -250,7 +256,7 @@ void TableauCore::assign_row_body(
 void TableauCore::swap_row_columns(std::size_t row_a, std::size_t row_b) {
     require_row(row_a);
     require_row(row_b);
-    require_valid_columns();
+    ensure_coordinate_columns();
     if (row_a == row_b) {
         return;
     }
@@ -273,12 +279,6 @@ void TableauCore::swap_row_columns(std::size_t row_a, std::size_t row_b) {
     }
 }
 
-void TableauCore::require_valid_columns() const {
-    if (!coordinate_columns_valid_) {
-        fail("Pauli tableau coordinate columns are stale");
-    }
-}
-
 void TableauCore::require_row(std::size_t row) const {
     if (row >= row_count()) {
         fail("Pauli tableau row index out of range");
@@ -296,9 +296,7 @@ void swap_rows(CliffordFrame& frame, int a, int b) {
     if (a != b) {
         frame.tableau_core.swap_generators(
             static_cast<std::size_t>(a),
-            static_cast<std::size_t>(b),
-            CoordinateIndexUpdate::Invalidate);
-        frame.support_words_valid = false;
+            static_cast<std::size_t>(b));
     }
 }
 
@@ -311,9 +309,7 @@ void mul_rows(CliffordFrame& frame, int dst, int lhs, int rhs, int extra_phase =
     out.phase_shift(extra_phase);
     frame.tableau_core.assign_generator(
         static_cast<std::size_t>(dst),
-        std::move(out),
-        CoordinateIndexUpdate::Invalidate);
-    frame.support_words_valid = false;
+        std::move(out));
 }
 
 void check_two_qubit_gate(const CliffordFrame& frame, int a, int b) {
@@ -334,7 +330,6 @@ void right_apply_clifford(CliffordFrame& frame, const CliffordFrame& gate) {
         generators.push_back(preimage(gate, generator));
     }
     frame.tableau_core.replace_generators(std::move(generators));
-    frame.support_words_valid = false;
 }
 
 template <class Fn>
@@ -395,7 +390,6 @@ PauliString coordinates_in_frame(const CliffordFrame& frame, const PauliString& 
     if (pauli.nqubits != frame.nqubits) {
         fail("Pauli string and Clifford frame have different numbers of qubits");
     }
-    frame.ensure_coordinate_columns();
     PauliString out = frame.tableau_core.decompose_body(pauli);
     const PauliString reconstructed = preimage(frame, out);
     if (!reconstructed.same_body(pauli)) {
@@ -947,8 +941,7 @@ void multiply_into(PauliString& product, const PauliString& factor) {
 } // namespace
 
 PlanningTableau::PlanningTableau(int nqubits)
-    : nqubits_(checked_nqubits(nqubits)),
-      tableau_core_(nqubits_),
+    : tableau_core_(nqubits, CoordinateIndexMode::Incremental),
       generator_signs_(tableau_core_.row_words(), 0),
       coordinate_parity_scratch_(tableau_core_.row_words(), 0),
       selected_rows_scratch_(tableau_core_.row_words(), 0),
@@ -956,15 +949,17 @@ PlanningTableau::PlanningTableau(int nqubits)
       product_phase_high_scratch_(tableau_core_.row_words(), 0) {}
 
 int PlanningTableau::nqubits() const {
-    return nqubits_;
+    return tableau_core_.nqubits();
 }
 
 PauliString PlanningTableau::stabilizer(int q) const {
-    return generator(static_cast<std::size_t>(nqubits_ + check_qubit(nqubits_, q)));
+    const int n = nqubits();
+    return generator(static_cast<std::size_t>(n + check_qubit(n, q)));
 }
 
 PauliString PlanningTableau::destabilizer(int q) const {
-    return generator(static_cast<std::size_t>(check_qubit(nqubits_, q)));
+    const int n = nqubits();
+    return generator(static_cast<std::size_t>(check_qubit(n, q)));
 }
 
 bool PlanningTableau::generator_sign(std::size_t row) const {
@@ -1000,8 +995,7 @@ void PlanningTableau::assign_generator(
     body.set_phase(pauli_body_y_count(body));
     tableau_core_.assign_generator(
         row,
-        std::move(body),
-        CoordinateIndexUpdate::Maintain);
+        std::move(body));
 }
 
 void PlanningTableau::update_selected_generator_signs(
@@ -1078,31 +1072,31 @@ void PlanningTableau::swap_generator_pairs(int q_a, int q_b) {
     if (q_a == q_b) {
         return;
     }
+    const int n = nqubits();
     tableau_core_.swap_generators(
         static_cast<std::size_t>(q_a),
-        static_cast<std::size_t>(q_b),
-        CoordinateIndexUpdate::Maintain);
+        static_cast<std::size_t>(q_b));
     tableau_core_.swap_generators(
-        static_cast<std::size_t>(nqubits_ + q_a),
-        static_cast<std::size_t>(nqubits_ + q_b),
-        CoordinateIndexUpdate::Maintain);
+        static_cast<std::size_t>(n + q_a),
+        static_cast<std::size_t>(n + q_b));
     swap_generator_signs(static_cast<std::size_t>(q_a), static_cast<std::size_t>(q_b));
     swap_generator_signs(
-        static_cast<std::size_t>(nqubits_ + q_a),
-        static_cast<std::size_t>(nqubits_ + q_b));
+        static_cast<std::size_t>(n + q_a),
+        static_cast<std::size_t>(n + q_b));
 }
 
 PauliString PlanningTableau::reconstruct(const PauliString& coordinates) const {
-    if (coordinates.nqubits != nqubits_) {
+    const int total_qubits = nqubits();
+    if (coordinates.nqubits != total_qubits) {
         fail("Pauli coordinates and planning tableau have different numbers of qubits");
     }
-    if (identity_) {
+    if (tableau_core_.body_generation() == 0) {
         return coordinates;
     }
-    PauliString physical(nqubits_);
+    PauliString physical(total_qubits);
     physical.set_phase(coordinates.phase_exponent());
     int sign_parity = 0;
-    const std::size_t n = static_cast<std::size_t>(nqubits_);
+    const std::size_t n = static_cast<std::size_t>(total_qubits);
     const std::size_t shift_words = n >> 6;
     const unsigned shift = static_cast<unsigned>(n & 63);
     for (std::size_t word = 0; word < coordinates.x.size(); ++word) {
@@ -1126,7 +1120,7 @@ PauliString PlanningTableau::reconstruct(const PauliString& coordinates) const {
             if ((coordinates.z[word] & mask) != 0) {
                 multiply_into(
                     physical,
-                    tableau_core_.generator(static_cast<std::size_t>(nqubits_) + q));
+                    tableau_core_.generator(static_cast<std::size_t>(total_qubits) + q));
             }
             bits &= bits - 1;
         }
@@ -1136,10 +1130,10 @@ PauliString PlanningTableau::reconstruct(const PauliString& coordinates) const {
 }
 
 PauliString PlanningTableau::decompose(const PauliString& physical_pauli) const {
-    if (physical_pauli.nqubits != nqubits_) {
+    if (physical_pauli.nqubits != nqubits()) {
         fail("Pauli string and planning tableau have different numbers of qubits");
     }
-    if (identity_) {
+    if (tableau_core_.body_generation() == 0) {
         return physical_pauli;
     }
     PauliString coordinates =
@@ -1169,12 +1163,13 @@ void PlanningTableau::multiply_nonpivot_generators(
     const auto select_row = [&](std::size_t row) {
         selected_rows_scratch_[row >> 6] |= std::uint64_t{1} << (row & 63);
     };
-    for (int q = 0; q < nqubits_; ++q) {
+    const int n = nqubits();
+    for (int q = 0; q < n; ++q) {
         if (q == pivot) {
             continue;
         }
         if (coordinates.xbit(q)) {
-            select_row(static_cast<std::size_t>(nqubits_ + q));
+            select_row(static_cast<std::size_t>(n + q));
         }
         if (coordinates.zbit(q)) {
             select_row(static_cast<std::size_t>(q));
@@ -1191,7 +1186,8 @@ void PlanningTableau::promote_dormant_rotation(
     int active_count,
     int picked_dormant) {
     const int k = checked_nqubits(active_count);
-    if (k >= nqubits_ || picked_dormant < 0 || picked_dormant >= nqubits_ - k) {
+    const int n = nqubits();
+    if (k >= n || picked_dormant < 0 || picked_dormant >= n - k) {
         fail("dormant rotation promotion requires a dormant coordinate");
     }
     const int pivot = k + picked_dormant;
@@ -1201,7 +1197,6 @@ void PlanningTableau::promote_dormant_rotation(
 
     const PauliString promoted_destabilizer = positive_physical_body(coordinates);
     const PauliString pivot_stabilizer = stabilizer(pivot);
-    identity_ = false;
     multiply_nonpivot_generators(coordinates, pivot, pivot_stabilizer);
     assign_generator(
         static_cast<std::size_t>(pivot),
@@ -1217,7 +1212,8 @@ PauliString PlanningTableau::replace_dormant_measurement(
     int active_count,
     int picked_dormant) {
     const int k = checked_nqubits(active_count);
-    if (k > nqubits_ || picked_dormant < 0 || picked_dormant >= nqubits_ - k) {
+    const int n = nqubits();
+    if (k > n || picked_dormant < 0 || picked_dormant >= n - k) {
         fail("dormant measurement requires a dormant coordinate");
     }
     const int pivot = k + picked_dormant;
@@ -1227,10 +1223,9 @@ PauliString PlanningTableau::replace_dormant_measurement(
 
     const PauliString new_stabilizer = positive_physical_body(coordinates);
     const PauliString old_stabilizer = stabilizer(pivot);
-    identity_ = false;
     multiply_nonpivot_generators(coordinates, pivot, old_stabilizer);
     assign_generator(
-        static_cast<std::size_t>(nqubits_ + pivot),
+        static_cast<std::size_t>(n + pivot),
         new_stabilizer);
     assign_generator(
         static_cast<std::size_t>(pivot),
@@ -1244,7 +1239,8 @@ PauliString PlanningTableau::remove_active_measurement(
     int pivot,
     bool diagonal) {
     const int k = checked_nqubits(active_count);
-    if (k <= 0 || k > nqubits_ || pivot < 0 || pivot >= k) {
+    const int n = nqubits();
+    if (k <= 0 || k > n || pivot < 0 || pivot >= k) {
         fail("active measurement pivot is outside the active block");
     }
     if ((diagonal && (!coordinates.zbit(pivot) || coordinates.xbit(pivot))) ||
@@ -1258,10 +1254,9 @@ PauliString PlanningTableau::remove_active_measurement(
     const PauliString pivot_conjugate = diagonal
         ? old_destabilizer
         : old_stabilizer;
-    identity_ = false;
     multiply_nonpivot_generators(coordinates, pivot, pivot_conjugate);
     assign_generator(
-        static_cast<std::size_t>(nqubits_ + pivot),
+        static_cast<std::size_t>(n + pivot),
         new_stabilizer);
     assign_generator(
         static_cast<std::size_t>(pivot),

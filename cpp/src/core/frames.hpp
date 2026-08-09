@@ -14,12 +14,11 @@ struct CliffordFrame {
     };
 
     int nqubits = 0;
-    int nwords = 0;
     // For the represented Clifford U, the shared tableau stores
     // U^\dagger X_q U followed by U^\dagger Z_q U with complete phases.
     detail::TableauCore tableau_core;
     mutable std::vector<std::vector<SupportWord>> support_words;
-    mutable bool support_words_valid = false;
+    mutable std::uint64_t support_generation = ~std::uint64_t{0};
 
     CliffordFrame() = default;
     explicit CliffordFrame(int nqubits);
@@ -29,9 +28,7 @@ struct CliffordFrame {
     const PauliString& generator(int row) const;
     const std::vector<PauliString>& generators() const;
     void copy_pauli_to_row(int row, const PauliString& pauli);
-    void invalidate_support_cache();
     const std::vector<SupportWord>& support_for_row(int row) const;
-    void ensure_coordinate_columns() const;
 };
 
 bool operator==(const CliffordFrame& lhs, const CliffordFrame& rhs);

@@ -11,9 +11,9 @@
 
 namespace symft::detail {
 
-enum class CoordinateIndexUpdate {
-    Invalidate,
-    Maintain,
+enum class CoordinateIndexMode {
+    Lazy,
+    Incremental,
 };
 
 // Generator storage shared by tableau-like Pauli bases. Rows are ordered as
@@ -23,32 +23,26 @@ enum class CoordinateIndexUpdate {
 class TableauCore {
   public:
     TableauCore() = default;
-    explicit TableauCore(int nqubits);
+    explicit TableauCore(
+        int nqubits,
+        CoordinateIndexMode index_mode = CoordinateIndexMode::Lazy);
 
     int nqubits() const;
     int xrow(int q) const;
     int zrow(int q) const;
     std::size_t row_count() const;
     std::size_t row_words() const;
+    std::uint64_t body_generation() const;
 
     const PauliString& generator(std::size_t row) const;
     const std::vector<PauliString>& generators() const;
-    void assign_generator(
-        std::size_t row,
-        PauliString generator,
-        CoordinateIndexUpdate index_update);
+    void assign_generator(std::size_t row, PauliString generator);
     void replace_generators(std::vector<PauliString> generators);
     void phase_shift_generator(std::size_t row, int delta);
-    void swap_generators(
-        std::size_t row_a,
-        std::size_t row_b,
-        CoordinateIndexUpdate index_update);
+    void swap_generators(std::size_t row_a, std::size_t row_b);
     void multiply_selected_generator_bodies(
         const PauliString& factor,
         const std::vector<std::uint64_t>& selected_rows);
-
-    void invalidate_coordinate_columns() const;
-    void ensure_coordinate_columns() const;
 
     // Returns only the coordinate X/Z body. The owning wrapper reconstructs
     // the operator to determine its phase according to that wrapper's policy.
@@ -63,12 +57,15 @@ class TableauCore {
   private:
     int nqubits_ = 0;
     std::size_t row_words_ = 0;
+    CoordinateIndexMode index_mode_ = CoordinateIndexMode::Lazy;
+    std::uint64_t body_generation_ = 0;
     std::vector<PauliString> generators_;
     mutable std::vector<std::uint64_t> x_coordinate_columns_;
     mutable std::vector<std::uint64_t> z_coordinate_columns_;
     mutable bool coordinate_columns_valid_ = true;
 
-    void require_valid_columns() const;
+    void invalidate_coordinate_columns() const;
+    void ensure_coordinate_columns() const;
     void require_row(std::size_t row) const;
     void assign_row_body(
         std::size_t row,
@@ -86,9 +83,7 @@ inline PauliString TableauCore::decompose_body(
     if (physical_pauli.nqubits != nqubits_) {
         throw Error("Pauli string and tableau have different numbers of qubits");
     }
-    if (!coordinate_columns_valid_) {
-        throw Error("Pauli tableau coordinate columns are stale");
-    }
+    ensure_coordinate_columns();
     if (parity_scratch.size() != row_words_) {
         parity_scratch.resize(row_words_);
     }
@@ -231,10 +226,6 @@ class PlanningTableau {
         bool diagonal);
 
   private:
-    int nqubits_ = 0;
-    // All planning tableaus start in the computational basis. This flag avoids
-    // decomposing against the explicit identity rows before the first update.
-    bool identity_ = true;
     // Generator rows are canonical Hermitian PauliStrings in the shared
     // tableau. Their real signs are stored separately in packed machine words.
     detail::TableauCore tableau_core_;

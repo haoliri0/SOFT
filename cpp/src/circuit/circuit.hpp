@@ -2,6 +2,7 @@
 
 #include "factored/factored.hpp"
 
+#include <cstdint>
 #include <vector>
 
 namespace symft {
@@ -136,12 +137,40 @@ struct QuantumCircuit {
     std::vector<CircuitObservableInclude> observables;
 };
 
+struct CircuitFactorizationEstimate {
+    // Counts refer to elementary target applications after REPEAT expansion,
+    // not to source-level instruction lines.
+    std::uint64_t clifford_operations = 0;
+    // Noise, reset, and feedback instructions can expand into several
+    // independently conditioned Pauli corrections.
+    std::uint64_t conditional_pauli_operations = 0;
+    std::uint64_t pending_pauli_operations = 0;
+    // A two-qubit event contributes two touches; a Pauli product contributes
+    // its physical weight. This supports the conservative locality guard used
+    // by automatic strategy selection.
+    std::uint64_t pullback_event_qubit_touches = 0;
+    // Raw operation-count versions of
+    //   n*nc + n*ne + (n^2 + n*ne)*(nt + nm)
+    // and
+    //   (nt + nm)*(nc + ne),
+    // respectively. Automatic selection also accounts for operation order
+    // and packed storage, but keeps those implementation details private.
+    long double frame_work = 0.0;
+    long double direct_pullback_work = 0.0;
+    FactorizationStrategy preferred_strategy = FactorizationStrategy::CliffordFrames;
+};
+
 struct CircuitLoweringResult {
     FrameFactoredState state;
     std::vector<SymbolicBool> measurement_records;
     std::vector<int> instruction_pending_operation_counts;
+    CircuitFactorizationEstimate factorization_estimate;
+    FactorizationStrategy factorization_strategy = FactorizationStrategy::CliffordFrames;
 };
 
-CircuitLoweringResult lower_circuit_to_factored(const QuantumCircuit& circuit);
+CircuitFactorizationEstimate estimate_circuit_factorization(const QuantumCircuit& circuit);
+CircuitLoweringResult lower_circuit_to_factored(
+    const QuantumCircuit& circuit,
+    FactorizationStrategy strategy = FactorizationStrategy::Automatic);
 
 } // namespace symft

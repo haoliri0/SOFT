@@ -64,6 +64,24 @@ void test_clifford_frame() {
     const auto column_third = coordinates_in_frame(columns, column_query);
     require(column_first == column_second && column_second == column_third, "column frame coordinate cache");
 
+    CliffordFrame cached_support(2);
+    require(
+        preimage(cached_support, pauli_x(2, 0)) == pauli_x(2, 0),
+        "initial sparse support cache");
+    left_CX(cached_support, 0, 1);
+    require(
+        preimage(cached_support, pauli_x(2, 0)) == pauli_string("XX"),
+        "tableau mutation invalidates sparse support automatically");
+
+    CliffordFrame cached_coordinates(1);
+    require(
+        coordinates_in_frame(cached_coordinates, pauli_z(1, 0)) == pauli_z(1, 0),
+        "initial coordinate index");
+    left_H(cached_coordinates, 0);
+    require(
+        coordinates_in_frame(cached_coordinates, pauli_z(1, 0)) == pauli_x(1, 0),
+        "tableau mutation rebuilds the coordinate index lazily");
+
     CliffordFrame phaseful(1);
     left_S(phaseful, 0);
     require(

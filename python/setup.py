@@ -307,6 +307,7 @@ sources = [
     cpp_source("sampler/active_state.cpp"),
     cpp_source("sampler/contiguous_active.cpp"),
     cpp_source("sampler/component_plan.cpp"),
+    cpp_source("factored/pullback.cpp"),
     cpp_source("factored/factored_state.cpp"),
     cpp_source("factored/factored_planner.cpp"),
     cpp_source("sampler/presampled_expression.cpp"),
