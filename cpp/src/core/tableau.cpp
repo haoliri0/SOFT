@@ -200,6 +200,21 @@ void TableauCore::xor_selected_rows(
         fail("invalid Pauli tableau row update");
     }
     ensure_coordinate_columns();
+    const auto& packed_kernels = simd::dispatch_table();
+    const bool use_simd = packed_kernels.packed_word_lanes > 1 &&
+                          row_words_ >= packed_kernels.packed_word_lanes;
+    const auto xor_column = [&](std::vector<std::uint64_t>& columns, std::size_t base) {
+        if (use_simd) {
+            packed_kernels.xor_packed_words(
+                columns.data() + base,
+                selected_rows.data(),
+                row_words_);
+            return;
+        }
+        for (std::size_t row_word = 0; row_word < row_words_; ++row_word) {
+            columns[base + row_word] ^= selected_rows[row_word];
+        }
+    };
     for (std::size_t word = 0; word < factor.x.size(); ++word) {
         std::uint64_t x_bits = factor.x[word];
         std::uint64_t z_bits = factor.z[word];
@@ -207,18 +222,14 @@ void TableauCore::xor_selected_rows(
             const std::size_t q =
                 word * 64 + static_cast<std::size_t>(trailing_zeros64(x_bits));
             const std::size_t base = q * row_words_;
-            for (std::size_t row_word = 0; row_word < row_words_; ++row_word) {
-                x_coordinate_columns_[base + row_word] ^= selected_rows[row_word];
-            }
+            xor_column(x_coordinate_columns_, base);
             x_bits &= x_bits - 1;
         }
         while (z_bits) {
             const std::size_t q =
                 word * 64 + static_cast<std::size_t>(trailing_zeros64(z_bits));
             const std::size_t base = q * row_words_;
-            for (std::size_t row_word = 0; row_word < row_words_; ++row_word) {
-                z_coordinate_columns_[base + row_word] ^= selected_rows[row_word];
-            }
+            xor_column(z_coordinate_columns_, base);
             z_bits &= z_bits - 1;
         }
     }
@@ -1004,6 +1015,9 @@ void PlanningTableau::update_selected_generator_signs(
     const std::size_t row_words = generator_signs_.size();
     std::fill(product_phase_low_scratch_.begin(), product_phase_low_scratch_.end(), 0);
     std::fill(product_phase_high_scratch_.begin(), product_phase_high_scratch_.end(), 0);
+    const auto& packed_kernels = simd::dispatch_table();
+    const bool use_simd = packed_kernels.packed_word_lanes > 1 &&
+                          row_words >= packed_kernels.packed_word_lanes;
 
     // For each selected row A and the fixed factor B, accumulate the local
     // phase in A_q B_q = i^e (A_q xor B_q), modulo four. Canonical tableau
@@ -1019,6 +1033,21 @@ void PlanningTableau::update_selected_generator_signs(
             const auto z_column = tableau_core_.z_column(static_cast<int>(q));
             const bool factor_x = (factor.x[word] & (std::uint64_t{1} << bit)) != 0;
             const bool factor_z = (factor.z[word] & (std::uint64_t{1} << bit)) != 0;
+            const simd::PackedPauliAxis factor_axis = factor_x
+                ? (factor_z ? simd::PackedPauliAxis::Y : simd::PackedPauliAxis::X)
+                : simd::PackedPauliAxis::Z;
+            if (use_simd) {
+                packed_kernels.accumulate_tableau_phase(
+                    product_phase_low_scratch_.data(),
+                    product_phase_high_scratch_.data(),
+                    x_column.data(),
+                    z_column.data(),
+                    selected_rows.data(),
+                    row_words,
+                    factor_axis);
+                support &= support - 1;
+                continue;
+            }
             for (std::size_t row_word = 0; row_word < row_words; ++row_word) {
                 const std::uint64_t row_x = x_column[row_word];
                 const std::uint64_t row_z = z_column[row_word];

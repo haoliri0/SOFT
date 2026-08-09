@@ -812,8 +812,193 @@ void avx512_rotate_general_pairs_soa(
     }
 }
 
+void avx512_xor_packed_words(
+    std::uint64_t* destination,
+    const std::uint64_t* source,
+    std::size_t n) {
+    std::size_t word = 0;
+    for (; word + 8 <= n; word += 8) {
+        const __m512i value = _mm512_xor_si512(
+            _mm512_loadu_si512(destination + word),
+            _mm512_loadu_si512(source + word));
+        _mm512_storeu_si512(destination + word, value);
+    }
+    scalar_table().xor_packed_words(destination + word, source + word, n - word);
+}
+
+void avx512_xor_packed_columns(
+    std::uint64_t* destination,
+    const std::uint64_t* columns,
+    std::size_t column_stride,
+    const std::uint32_t* column_indices,
+    std::size_t column_count,
+    std::size_t word_offset,
+    std::size_t n) {
+    std::size_t word = 0;
+    for (; word + 8 <= n; word += 8) {
+        __m512i value = _mm512_setzero_si512();
+        for (std::size_t column = 0; column < column_count; ++column) {
+            const auto* source = columns +
+                static_cast<std::size_t>(column_indices[column]) * column_stride +
+                word_offset + word;
+            value = _mm512_xor_si512(value, _mm512_loadu_si512(source));
+        }
+        _mm512_storeu_si512(destination + word, value);
+    }
+    scalar_table().xor_packed_columns(
+        destination + word,
+        columns,
+        column_stride,
+        column_indices,
+        column_count,
+        word_offset + word,
+        n - word);
+}
+
+struct PackedInputs512 {
+    __m512i values[4];
+};
+
+__m512i avx512_xor_inputs(const PackedInputs512& inputs, std::uint8_t mask) {
+    __m512i out = _mm512_setzero_si512();
+    for (std::size_t input = 0; input < 4; ++input) {
+        if ((mask & (std::uint8_t{1} << input)) != 0) {
+            out = _mm512_xor_si512(out, inputs.values[input]);
+        }
+    }
+    return out;
+}
+
+__m512i avx512_evaluate_anf(
+    const PackedInputs512& inputs,
+    std::uint16_t coefficients) {
+    __m512i out = _mm512_setzero_si512();
+    for (unsigned monomial = 0; monomial < 16; ++monomial) {
+        if ((coefficients & (std::uint16_t{1} << monomial)) == 0) {
+            continue;
+        }
+        __m512i term = _mm512_set1_epi64(-1);
+        for (std::size_t input = 0; input < 4; ++input) {
+            if ((monomial & (1u << input)) != 0) {
+                term = _mm512_and_si512(term, inputs.values[input]);
+            }
+        }
+        out = _mm512_xor_si512(out, term);
+    }
+    return out;
+}
+
+void avx512_apply_packed_clifford(
+    std::uint64_t* x0,
+    std::uint64_t* z0,
+    std::uint64_t* x1,
+    std::uint64_t* z1,
+    std::uint64_t* phase_low,
+    std::uint64_t* phase_high,
+    std::size_t n,
+    const PackedCliffordTransform& transform) {
+    std::size_t word = 0;
+    for (; word + 8 <= n; word += 8) {
+        const PackedInputs512 inputs{{
+            _mm512_loadu_si512(x0 + word),
+            _mm512_loadu_si512(z0 + word),
+            transform.arity == 2
+                ? _mm512_loadu_si512(x1 + word)
+                : _mm512_setzero_si512(),
+            transform.arity == 2
+                ? _mm512_loadu_si512(z1 + word)
+                : _mm512_setzero_si512(),
+        }};
+        const __m512i new_x0 = avx512_xor_inputs(inputs, transform.output_masks[0]);
+        const __m512i new_z0 = avx512_xor_inputs(inputs, transform.output_masks[1]);
+        const __m512i delta_low = avx512_evaluate_anf(inputs, transform.phase_low_anf);
+        const __m512i delta_high = avx512_evaluate_anf(inputs, transform.phase_high_anf);
+        const __m512i old_phase_low = _mm512_loadu_si512(phase_low + word);
+        __m512i new_phase_high = _mm512_loadu_si512(phase_high + word);
+        new_phase_high = _mm512_xor_si512(
+            new_phase_high,
+            _mm512_xor_si512(
+                delta_high,
+                _mm512_and_si512(old_phase_low, delta_low)));
+
+        _mm512_storeu_si512(x0 + word, new_x0);
+        _mm512_storeu_si512(z0 + word, new_z0);
+        if (transform.arity == 2) {
+            _mm512_storeu_si512(
+                x1 + word,
+                avx512_xor_inputs(inputs, transform.output_masks[2]));
+            _mm512_storeu_si512(
+                z1 + word,
+                avx512_xor_inputs(inputs, transform.output_masks[3]));
+        }
+        _mm512_storeu_si512(
+            phase_low + word,
+            _mm512_xor_si512(old_phase_low, delta_low));
+        _mm512_storeu_si512(phase_high + word, new_phase_high);
+    }
+    scalar_table().apply_packed_clifford(
+        x0 + word,
+        z0 + word,
+        transform.arity == 2 ? x1 + word : nullptr,
+        transform.arity == 2 ? z1 + word : nullptr,
+        phase_low + word,
+        phase_high + word,
+        n - word,
+        transform);
+}
+
+void avx512_accumulate_tableau_phase(
+    std::uint64_t* phase_low,
+    std::uint64_t* phase_high,
+    const std::uint64_t* row_x,
+    const std::uint64_t* row_z,
+    const std::uint64_t* selected,
+    std::size_t n,
+    PackedPauliAxis factor_axis) {
+    std::size_t word = 0;
+    for (; word + 8 <= n; word += 8) {
+        const __m512i x = _mm512_loadu_si512(row_x + word);
+        const __m512i z = _mm512_loadu_si512(row_z + word);
+        const __m512i selected_rows = _mm512_loadu_si512(selected + word);
+        __m512i local_low = _mm512_setzero_si512();
+        __m512i local_high = _mm512_setzero_si512();
+        switch (factor_axis) {
+        case PackedPauliAxis::Y:
+            local_low = _mm512_xor_si512(x, z);
+            local_high = _mm512_andnot_si512(x, z);
+            break;
+        case PackedPauliAxis::X:
+            local_low = z;
+            local_high = _mm512_and_si512(x, z);
+            break;
+        case PackedPauliAxis::Z:
+            local_low = x;
+            local_high = _mm512_andnot_si512(z, x);
+            break;
+        }
+        local_low = _mm512_and_si512(local_low, selected_rows);
+        local_high = _mm512_and_si512(local_high, selected_rows);
+        const __m512i old_low = _mm512_loadu_si512(phase_low + word);
+        __m512i new_high = _mm512_loadu_si512(phase_high + word);
+        new_high = _mm512_xor_si512(
+            new_high,
+            _mm512_xor_si512(local_high, _mm512_and_si512(old_low, local_low)));
+        _mm512_storeu_si512(phase_low + word, _mm512_xor_si512(old_low, local_low));
+        _mm512_storeu_si512(phase_high + word, new_high);
+    }
+    scalar_table().accumulate_tableau_phase(
+        phase_low + word,
+        phase_high + word,
+        row_x + word,
+        row_z + word,
+        selected + word,
+        n - word,
+        factor_axis);
+}
+
 const KernelTable table = {
     "avx512",
+    8,
     avx512_mul_assign,
     avx512_norm_sum,
     avx512_mul_assign_soa,
@@ -823,6 +1008,10 @@ const KernelTable table = {
     avx512_rotate_uniform_imag_pairs_soa,
     avx512_rotate_real_pair_flip_soa,
     avx512_rotate_general_pairs_soa,
+    avx512_xor_packed_words,
+    avx512_xor_packed_columns,
+    avx512_apply_packed_clifford,
+    avx512_accumulate_tableau_phase,
 };
 
 } // namespace

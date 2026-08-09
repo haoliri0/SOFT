@@ -215,7 +215,8 @@ void test_shared_tableau_body_core_preserves_distinct_phase_policies() {
 
 void test_sequential_updates_keep_transposed_coordinates_synchronized() {
     using namespace symft;
-    PlanningTableau tableau(70);
+    constexpr int n = 130;
+    PlanningTableau tableau(n);
     std::mt19937_64 rng(24680);
     const auto hermitian = [](PauliString coordinates) {
         coordinates.set_phase(pauli_body_y_count(coordinates));
@@ -226,15 +227,15 @@ void test_sequential_updates_keep_transposed_coordinates_synchronized() {
         require_random_roundtrips(tableau, rng, 32, context);
     };
 
-    PauliString first_promotion(70);
-    first_promotion.set_xbit(69);
+    PauliString first_promotion(n);
+    first_promotion.set_xbit(n - 1);
     first_promotion.set_zbit(2);
     first_promotion.set_xbit(65);
     first_promotion.set_zbit(65);
-    tableau.promote_dormant_rotation(hermitian(first_promotion), 0, 69);
+    tableau.promote_dormant_rotation(hermitian(first_promotion), 0, n - 1);
     verify("first sequential promotion");
 
-    PauliString second_promotion(70);
+    PauliString second_promotion(n);
     second_promotion.set_xbit(0);
     second_promotion.set_zbit(0);
     second_promotion.set_xbit(64);
@@ -242,31 +243,31 @@ void test_sequential_updates_keep_transposed_coordinates_synchronized() {
     tableau.promote_dormant_rotation(hermitian(second_promotion), 1, 63);
     verify("second sequential promotion");
 
-    PauliString dormant_measurement(70);
+    PauliString dormant_measurement(n);
     dormant_measurement.set_zbit(0);
     dormant_measurement.set_xbit(68);
-    dormant_measurement.set_zbit(69);
+    dormant_measurement.set_zbit(n - 1);
     tableau.replace_dormant_measurement(hermitian(dormant_measurement), 2, 66);
     verify("sequential dormant measurement");
 
-    PauliString diagonal_measurement(70);
+    PauliString diagonal_measurement(n);
     diagonal_measurement.set_zbit(0);
     diagonal_measurement.set_zbit(1);
-    diagonal_measurement.set_zbit(65);
+    diagonal_measurement.set_zbit(n - 2);
     tableau.remove_active_measurement(hermitian(diagonal_measurement), 2, 1, true);
     verify("sequential active diagonal measurement");
 
-    PauliString third_promotion(70);
+    PauliString third_promotion(n);
     third_promotion.set_zbit(0);
     third_promotion.set_xbit(67);
-    third_promotion.set_zbit(68);
+    third_promotion.set_zbit(n - 2);
     tableau.promote_dormant_rotation(hermitian(third_promotion), 1, 66);
     verify("third sequential promotion");
 
-    PauliString nondiagonal_measurement(70);
+    PauliString nondiagonal_measurement(n);
     nondiagonal_measurement.set_xbit(0);
     nondiagonal_measurement.set_zbit(1);
-    nondiagonal_measurement.set_zbit(66);
+    nondiagonal_measurement.set_zbit(n - 1);
     tableau.remove_active_measurement(hermitian(nondiagonal_measurement), 2, 0, false);
     verify("sequential active nondiagonal measurement");
 }

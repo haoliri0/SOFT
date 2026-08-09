@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/pauli.hpp"
+#include "simd/simd.hpp"
 
 #include <algorithm>
 #include <bit>
@@ -88,6 +89,21 @@ inline PauliString TableauCore::decompose_body(
         parity_scratch.resize(row_words_);
     }
     std::fill(parity_scratch.begin(), parity_scratch.end(), 0);
+    const auto& packed_kernels = simd::dispatch_table();
+    const bool use_simd = packed_kernels.packed_word_lanes > 1 &&
+                          row_words_ >= packed_kernels.packed_word_lanes;
+    const auto xor_column = [&](const std::vector<std::uint64_t>& columns, std::size_t base) {
+        if (use_simd) {
+            packed_kernels.xor_packed_words(
+                parity_scratch.data(),
+                columns.data() + base,
+                row_words_);
+            return;
+        }
+        for (std::size_t row_word = 0; row_word < row_words_; ++row_word) {
+            parity_scratch[row_word] ^= columns[base + row_word];
+        }
+    };
     for (std::size_t word = 0; word < physical_pauli.x.size(); ++word) {
         std::uint64_t x_bits = physical_pauli.x[word];
         std::uint64_t z_bits = physical_pauli.z[word];
@@ -95,18 +111,14 @@ inline PauliString TableauCore::decompose_body(
             const std::size_t q =
                 word * 64 + static_cast<std::size_t>(std::countr_zero(x_bits));
             const std::size_t base = q * row_words_;
-            for (std::size_t row_word = 0; row_word < row_words_; ++row_word) {
-                parity_scratch[row_word] ^= z_coordinate_columns_[base + row_word];
-            }
+            xor_column(z_coordinate_columns_, base);
             x_bits &= x_bits - 1;
         }
         while (z_bits) {
             const std::size_t q =
                 word * 64 + static_cast<std::size_t>(std::countr_zero(z_bits));
             const std::size_t base = q * row_words_;
-            for (std::size_t row_word = 0; row_word < row_words_; ++row_word) {
-                parity_scratch[row_word] ^= x_coordinate_columns_[base + row_word];
-            }
+            xor_column(x_coordinate_columns_, base);
             z_bits &= z_bits - 1;
         }
     }

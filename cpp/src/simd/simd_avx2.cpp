@@ -966,8 +966,208 @@ void avx2_rotate_general_pairs_soa(
     }
 }
 
+void avx2_xor_packed_words(
+    std::uint64_t* destination,
+    const std::uint64_t* source,
+    std::size_t n) {
+    std::size_t word = 0;
+    for (; word + 4 <= n; word += 4) {
+        const __m256i value = _mm256_xor_si256(
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(destination + word)),
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(source + word)));
+        _mm256_storeu_si256(reinterpret_cast<__m256i*>(destination + word), value);
+    }
+    scalar_table().xor_packed_words(destination + word, source + word, n - word);
+}
+
+void avx2_xor_packed_columns(
+    std::uint64_t* destination,
+    const std::uint64_t* columns,
+    std::size_t column_stride,
+    const std::uint32_t* column_indices,
+    std::size_t column_count,
+    std::size_t word_offset,
+    std::size_t n) {
+    std::size_t word = 0;
+    for (; word + 4 <= n; word += 4) {
+        __m256i value = _mm256_setzero_si256();
+        for (std::size_t column = 0; column < column_count; ++column) {
+            const auto* source = columns +
+                static_cast<std::size_t>(column_indices[column]) * column_stride +
+                word_offset + word;
+            value = _mm256_xor_si256(
+                value,
+                _mm256_loadu_si256(reinterpret_cast<const __m256i*>(source)));
+        }
+        _mm256_storeu_si256(reinterpret_cast<__m256i*>(destination + word), value);
+    }
+    scalar_table().xor_packed_columns(
+        destination + word,
+        columns,
+        column_stride,
+        column_indices,
+        column_count,
+        word_offset + word,
+        n - word);
+}
+
+struct PackedInputs256 {
+    __m256i values[4];
+};
+
+__m256i avx2_xor_inputs(const PackedInputs256& inputs, std::uint8_t mask) {
+    __m256i out = _mm256_setzero_si256();
+    for (std::size_t input = 0; input < 4; ++input) {
+        if ((mask & (std::uint8_t{1} << input)) != 0) {
+            out = _mm256_xor_si256(out, inputs.values[input]);
+        }
+    }
+    return out;
+}
+
+__m256i avx2_evaluate_anf(
+    const PackedInputs256& inputs,
+    std::uint16_t coefficients) {
+    __m256i out = _mm256_setzero_si256();
+    for (unsigned monomial = 0; monomial < 16; ++monomial) {
+        if ((coefficients & (std::uint16_t{1} << monomial)) == 0) {
+            continue;
+        }
+        __m256i term = _mm256_set1_epi64x(-1);
+        for (std::size_t input = 0; input < 4; ++input) {
+            if ((monomial & (1u << input)) != 0) {
+                term = _mm256_and_si256(term, inputs.values[input]);
+            }
+        }
+        out = _mm256_xor_si256(out, term);
+    }
+    return out;
+}
+
+void avx2_apply_packed_clifford(
+    std::uint64_t* x0,
+    std::uint64_t* z0,
+    std::uint64_t* x1,
+    std::uint64_t* z1,
+    std::uint64_t* phase_low,
+    std::uint64_t* phase_high,
+    std::size_t n,
+    const PackedCliffordTransform& transform) {
+    std::size_t word = 0;
+    for (; word + 4 <= n; word += 4) {
+        const PackedInputs256 inputs{{
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(x0 + word)),
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(z0 + word)),
+            transform.arity == 2
+                ? _mm256_loadu_si256(reinterpret_cast<const __m256i*>(x1 + word))
+                : _mm256_setzero_si256(),
+            transform.arity == 2
+                ? _mm256_loadu_si256(reinterpret_cast<const __m256i*>(z1 + word))
+                : _mm256_setzero_si256(),
+        }};
+        const __m256i new_x0 = avx2_xor_inputs(inputs, transform.output_masks[0]);
+        const __m256i new_z0 = avx2_xor_inputs(inputs, transform.output_masks[1]);
+        const __m256i delta_low = avx2_evaluate_anf(inputs, transform.phase_low_anf);
+        const __m256i delta_high = avx2_evaluate_anf(inputs, transform.phase_high_anf);
+        const __m256i old_phase_low =
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(phase_low + word));
+        __m256i new_phase_high = _mm256_loadu_si256(
+            reinterpret_cast<const __m256i*>(phase_high + word));
+        new_phase_high = _mm256_xor_si256(
+            new_phase_high,
+            _mm256_xor_si256(
+                delta_high,
+                _mm256_and_si256(old_phase_low, delta_low)));
+
+        _mm256_storeu_si256(reinterpret_cast<__m256i*>(x0 + word), new_x0);
+        _mm256_storeu_si256(reinterpret_cast<__m256i*>(z0 + word), new_z0);
+        if (transform.arity == 2) {
+            _mm256_storeu_si256(
+                reinterpret_cast<__m256i*>(x1 + word),
+                avx2_xor_inputs(inputs, transform.output_masks[2]));
+            _mm256_storeu_si256(
+                reinterpret_cast<__m256i*>(z1 + word),
+                avx2_xor_inputs(inputs, transform.output_masks[3]));
+        }
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(phase_low + word),
+            _mm256_xor_si256(old_phase_low, delta_low));
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(phase_high + word),
+            new_phase_high);
+    }
+    scalar_table().apply_packed_clifford(
+        x0 + word,
+        z0 + word,
+        transform.arity == 2 ? x1 + word : nullptr,
+        transform.arity == 2 ? z1 + word : nullptr,
+        phase_low + word,
+        phase_high + word,
+        n - word,
+        transform);
+}
+
+void avx2_accumulate_tableau_phase(
+    std::uint64_t* phase_low,
+    std::uint64_t* phase_high,
+    const std::uint64_t* row_x,
+    const std::uint64_t* row_z,
+    const std::uint64_t* selected,
+    std::size_t n,
+    PackedPauliAxis factor_axis) {
+    std::size_t word = 0;
+    for (; word + 4 <= n; word += 4) {
+        const __m256i x =
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(row_x + word));
+        const __m256i z =
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(row_z + word));
+        const __m256i selected_rows =
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(selected + word));
+        __m256i local_low = _mm256_setzero_si256();
+        __m256i local_high = _mm256_setzero_si256();
+        switch (factor_axis) {
+        case PackedPauliAxis::Y:
+            local_low = _mm256_xor_si256(x, z);
+            local_high = _mm256_andnot_si256(x, z);
+            break;
+        case PackedPauliAxis::X:
+            local_low = z;
+            local_high = _mm256_and_si256(x, z);
+            break;
+        case PackedPauliAxis::Z:
+            local_low = x;
+            local_high = _mm256_andnot_si256(z, x);
+            break;
+        }
+        local_low = _mm256_and_si256(local_low, selected_rows);
+        local_high = _mm256_and_si256(local_high, selected_rows);
+        const __m256i old_low =
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(phase_low + word));
+        __m256i new_high =
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(phase_high + word));
+        new_high = _mm256_xor_si256(
+            new_high,
+            _mm256_xor_si256(local_high, _mm256_and_si256(old_low, local_low)));
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(phase_low + word),
+            _mm256_xor_si256(old_low, local_low));
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(phase_high + word),
+            new_high);
+    }
+    scalar_table().accumulate_tableau_phase(
+        phase_low + word,
+        phase_high + word,
+        row_x + word,
+        row_z + word,
+        selected + word,
+        n - word,
+        factor_axis);
+}
+
 const KernelTable table = {
     "avx2",
+    4,
     avx2_mul_assign,
     avx2_norm_sum,
     avx2_mul_assign_soa,
@@ -977,6 +1177,10 @@ const KernelTable table = {
     avx2_rotate_uniform_imag_pairs_soa,
     avx2_rotate_real_pair_flip_soa,
     avx2_rotate_general_pairs_soa,
+    avx2_xor_packed_words,
+    avx2_xor_packed_columns,
+    avx2_apply_packed_clifford,
+    avx2_accumulate_tableau_phase,
 };
 
 } // namespace

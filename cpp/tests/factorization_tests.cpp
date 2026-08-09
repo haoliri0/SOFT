@@ -66,6 +66,16 @@ void test_direct_pullback_factorization() {
                 gate + " 0\nMPP " + axis + "0\n",
                 gate + " on " + axis);
         }
+        std::string batched = gate + " 0\n";
+        for (int repeat = 0; repeat < 257; ++repeat) {
+            const char axis = std::string("XYZ")[static_cast<std::size_t>(repeat % 3)];
+            batched += "EXP_VAL ";
+            batched += axis;
+            batched += "0\n";
+        }
+        require_equivalent_factorizations(
+            batched,
+            gate + " batched packed pullback");
     }
 
     const std::vector<std::string> two_qubit_gates{
@@ -99,6 +109,32 @@ void test_direct_pullback_factorization() {
                     gate + " on " + product);
             }
         }
+        std::string batched = gate + " 0 1\n";
+        int product_index = 0;
+        for (int repeat = 0; repeat < 257; ++repeat) {
+            do {
+                ++product_index;
+                product_index %= 16;
+            } while (product_index == 0);
+            const char a = axes[static_cast<std::size_t>(product_index & 3)];
+            const char b = axes[static_cast<std::size_t>((product_index >> 2) & 3)];
+            batched += "EXP_VAL ";
+            if (a != 'I') {
+                batched += a;
+                batched += '0';
+            }
+            if (b != 'I') {
+                if (a != 'I') {
+                    batched += '*';
+                }
+                batched += b;
+                batched += '1';
+            }
+            batched += '\n';
+        }
+        require_equivalent_factorizations(
+            batched,
+            gate + " batched packed pullback");
     }
 
     require_equivalent_factorizations(
@@ -119,13 +155,15 @@ void test_direct_pullback_factorization() {
         "mixed noise, reset, feedback, rotation, and expectation circuit");
 
     std::string staggered_batch;
-    for (int repeat = 0; repeat < 160; ++repeat) {
+    for (int repeat = 0; repeat < 320; ++repeat) {
         const int q = repeat & 7;
         const int next = (q + 1) & 7;
         staggered_batch += "H " + std::to_string(q) + "\n";
         staggered_batch +=
             "CX " + std::to_string(q) + " " + std::to_string(next) + "\n";
-        staggered_batch += "X_ERROR(0.01) " + std::to_string(next) + "\n";
+        const std::string noise =
+            repeat % 3 == 0 ? "X_ERROR" : (repeat % 3 == 1 ? "Y_ERROR" : "Z_ERROR");
+        staggered_batch += noise + "(0.01) " + std::to_string(next) + "\n";
         staggered_batch +=
             "EXP_VAL X" + std::to_string(q) + "*Z" + std::to_string(next) + "\n";
     }

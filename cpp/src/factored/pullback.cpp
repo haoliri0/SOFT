@@ -1,6 +1,7 @@
 #include "factored/pullback.hpp"
 
 #include "core/internal.hpp"
+#include "simd/simd.hpp"
 
 #include <algorithm>
 #include <array>
@@ -91,7 +92,87 @@ struct LocalPauliMapEntry {
 struct LocalCliffordTable {
     int arity = 0;
     std::array<LocalPauliMapEntry, 16> entries{};
+    simd::PackedCliffordTransform packed;
 };
+
+unsigned table_body_from_packed_assignment(unsigned assignment, int arity) {
+    unsigned x = assignment & 1u;
+    unsigned z = (assignment >> 1) & 1u;
+    if (arity == 2) {
+        x |= ((assignment >> 2) & 1u) << 1;
+        z |= ((assignment >> 3) & 1u) << 1;
+    }
+    return x | (z << arity);
+}
+
+unsigned packed_body_from_entry(const LocalPauliMapEntry& entry, int arity) {
+    unsigned body = (entry.x & 1u) | ((entry.z & 1u) << 1);
+    if (arity == 2) {
+        body |= ((entry.x >> 1) & 1u) << 2;
+        body |= ((entry.z >> 1) & 1u) << 3;
+    }
+    return body;
+}
+
+std::uint16_t algebraic_normal_form(std::uint16_t truth, unsigned variables) {
+    const unsigned assignments = 1u << variables;
+    for (unsigned variable = 0; variable < variables; ++variable) {
+        for (unsigned assignment = 0; assignment < assignments; ++assignment) {
+            if ((assignment & (1u << variable)) != 0 &&
+                (truth & (std::uint16_t{1} << (assignment ^ (1u << variable)))) != 0) {
+                truth ^= std::uint16_t{1} << assignment;
+            }
+        }
+    }
+    return truth;
+}
+
+simd::PackedCliffordTransform packed_transform(const LocalCliffordTable& table) {
+    simd::PackedCliffordTransform transform;
+    transform.arity = static_cast<std::uint8_t>(table.arity);
+    const unsigned variables = static_cast<unsigned>(2 * table.arity);
+    const unsigned assignments = 1u << variables;
+    std::uint16_t phase_low_truth = 0;
+    std::uint16_t phase_high_truth = 0;
+
+    for (unsigned input = 0; input < variables; ++input) {
+        const auto& entry = table.entries[
+            table_body_from_packed_assignment(1u << input, table.arity)];
+        const unsigned output = packed_body_from_entry(entry, table.arity);
+        for (unsigned output_bit = 0; output_bit < variables; ++output_bit) {
+            if ((output & (1u << output_bit)) != 0) {
+                transform.output_masks[output_bit] |=
+                    static_cast<std::uint8_t>(1u << input);
+            }
+        }
+    }
+
+    for (unsigned assignment = 0; assignment < assignments; ++assignment) {
+        const auto& entry = table.entries[
+            table_body_from_packed_assignment(assignment, table.arity)];
+        const unsigned output = packed_body_from_entry(entry, table.arity);
+        unsigned expected = 0;
+        for (unsigned output_bit = 0; output_bit < variables; ++output_bit) {
+            if ((std::popcount(
+                    static_cast<unsigned>(transform.output_masks[output_bit]) & assignment) &
+                 1) != 0) {
+                expected |= 1u << output_bit;
+            }
+        }
+        if (output != expected) {
+            fail("Clifford Pauli-body map is not linear");
+        }
+        if ((entry.phase_delta & 1u) != 0) {
+            phase_low_truth |= std::uint16_t{1} << assignment;
+        }
+        if ((entry.phase_delta & 2u) != 0) {
+            phase_high_truth |= std::uint16_t{1} << assignment;
+        }
+    }
+    transform.phase_low_anf = algebraic_normal_form(phase_low_truth, variables);
+    transform.phase_high_anf = algebraic_normal_form(phase_high_truth, variables);
+    return transform;
+}
 
 const LocalCliffordTable& pullback_table(LocalCliffordGate gate) {
     static const auto tables = [] {
@@ -122,6 +203,7 @@ const LocalCliffordTable& pullback_table(LocalCliffordGate gate) {
                 entry.phase_delta = static_cast<std::uint8_t>(
                     (output.phase_exponent() - input.phase_exponent()) & 3);
             }
+            table.packed = packed_transform(table);
         }
         return out;
     }();
@@ -163,12 +245,12 @@ class TransposedPauliBatch {
         : nqubits_(nqubits),
           size_(paulis.size()),
           words_((size_ + 63) >> 6),
-          x_columns_(static_cast<std::size_t>(nqubits_) * words_, 0),
-          z_columns_(static_cast<std::size_t>(nqubits_) * words_, 0),
+          body_columns_(2 * static_cast<std::size_t>(nqubits_) * words_, 0),
           phase_low_(words_, 0),
           phase_high_(words_, 0),
           symbolic_constant_(words_, 0),
-          symbolic_conditions_(size_) {
+          symbolic_conditions_(size_),
+          anticommuting_scratch_(words_, 0) {
         for (std::size_t index = 0; index < size_; ++index) {
             const auto& pauli = paulis[index];
             if (pauli.nqubits != nqubits_) {
@@ -182,13 +264,13 @@ class TransposedPauliBatch {
                 while (x_bits) {
                     const std::size_t q =
                         word * 64 + static_cast<std::size_t>(trailing_zeros64(x_bits));
-                    x_columns_[q * words_ + batch_word] |= batch_mask;
+                    body_columns_[(2 * q) * words_ + batch_word] |= batch_mask;
                     x_bits &= x_bits - 1;
                 }
                 while (z_bits) {
                     const std::size_t q =
                         word * 64 + static_cast<std::size_t>(trailing_zeros64(z_bits));
-                    z_columns_[q * words_ + batch_word] |= batch_mask;
+                    body_columns_[(2 * q + 1) * words_ + batch_word] |= batch_mask;
                     z_bits &= z_bits - 1;
                 }
             }
@@ -199,10 +281,6 @@ class TransposedPauliBatch {
                 phase_high_[batch_word] |= batch_mask;
             }
         }
-    }
-
-    std::size_t word_count() const {
-        return words_;
     }
 
     std::uint64_t active_mask(std::size_t batch_word, std::size_t first_active) const {
@@ -220,11 +298,11 @@ class TransposedPauliBatch {
     }
 
     std::uint64_t x_word(int q, std::size_t batch_word) const {
-        return x_columns_[static_cast<std::size_t>(q) * words_ + batch_word];
+        return body_columns_[2 * static_cast<std::size_t>(q) * words_ + batch_word];
     }
 
     std::uint64_t z_word(int q, std::size_t batch_word) const {
-        return z_columns_[static_cast<std::size_t>(q) * words_ + batch_word];
+        return body_columns_[(2 * static_cast<std::size_t>(q) + 1) * words_ + batch_word];
     }
 
     void xor_symbolic_sign(
@@ -261,76 +339,85 @@ class TransposedPauliBatch {
             return;
         }
         const auto& table = pullback_table(gate);
-        auto* x0_column = x_columns_.data() + static_cast<std::size_t>(q0) * words_;
-        auto* z0_column = z_columns_.data() + static_cast<std::size_t>(q0) * words_;
+        auto* x0_column =
+            body_columns_.data() + 2 * static_cast<std::size_t>(q0) * words_;
+        auto* z0_column = x0_column + words_;
         auto* x1_column = table.arity == 2
-                              ? x_columns_.data() + static_cast<std::size_t>(q1) * words_
+                              ? body_columns_.data() +
+                                    2 * static_cast<std::size_t>(q1) * words_
                               : nullptr;
-        auto* z1_column = table.arity == 2
-                              ? z_columns_.data() + static_cast<std::size_t>(q1) * words_
-                              : nullptr;
+        auto* z1_column = table.arity == 2 ? x1_column + words_ : nullptr;
 
-        for (std::size_t batch_word = first_active >> 6;
-             batch_word < words_;
-             ++batch_word) {
-            const std::uint64_t active = active_mask(batch_word, first_active);
-            const std::array<std::uint64_t, 2> old_x{
-                x0_column[batch_word],
-                table.arity == 2 ? x1_column[batch_word] : 0,
+        std::size_t full_word_begin = first_active >> 6;
+        if ((first_active & 63) != 0) {
+            const std::size_t word = full_word_begin++;
+            const std::uint64_t active = active_mask(word, first_active);
+            const std::uint64_t old_x0 = x0_column[word];
+            const std::uint64_t old_z0 = z0_column[word];
+            const std::uint64_t old_x1 = table.arity == 2 ? x1_column[word] : 0;
+            const std::uint64_t old_z1 = table.arity == 2 ? z1_column[word] : 0;
+            const std::uint64_t old_phase_low = phase_low_[word];
+            const std::uint64_t old_phase_high = phase_high_[word];
+            std::uint64_t new_x0 = old_x0;
+            std::uint64_t new_z0 = old_z0;
+            std::uint64_t new_x1 = old_x1;
+            std::uint64_t new_z1 = old_z1;
+            std::uint64_t new_phase_low = old_phase_low;
+            std::uint64_t new_phase_high = old_phase_high;
+            simd::scalar_table().apply_packed_clifford(
+                &new_x0,
+                &new_z0,
+                table.arity == 2 ? &new_x1 : nullptr,
+                table.arity == 2 ? &new_z1 : nullptr,
+                &new_phase_low,
+                &new_phase_high,
+                1,
+                table.packed);
+            const auto merge_active = [active](std::uint64_t old_value, std::uint64_t new_value) {
+                return (old_value & ~active) | (new_value & active);
             };
-            const std::array<std::uint64_t, 2> old_z{
-                z0_column[batch_word],
-                table.arity == 2 ? z1_column[batch_word] : 0,
-            };
-            if ((active &
-                 (old_x[0] | old_z[0] | old_x[1] | old_z[1])) == 0) {
-                continue;
-            }
-            std::array<std::uint64_t, 2> new_x{
-                old_x[0] & ~active,
-                old_x[1] & ~active,
-            };
-            std::array<std::uint64_t, 2> new_z{
-                old_z[0] & ~active,
-                old_z[1] & ~active,
-            };
-            std::uint64_t phase_delta_low = 0;
-            std::uint64_t phase_delta_high = 0;
-            const unsigned body_count = 1u << (2 * table.arity);
-            for (unsigned body = 1; body < body_count; ++body) {
-                std::uint64_t selected = active;
-                for (int local = 0; local < table.arity; ++local) {
-                    selected &= ((body >> local) & 1u) ? old_x[local] : ~old_x[local];
-                    selected &= ((body >> (table.arity + local)) & 1u)
-                                    ? old_z[local]
-                                    : ~old_z[local];
-                }
-                const auto& mapped = table.entries[body];
-                for (int local = 0; local < table.arity; ++local) {
-                    if ((mapped.x >> local) & 1u) {
-                        new_x[local] |= selected;
-                    }
-                    if ((mapped.z >> local) & 1u) {
-                        new_z[local] |= selected;
-                    }
-                }
-                if (mapped.phase_delta & 1u) {
-                    phase_delta_low |= selected;
-                }
-                if (mapped.phase_delta & 2u) {
-                    phase_delta_high |= selected;
-                }
-            }
-            x0_column[batch_word] = new_x[0];
-            z0_column[batch_word] = new_z[0];
+            x0_column[word] = merge_active(old_x0, new_x0);
+            z0_column[word] = merge_active(old_z0, new_z0);
             if (table.arity == 2) {
-                x1_column[batch_word] = new_x[1];
-                z1_column[batch_word] = new_z[1];
+                x1_column[word] = merge_active(old_x1, new_x1);
+                z1_column[word] = merge_active(old_z1, new_z1);
             }
-            const std::uint64_t old_phase_low = phase_low_[batch_word];
-            phase_low_[batch_word] ^= phase_delta_low;
-            phase_high_[batch_word] ^=
-                phase_delta_high ^ (old_phase_low & phase_delta_low);
+            phase_low_[word] = merge_active(old_phase_low, new_phase_low);
+            phase_high_[word] = merge_active(old_phase_high, new_phase_high);
+        }
+        if (full_word_begin < words_) {
+            simd::dispatch_table().apply_packed_clifford(
+                x0_column + full_word_begin,
+                z0_column + full_word_begin,
+                table.arity == 2 ? x1_column + full_word_begin : nullptr,
+                table.arity == 2 ? z1_column + full_word_begin : nullptr,
+                phase_low_.data() + full_word_begin,
+                phase_high_.data() + full_word_begin,
+                words_ - full_word_begin,
+                table.packed);
+        }
+    }
+
+    void apply_conditional_sign(
+        std::span<const std::uint32_t> column_indices,
+        std::size_t first_active,
+        int condition) {
+        if (first_active >= size_ || column_indices.empty()) {
+            return;
+        }
+        const std::size_t first_word = first_active >> 6;
+        simd::dispatch_table().xor_packed_columns(
+            anticommuting_scratch_.data() + first_word,
+            body_columns_.data(),
+            words_,
+            column_indices.data(),
+            column_indices.size(),
+            first_word,
+            words_ - first_word);
+        for (std::size_t word = first_word; word < words_; ++word) {
+            const std::uint64_t anticommuting =
+                anticommuting_scratch_[word] & active_mask(word, first_active);
+            xor_symbolic_sign(word, anticommuting, condition);
         }
     }
 
@@ -380,12 +467,12 @@ class TransposedPauliBatch {
     int nqubits_ = 0;
     std::size_t size_ = 0;
     std::size_t words_ = 0;
-    std::vector<std::uint64_t> x_columns_;
-    std::vector<std::uint64_t> z_columns_;
+    std::vector<std::uint64_t> body_columns_;
     std::vector<std::uint64_t> phase_low_;
     std::vector<std::uint64_t> phase_high_;
     std::vector<std::uint64_t> symbolic_constant_;
     std::vector<std::vector<int>> symbolic_conditions_;
+    std::vector<std::uint64_t> anticommuting_scratch_;
 };
 
 } // namespace
@@ -455,7 +542,6 @@ void DirectPullbackFrame::append_pauli(const PauliString& pauli, int condition) 
     event.pauli_word_begin = begin;
     event.pauli_word_count = count;
     const std::size_t event_index = events_.size();
-    events_.push_back(event);
     for (std::size_t index = begin; index < begin + count; ++index) {
         const auto& word = pauli_words_[index];
         std::uint64_t support = word.x | word.z;
@@ -466,6 +552,7 @@ void DirectPullbackFrame::append_pauli(const PauliString& pauli, int condition) 
             support &= support - 1;
         }
     }
+    events_.push_back(event);
 }
 
 void DirectPullbackFrame::append_single_qubit_pauli(
@@ -601,6 +688,39 @@ std::vector<SymbolicPauliString> DirectPullbackFrame::pull_back_batch(
         fail("direct-pullback batch initial-sign count differs from Pauli count");
     }
 
+    // The sparse path needs only PauliWord masks. Decode the transposed column
+    // IDs lazily so small direct-pullback workloads do not pay for batch-only
+    // metadata while events are being collected.
+    std::vector<std::size_t> anticommutation_column_offsets(events_.size() + 1, 0);
+    std::vector<std::uint32_t> anticommutation_columns;
+    anticommutation_columns.reserve(pauli_words_.size());
+    for (std::size_t event_index = 0; event_index < events_.size(); ++event_index) {
+        anticommutation_column_offsets[event_index] = anticommutation_columns.size();
+        const auto& event = events_[event_index];
+        if (event.kind != Event::Kind::ConditionalPauli) {
+            continue;
+        }
+        const std::size_t end = event.pauli_word_begin + event.pauli_word_count;
+        for (std::size_t index = event.pauli_word_begin; index < end; ++index) {
+            const auto& word = pauli_words_[index];
+            std::uint64_t x_bits = word.x;
+            while (x_bits) {
+                const std::size_t q =
+                    word.word * 64 + static_cast<std::size_t>(trailing_zeros64(x_bits));
+                anticommutation_columns.push_back(static_cast<std::uint32_t>(2 * q + 1));
+                x_bits &= x_bits - 1;
+            }
+            std::uint64_t z_bits = word.z;
+            while (z_bits) {
+                const std::size_t q =
+                    word.word * 64 + static_cast<std::size_t>(trailing_zeros64(z_bits));
+                anticommutation_columns.push_back(static_cast<std::uint32_t>(2 * q));
+                z_bits &= z_bits - 1;
+            }
+        }
+    }
+    anticommutation_column_offsets.back() = anticommutation_columns.size();
+
     TransposedPauliBatch batch(nqubits_, paulis);
     for (std::size_t index = 0; index < initial_signs.size(); ++index) {
         batch.seed_symbolic_sign(index, initial_signs[index]);
@@ -618,34 +738,15 @@ std::vector<SymbolicPauliString> DirectPullbackFrame::pull_back_batch(
             batch.apply_gate(event.gate, event.q0, event.q1, first_active);
             continue;
         }
-        const std::size_t first_word = first_active >> 6;
-        for (std::size_t batch_word = first_word;
-             batch_word < batch.word_count();
-             ++batch_word) {
-            std::uint64_t anticommuting = 0;
-            const std::size_t end = event.pauli_word_begin + event.pauli_word_count;
-            for (std::size_t index = event.pauli_word_begin; index < end; ++index) {
-                const auto& word = pauli_words_[index];
-                std::uint64_t x_bits = word.x;
-                std::uint64_t z_bits = word.z;
-                while (x_bits) {
-                    const int q = static_cast<int>(
-                        word.word * 64 +
-                        static_cast<std::size_t>(trailing_zeros64(x_bits)));
-                    anticommuting ^= batch.z_word(q, batch_word);
-                    x_bits &= x_bits - 1;
-                }
-                while (z_bits) {
-                    const int q = static_cast<int>(
-                        word.word * 64 +
-                        static_cast<std::size_t>(trailing_zeros64(z_bits)));
-                    anticommuting ^= batch.x_word(q, batch_word);
-                    z_bits &= z_bits - 1;
-                }
-            }
-            anticommuting &= batch.active_mask(batch_word, first_active);
-            batch.xor_symbolic_sign(batch_word, anticommuting, event.condition);
-        }
+        const std::size_t column_begin =
+            anticommutation_column_offsets[event_index];
+        const std::size_t column_end =
+            anticommutation_column_offsets[event_index + 1];
+        batch.apply_conditional_sign(
+            std::span<const std::uint32_t>(anticommutation_columns)
+                .subspan(column_begin, column_end - column_begin),
+            first_active,
+            event.condition);
     }
     return batch.finish();
 }
