@@ -86,6 +86,10 @@ class Circuit:
         batch: bool = ...,
         batch_size: int = ...,
         sample_chunk_shots: int = ...,
+        cuda: bool = ...,
+        cuda_mode: str = ...,
+        shots_per_launch: int = ...,
+        threads_per_block: int = ...,
     ) -> CompiledMeasurementSampler: ...
     def compile_counts_sampler(
         self,
@@ -116,6 +120,10 @@ class Circuit:
         seed: int = ...,
         bit_packed: bool = ...,
         sample_chunk_shots: int = ...,
+        cuda: bool = ...,
+        cuda_mode: str = ...,
+        shots_per_launch: int = ...,
+        threads_per_block: int = ...,
     ) -> Tuple[Union[BoolSamples, PackedSamples], npt.NDArray[np.float64]]: ...
     def sample_counts(
         self,
@@ -147,6 +155,8 @@ class CompiledMeasurementSampler:
     @property
     def num_measurements(self) -> int: ...
     @property
+    def num_exp_vals(self) -> int: ...
+    @property
     def num_detectors(self) -> int: ...
     @property
     def max_active_qubits(self) -> int: ...
@@ -156,6 +166,12 @@ class CompiledMeasurementSampler:
         seed: int = ...,
         bit_packed: bool = ...,
     ) -> Union[BoolSamples, PackedSamples]: ...
+    def sample_with_expectations(
+        self,
+        shots: int = ...,
+        seed: int = ...,
+        bit_packed: bool = ...,
+    ) -> Tuple[Union[BoolSamples, PackedSamples], npt.NDArray[np.float64]]: ...
     def sample_detectors(
         self,
         shots: int = ...,

@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 namespace symft::cuda {
 
@@ -12,6 +13,8 @@ struct CudaKernelRunResult {
     std::uint64_t accepted = 0;
     std::uint64_t logical_errors = 0;
     double elapsed_s = 0.0;
+    std::vector<std::vector<std::uint64_t>> measurements;
+    std::vector<std::vector<double>> expectations;
 };
 
 struct CudaLaunchOptions {
@@ -20,6 +23,7 @@ struct CudaLaunchOptions {
     bool generate_expressions_on_device = false;
     bool lazy_exogenous_on_device = false;
     bool on_demand_expression_blocks = false;
+    bool capture_records = false;
     int threads_per_block = 32;
 };
 

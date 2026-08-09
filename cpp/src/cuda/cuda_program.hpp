@@ -95,6 +95,7 @@ struct CudaInstruction {
     std::int32_t record = 0;
     std::int32_t record_condition = 0;
     std::int32_t detector = 0;
+    std::int32_t exp_val = -1;
     std::int32_t record_list_offset = 0;
     std::int32_t record_list_count = 0;
     std::int32_t rotation_run_offset = 0;
@@ -167,6 +168,7 @@ struct CudaProgramData {
     std::int32_t max_k = 0;
     std::int32_t symbol_words = 0;
     std::int32_t record_words = 0;
+    std::int32_t nexpvals = 0;
     std::int32_t block_expression_count = 0;
     std::int32_t max_rotation_run_length = 0;
     std::int32_t sampler_count = 0;
