@@ -93,6 +93,54 @@ void measure_nondiagonal_true_prob_batch(
     }
 }
 
+void compute_active_measurement_true_prob_batch(
+    BatchFactoredExecutorState& runtime,
+    const PrecomputedActivePauliMeasurementKernel& kernel) {
+    if (runtime.dense_shot_major_active) {
+        for (int shot = 0; shot < runtime.active_shots; ++shot) {
+            double* re = batch_active_re_for_shot(runtime, shot);
+            double* im = batch_active_im_for_shot(runtime, shot);
+            runtime.branch_prob_true[static_cast<std::size_t>(shot)] =
+                kernel.is_diagonal
+                    ? detail::diagonal_probability_contiguous(re, im, kernel, true)
+                    : detail::nondiagonal_probability_contiguous(re, im, kernel, true);
+        }
+        return;
+    }
+    if (runtime.active_pitch == 1) {
+        runtime.branch_prob_true[0] =
+            kernel.is_diagonal
+                ? detail::diagonal_probability_contiguous(
+                      runtime.active_re.data(),
+                      runtime.active_im.data(),
+                      kernel,
+                      true)
+                : detail::nondiagonal_probability_contiguous(
+                      runtime.active_re.data(),
+                      runtime.active_im.data(),
+                      kernel,
+                      true);
+        return;
+    }
+    if (!kernel.is_diagonal) {
+        measure_nondiagonal_true_prob_batch(runtime, kernel);
+        return;
+    }
+    std::fill_n(runtime.branch_prob_true.data(), runtime.active_shots, 0.0);
+    const std::size_t pitch = static_cast<std::size_t>(runtime.active_pitch);
+    for (std::size_t idx = 0; idx < kernel.out_dim; ++idx) {
+        const std::size_t base =
+            detail::compact_diagonal_measurement_source(kernel, idx, true) * pitch;
+        SYMFT_BATCH_SIMD_LOOP
+        for (int shot = 0; shot < runtime.active_shots; ++shot) {
+            const std::size_t lane = static_cast<std::size_t>(shot);
+            const double re = runtime.active_re[base + lane];
+            const double im = runtime.active_im[base + lane];
+            runtime.branch_prob_true[lane] += re * re + im * im;
+        }
+    }
+}
+
 void project_nondiagonal_batch(
     BatchFactoredExecutorState& runtime,
     const PrecomputedActivePauliMeasurementKernel& kernel,
@@ -569,6 +617,35 @@ void measure_precomputed_active_pauli_batch(
     }
     eval_symbolic_bool_batch(runtime.eval_scratch, outcome_plan, runtime);
     write_batch_measurement_record(runtime, record, runtime.eval_scratch, record_condition);
+}
+
+void measure_precomputed_active_pauli_expectation_batch(
+    BatchFactoredExecutorState& runtime,
+    const PrecomputedActivePauliMeasurementKernel& kernel,
+    const std::vector<std::uint64_t>& outcome_bits,
+    int exp_val) {
+    if (runtime.k <= 0) {
+        fail("cannot measure an active Pauli when k == 0");
+    }
+    if (kernel.action.nqubits != runtime.k) {
+        fail("measurement kernel dimension does not match batch active state");
+    }
+    if (exp_val < 0 || exp_val >= runtime.nexpvals) {
+        fail("expectation value index is out of range");
+    }
+    compute_active_measurement_true_prob_batch(runtime, kernel);
+    const std::size_t base =
+        static_cast<std::size_t>(exp_val) * static_cast<std::size_t>(runtime.batches);
+    SYMFT_BATCH_SIMD_LOOP
+    for (int shot = 0; shot < runtime.active_shots; ++shot) {
+        const double sign = batch_bit_at(outcome_bits, shot) ? -1.0 : 1.0;
+        const double probability = std::clamp(
+            runtime.branch_prob_true[static_cast<std::size_t>(shot)],
+            0.0,
+            1.0);
+        runtime.exp_values[base + static_cast<std::size_t>(shot)] =
+            sign * (1.0 - 2.0 * probability);
+    }
 }
 
 } // namespace symft

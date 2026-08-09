@@ -400,7 +400,7 @@ std::vector<std::vector<std::uint64_t>> sample_measurement_words(
     int use_batch,
     int batch_size,
     int sample_chunk_shots) {
-    if (use_batch && program.nexpvals == 0) {
+    if (use_batch) {
         return symft::sample_measurements_batch(program, shots, batch_size, seed);
     }
     return symft::sample_measurements(program, shots, seed, sample_chunk_shots);
@@ -727,10 +727,9 @@ PyObject* Circuit_compile_sampler(PyCircuit* self, PyObject* args, PyObject* kwa
             AllowThreads allow;
             program = make_program_from_circuit(*self->circuit);
         }
-        const bool batch_backend = use_batch && program.nexpvals == 0;
         return create_measurement_sampler(
             std::move(program),
-            batch_backend,
+            use_batch,
             batch_size,
             sample_chunk_shots,
             use_cuda,
@@ -1352,8 +1351,18 @@ PyObject* CompiledMeasurementSampler_sample_with_expectations(
             samples.expectations = std::move(result.expectations);
             nrecords = self->cuda->program().nrecords;
             nexpvals = self->cuda->program().nexpvals;
-        } else {
+        } else if (self->use_batch) {
+#else
+        if (self->use_batch) {
 #endif
+            nrecords = self->program->nrecords;
+            nexpvals = self->program->nexpvals;
+            samples = symft::sample_measurements_and_expectations_batch(
+                *self->program,
+                shots,
+                self->batch_size,
+                static_cast<std::uint64_t>(seed));
+        } else {
             nrecords = self->program->nrecords;
             nexpvals = self->program->nexpvals;
             samples = symft::sample_measurements_and_expectations(
@@ -1361,9 +1370,7 @@ PyObject* CompiledMeasurementSampler_sample_with_expectations(
                 shots,
                 static_cast<std::uint64_t>(seed),
                 self->sample_chunk_shots);
-#ifdef SYMFT_CPP_ENABLE_CUDA
         }
-#endif
     } catch (...) {
         return set_cpp_exception_null();
     }

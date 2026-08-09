@@ -1861,6 +1861,34 @@ void test_batch_sampler() {
     require(ones > 50 && ones < 150, "batch T then MX produces non-deterministic X measurement");
 }
 
+void test_batch_expectation_sampler() {
+    using namespace symft;
+    const auto parsed = parse_stim_text(
+        "EXP_VAL Z0 X0\n"
+        "H 0\n"
+        "T 0\n"
+        "EXP_VAL X0 Y0 Z0\n"
+        "T_DAG 0\n"
+        "H 0\n"
+        "M 0\n");
+    PendingFactoredState pending(parsed.state);
+    const auto program = plan_factored_updates(pending);
+    const auto samples = sample_measurements_and_expectations_batch(program, 7, 3, 23);
+    require(samples.measurements.size() == 7, "batch expectation sampler shot count");
+    require(samples.expectations.size() == 7, "batch expectation sampler value count");
+    const double inv_sqrt2 = std::sqrt(0.5);
+    for (std::size_t shot = 0; shot < samples.measurements.size(); ++shot) {
+        require(!packed_bit(samples.measurements[shot], 0), "batch expectation probe is non-destructive");
+        const auto& values = samples.expectations[shot];
+        require(values.size() == 5, "batch expectation sampler row width");
+        require(std::abs(values[0] - 1.0) < 1e-12, "batch deterministic expectation");
+        require(std::abs(values[1]) < 1e-12, "batch dormant expectation");
+        require(std::abs(values[2] - inv_sqrt2) < 1e-12, "batch active X expectation");
+        require(std::abs(values[3] - inv_sqrt2) < 1e-12, "batch active Y expectation");
+        require(std::abs(values[4]) < 1e-12, "batch active Z expectation");
+    }
+}
+
 void test_batch_postselection() {
     using namespace symft;
     {
@@ -1928,6 +1956,30 @@ void test_batch_postselection() {
         require(
             default_runtime.measurement_words == alternate_runtime.measurement_words,
             "mask-threshold postselection records");
+    }
+    {
+        const auto parsed = parse_stim_text(
+            "X_ERROR(0.5) 0\n"
+            "M 0\n"
+            "EXP_VAL Z0\n"
+            "DETECTOR rec[-1]\n");
+        const auto program = planned_stim_program(parsed);
+        const auto samples = presample_exogenous_packed(program, 64, 12345);
+        BatchFactoredExecutorState runtime(program, 64, 999);
+        BatchDetectorPostselectionScratch scratch;
+        const auto result = execute_expression_postselected_for_test(
+            runtime,
+            program,
+            samples,
+            scratch,
+            BatchDetectorPostselectionOptions{64});
+        require(result.discarded > 0, "expectation compaction test rejects some shots");
+        require(result.accepted > 0, "expectation compaction test keeps some shots");
+        for (int shot = 0; shot < runtime.active_shots; ++shot) {
+            require(
+                std::abs(runtime.exp_values[static_cast<std::size_t>(shot)] - 1.0) < 1e-12,
+                "postselection compacts expectation values with surviving shots");
+        }
     }
 }
 
@@ -2105,6 +2157,7 @@ int main() {
     test_presampled_exogenous();
     test_active_component_factorization();
     test_batch_sampler();
+    test_batch_expectation_sampler();
     test_batch_postselection();
     test_detectors();
     test_prepared_circuit_sampler_reuse();
