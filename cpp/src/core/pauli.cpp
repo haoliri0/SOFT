@@ -177,12 +177,11 @@ PauliString neg(PauliString pauli) {
 
 bool pauli_anticommutes(const PauliString& a, const PauliString& b) {
     check_same_nqubits(a, b);
-    bool parity = false;
+    std::uint64_t parity_bits = 0;
     for (std::size_t i = 0; i < a.x.size(); ++i) {
-        parity ^= is_odd_popcount(a.x[i] & b.z[i]);
-        parity ^= is_odd_popcount(a.z[i] & b.x[i]);
+        parity_bits ^= (a.x[i] & b.z[i]) ^ (a.z[i] & b.x[i]);
     }
-    return parity;
+    return is_odd_popcount(parity_bits);
 }
 
 int pauli_body_y_count(const PauliString& pauli) {

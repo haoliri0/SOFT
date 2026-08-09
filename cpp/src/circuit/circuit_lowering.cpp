@@ -3,6 +3,7 @@
 #include "circuit/circuit.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace symft {
@@ -40,19 +41,6 @@ PauliString pauli_on_axis(int n, char axis, int q) {
         return pauli_z(n, q);
     }
     fail("unsupported Pauli axis");
-}
-
-PauliString feedback_pauli(const FrameFactoredState& state, CircuitInstructionKind kind, int q) {
-    if (kind == CircuitInstructionKind::FeedbackX) {
-        return pauli_x(state.n, q);
-    }
-    if (kind == CircuitInstructionKind::FeedbackY) {
-        return pauli_y(state.n, q);
-    }
-    if (kind == CircuitInstructionKind::FeedbackZ) {
-        return pauli_z(state.n, q);
-    }
-    fail("unsupported feedback kind");
 }
 
 SymbolicBool record_symbol(const std::vector<SymbolicBool>& records, int record) {
@@ -98,6 +86,28 @@ std::pair<bool, bool> pauli_axis_bits(int axis) {
         return {false, true};
     }
     fail("invalid Pauli channel axis");
+}
+
+std::pair<bool, bool> pauli_axis_bits(char axis) {
+    if (axis == 'X') {
+        return {true, false};
+    }
+    if (axis == 'Y') {
+        return {true, true};
+    }
+    if (axis == 'Z') {
+        return {false, true};
+    }
+    fail("unsupported Pauli axis");
+}
+
+void apply_pauli_on_axis(
+    FrameFactoredState& state,
+    char axis,
+    int q,
+    const SymbolicBool& condition) {
+    const auto [x, z] = pauli_axis_bits(axis);
+    apply_single_qubit_pauli(state, q, x, z, condition);
 }
 
 PauliString maybe_inverted_pauli_product(CircuitPauliProduct product);
@@ -260,8 +270,8 @@ void apply_depolarize1(FrameFactoredState& state, int q, double probability) {
         2,
         assignments,
         {1.0 - probability, probability / 3.0, probability / 3.0, probability / 3.0});
-    apply_pauli(state, pauli_x(state.n, q), bits[0]);
-    apply_pauli(state, pauli_z(state.n, q), bits[1]);
+    apply_single_qubit_pauli(state, q, true, false, bits[0]);
+    apply_single_qubit_pauli(state, q, false, true, bits[1]);
 }
 
 void apply_depolarize2(FrameFactoredState& state, int q1, int q2, double probability) {
@@ -282,10 +292,10 @@ void apply_depolarize2(FrameFactoredState& state, int q1, int q2, double probabi
     std::vector<double> probabilities(16, probability / 15.0);
     probabilities[0] = 1.0 - probability;
     const auto bits = state.context->fresh_categorical_bools(4, assignments, probabilities);
-    apply_pauli(state, pauli_x(state.n, q1), bits[0]);
-    apply_pauli(state, pauli_z(state.n, q1), bits[1]);
-    apply_pauli(state, pauli_x(state.n, q2), bits[2]);
-    apply_pauli(state, pauli_z(state.n, q2), bits[3]);
+    apply_single_qubit_pauli(state, q1, true, false, bits[0]);
+    apply_single_qubit_pauli(state, q1, false, true, bits[1]);
+    apply_single_qubit_pauli(state, q2, true, false, bits[2]);
+    apply_single_qubit_pauli(state, q2, false, true, bits[3]);
 }
 
 void apply_pauli_channel(FrameFactoredState& state, const std::vector<int>& qubits, const std::vector<double>& probabilities) {
@@ -325,8 +335,8 @@ void apply_pauli_channel(FrameFactoredState& state, const std::vector<int>& qubi
     }
     const auto bits = state.context->fresh_categorical_bools(static_cast<int>(2 * n), assignments, distribution);
     for (std::size_t i = 0; i < n; ++i) {
-        apply_pauli(state, pauli_x(state.n, qubits[i]), bits[2 * i]);
-        apply_pauli(state, pauli_z(state.n, qubits[i]), bits[2 * i + 1]);
+        apply_single_qubit_pauli(state, qubits[i], true, false, bits[2 * i]);
+        apply_single_qubit_pauli(state, qubits[i], false, true, bits[2 * i + 1]);
     }
 }
 
@@ -399,8 +409,8 @@ void apply_heralded_channel(
         {1.0 - total, probabilities[0], probabilities[1], probabilities[2], probabilities[3]});
     records.push_back(bits[0]);
     apply_classical_record(state, bits[0], static_cast<int>(records.size()), std::nullopt);
-    apply_pauli(state, pauli_x(state.n, q), bits[1]);
-    apply_pauli(state, pauli_z(state.n, q), bits[2]);
+    apply_single_qubit_pauli(state, q, true, false, bits[1]);
+    apply_single_qubit_pauli(state, q, false, true, bits[2]);
 }
 
 void apply_mpad(
@@ -430,31 +440,39 @@ void apply_record_feedback(
     FrameFactoredState& state,
     const std::vector<SymbolicBool>& records,
     const CircuitInstruction& instruction) {
+    const char axis = instruction.kind == CircuitInstructionKind::FeedbackX
+                          ? 'X'
+                          : (instruction.kind == CircuitInstructionKind::FeedbackY ? 'Y' : 'Z');
     for (const auto& target : instruction.feedback_targets) {
-        apply_pauli(
-            state,
-            feedback_pauli(state, instruction.kind, target.qubit),
-            record_symbol(records, target.record));
+        apply_pauli_on_axis(state, axis, target.qubit, record_symbol(records, target.record));
     }
 }
 
-void apply_reset(FrameFactoredState& state, const PauliString& measurement_pauli, const PauliString& correction_pauli) {
+void apply_reset(
+    FrameFactoredState& state,
+    const PauliString& measurement_pauli,
+    char correction_axis,
+    int q) {
     const int condition = state.context->fresh_condition();
     apply_pauli_measurement(state, measurement_pauli, SymbolicBool(false), std::nullopt, condition);
-    apply_pauli(state, correction_pauli, symbolic_bool(condition));
+    apply_pauli_on_axis(state, correction_axis, q, symbolic_bool(condition));
 }
 
 void apply_measurement_reset(
     FrameFactoredState& state,
     std::vector<SymbolicBool>& records,
     const PauliString& measurement_pauli,
-    const PauliString& correction_pauli,
+    char correction_axis,
     const CircuitMeasurementTarget& target,
     double probability) {
     const SymbolicBool sign = measurement_sign_with_readout_error(*state.context, target.inverted, probability);
     auto [record, record_condition] = reserve_measurement_record(records, *state.context);
     apply_pauli_measurement(state, measurement_pauli, sign, record, record_condition);
-    apply_pauli(state, correction_pauli, xor_bool(symbolic_bool(record_condition), sign));
+    apply_pauli_on_axis(
+        state,
+        correction_axis,
+        target.qubit,
+        xor_bool(symbolic_bool(record_condition), sign));
 }
 
 void apply_measurement(
@@ -559,7 +577,7 @@ void apply_instruction(CircuitLoweringAccumulator& acc, const CircuitInstruction
                     state,
                     acc.records,
                     pauli_x(state.n, target.qubit),
-                    pauli_z(state.n, target.qubit),
+                    'Z',
                     target,
                     instruction.probability);
             } else if (instruction.kind == CircuitInstructionKind::MRY) {
@@ -567,7 +585,7 @@ void apply_instruction(CircuitLoweringAccumulator& acc, const CircuitInstruction
                     state,
                     acc.records,
                     pauli_y(state.n, target.qubit),
-                    pauli_x(state.n, target.qubit),
+                    'X',
                     target,
                     instruction.probability);
             } else {
@@ -575,7 +593,7 @@ void apply_instruction(CircuitLoweringAccumulator& acc, const CircuitInstruction
                     state,
                     acc.records,
                     pauli_z(state.n, target.qubit),
-                    pauli_x(state.n, target.qubit),
+                    'X',
                     target,
                     instruction.probability);
             }
@@ -586,11 +604,11 @@ void apply_instruction(CircuitLoweringAccumulator& acc, const CircuitInstruction
     case CircuitInstructionKind::RY:
         for (int q : instruction.qubits) {
             if (instruction.kind == CircuitInstructionKind::RX) {
-                apply_reset(state, pauli_x(state.n, q), pauli_z(state.n, q));
+                apply_reset(state, pauli_x(state.n, q), 'Z', q);
             } else if (instruction.kind == CircuitInstructionKind::RY) {
-                apply_reset(state, pauli_y(state.n, q), pauli_x(state.n, q));
+                apply_reset(state, pauli_y(state.n, q), 'X', q);
             } else {
-                apply_reset(state, pauli_z(state.n, q), pauli_x(state.n, q));
+                apply_reset(state, pauli_z(state.n, q), 'X', q);
             }
         }
         return;
@@ -602,6 +620,16 @@ void apply_instruction(CircuitLoweringAccumulator& acc, const CircuitInstruction
             apply_pauli_measurement(state, product.pauli, sign, record, record_condition);
         }
         return;
+    case CircuitInstructionKind::EXP_VAL:
+        if (instruction.exp_val < 0) {
+            fail("EXP_VAL index range is invalid");
+        }
+        for (std::size_t i = 0; i < instruction.pauli_products.size(); ++i) {
+            const auto& product = instruction.pauli_products[i];
+            PauliString pauli = maybe_inverted_pauli_product(product);
+            apply_pauli_expectation(state, pauli, instruction.exp_val + static_cast<int>(i));
+        }
+        return;
     case CircuitInstructionKind::XError:
     case CircuitInstructionKind::YError:
     case CircuitInstructionKind::ZError: {
@@ -610,7 +638,7 @@ void apply_instruction(CircuitLoweringAccumulator& acc, const CircuitInstruction
                               ? 'X'
                               : (instruction.kind == CircuitInstructionKind::YError ? 'Y' : 'Z');
         for (int q : instruction.qubits) {
-            apply_pauli(state, pauli_on_axis(state.n, axis, q), state.context->fresh_bernoulli_bool(probability));
+            apply_pauli_on_axis(state, axis, q, state.context->fresh_bernoulli_bool(probability));
         }
         return;
     }
@@ -691,10 +719,337 @@ void apply_instruction(CircuitLoweringAccumulator& acc, const CircuitInstruction
     fail("unsupported circuit operation");
 }
 
+template <typename T>
+std::uint64_t count_targets(const std::vector<T>& targets) {
+    return static_cast<std::uint64_t>(targets.size());
+}
+
+std::uint64_t count_pauli_product_touches(
+    const std::vector<CircuitPauliProduct>& products) {
+    std::uint64_t count = 0;
+    for (const auto& product : products) {
+        for (std::size_t word = 0; word < product.pauli.x.size(); ++word) {
+            count += static_cast<std::uint64_t>(
+                popcount64(product.pauli.x[word] | product.pauli.z[word]));
+        }
+    }
+    return count;
+}
+
+std::uint64_t estimated_record_terms(
+    const std::vector<std::uint64_t>& records,
+    int record) {
+    if (record <= 0 || record > static_cast<int>(records.size())) {
+        fail("measurement record target out of range in factorization estimator");
+    }
+    return records[static_cast<std::size_t>(record - 1)];
+}
+
+bool is_phase_only_clifford(CircuitInstructionKind kind) {
+    return kind == CircuitInstructionKind::X ||
+           kind == CircuitInstructionKind::Y ||
+           kind == CircuitInstructionKind::Z;
+}
+
+long double intra_instruction_correction_history_work(
+    const CircuitInstruction& instruction) {
+    long double work = 0.0;
+    std::uint64_t preceding_corrections = 0;
+    if (instruction.kind == CircuitInstructionKind::MRZ ||
+        instruction.kind == CircuitInstructionKind::MRX ||
+        instruction.kind == CircuitInstructionKind::MRY) {
+        for (const auto& target : instruction.measurement_targets) {
+            work += static_cast<long double>(preceding_corrections);
+            preceding_corrections +=
+                1 + static_cast<std::uint64_t>(instruction.probability != 0.0) +
+                static_cast<std::uint64_t>(target.inverted);
+        }
+    } else if (instruction.kind == CircuitInstructionKind::RZ ||
+               instruction.kind == CircuitInstructionKind::RX ||
+               instruction.kind == CircuitInstructionKind::RY) {
+        const long double targets =
+            static_cast<long double>(instruction.qubits.size());
+        work = targets * (targets - 1.0L) / 2.0L;
+    }
+    return work;
+}
+
+void accumulate_factorization_counts(
+    CircuitFactorizationEstimate& estimate,
+    std::vector<std::uint64_t>& records,
+    const CircuitInstruction& instruction) {
+    switch (instruction.kind) {
+    case CircuitInstructionKind::Tick:
+        return;
+    case CircuitInstructionKind::MPad:
+        for (const auto& target : instruction.measurement_targets) {
+            records.push_back(
+                static_cast<std::uint64_t>((target.qubit != 0) != target.inverted) +
+                static_cast<std::uint64_t>(instruction.probability != 0.0));
+        }
+        return;
+    case CircuitInstructionKind::H:
+    case CircuitInstructionKind::H_NXY:
+    case CircuitInstructionKind::H_NXZ:
+    case CircuitInstructionKind::H_NYZ:
+    case CircuitInstructionKind::H_XY:
+    case CircuitInstructionKind::H_YZ:
+    case CircuitInstructionKind::C_NXYZ:
+    case CircuitInstructionKind::C_NZYX:
+    case CircuitInstructionKind::C_XNYZ:
+    case CircuitInstructionKind::C_XYNZ:
+    case CircuitInstructionKind::C_XYZ:
+    case CircuitInstructionKind::C_ZNYX:
+    case CircuitInstructionKind::C_ZYNX:
+    case CircuitInstructionKind::C_ZYX:
+    case CircuitInstructionKind::S:
+    case CircuitInstructionKind::SDG:
+    case CircuitInstructionKind::SqrtX:
+    case CircuitInstructionKind::SqrtXDag:
+    case CircuitInstructionKind::SqrtY:
+    case CircuitInstructionKind::SqrtYDag:
+    case CircuitInstructionKind::X:
+    case CircuitInstructionKind::Y:
+    case CircuitInstructionKind::Z:
+        estimate.clifford_operations += count_targets(instruction.qubits);
+        estimate.pullback_event_qubit_touches += count_targets(instruction.qubits);
+        return;
+    case CircuitInstructionKind::CX:
+    case CircuitInstructionKind::CY:
+    case CircuitInstructionKind::CZ:
+    case CircuitInstructionKind::SWAP:
+    case CircuitInstructionKind::CXSWAP:
+    case CircuitInstructionKind::CZSWAP:
+    case CircuitInstructionKind::ISWAP:
+    case CircuitInstructionKind::ISWAP_DAG:
+    case CircuitInstructionKind::SQRT_XX:
+    case CircuitInstructionKind::SQRT_XX_DAG:
+    case CircuitInstructionKind::SQRT_YY:
+    case CircuitInstructionKind::SQRT_YY_DAG:
+    case CircuitInstructionKind::SQRT_ZZ:
+    case CircuitInstructionKind::SQRT_ZZ_DAG:
+    case CircuitInstructionKind::SWAPCX:
+    case CircuitInstructionKind::XCX:
+    case CircuitInstructionKind::XCY:
+    case CircuitInstructionKind::XCZ:
+    case CircuitInstructionKind::YCX:
+    case CircuitInstructionKind::YCY:
+    case CircuitInstructionKind::YCZ:
+        estimate.clifford_operations += count_targets(instruction.qubits) / 2;
+        estimate.pullback_event_qubit_touches += count_targets(instruction.qubits);
+        return;
+    case CircuitInstructionKind::T:
+    case CircuitInstructionKind::TDag:
+        estimate.pending_pauli_operations += count_targets(instruction.qubits);
+        return;
+    case CircuitInstructionKind::PauliRotation:
+    case CircuitInstructionKind::EXP_VAL:
+        estimate.pending_pauli_operations += count_targets(instruction.pauli_products);
+        return;
+    case CircuitInstructionKind::MPP:
+        estimate.pending_pauli_operations += count_targets(instruction.pauli_products);
+        records.insert(
+            records.end(),
+            instruction.pauli_products.size(),
+            1);
+        return;
+    case CircuitInstructionKind::MZ:
+    case CircuitInstructionKind::MX:
+    case CircuitInstructionKind::MY:
+        estimate.pending_pauli_operations += count_targets(instruction.measurement_targets);
+        records.insert(
+            records.end(),
+            instruction.measurement_targets.size(),
+            1);
+        return;
+    case CircuitInstructionKind::MRZ:
+    case CircuitInstructionKind::MRX:
+    case CircuitInstructionKind::MRY:
+        estimate.pending_pauli_operations += count_targets(instruction.measurement_targets);
+        for (const auto& target : instruction.measurement_targets) {
+            records.push_back(1);
+            // The reset correction is controlled by the measurement result,
+            // the optional readout-error bit, and an optional constant sign.
+            estimate.conditional_pauli_operations +=
+                1 + static_cast<std::uint64_t>(instruction.probability != 0.0) +
+                static_cast<std::uint64_t>(target.inverted);
+            estimate.pullback_event_qubit_touches +=
+                1 + static_cast<std::uint64_t>(instruction.probability != 0.0) +
+                static_cast<std::uint64_t>(target.inverted);
+        }
+        return;
+    case CircuitInstructionKind::RZ:
+    case CircuitInstructionKind::RX:
+    case CircuitInstructionKind::RY:
+        estimate.pending_pauli_operations += count_targets(instruction.qubits);
+        estimate.conditional_pauli_operations += count_targets(instruction.qubits);
+        estimate.pullback_event_qubit_touches += count_targets(instruction.qubits);
+        return;
+    case CircuitInstructionKind::XError:
+    case CircuitInstructionKind::YError:
+    case CircuitInstructionKind::ZError:
+        estimate.conditional_pauli_operations += count_targets(instruction.qubits);
+        estimate.pullback_event_qubit_touches += count_targets(instruction.qubits);
+        return;
+    case CircuitInstructionKind::Depolarize1:
+    case CircuitInstructionKind::PauliChannel1:
+    case CircuitInstructionKind::Depolarize2:
+    case CircuitInstructionKind::PauliChannel2:
+    case CircuitInstructionKind::Depolarize3:
+    case CircuitInstructionKind::PauliChannel3:
+        // Each target contributes one symbolic X and one symbolic Z term.
+        estimate.conditional_pauli_operations += 2 * count_targets(instruction.qubits);
+        estimate.pullback_event_qubit_touches += 2 * count_targets(instruction.qubits);
+        return;
+    case CircuitInstructionKind::PauliProductError:
+    case CircuitInstructionKind::PauliProductChannel:
+        estimate.conditional_pauli_operations += count_targets(instruction.pauli_products);
+        estimate.pullback_event_qubit_touches +=
+            count_pauli_product_touches(instruction.pauli_products);
+        return;
+    case CircuitInstructionKind::HeraldedErase:
+    case CircuitInstructionKind::HeraldedPauliChannel1:
+        estimate.conditional_pauli_operations += 2 * count_targets(instruction.qubits);
+        estimate.pullback_event_qubit_touches += 2 * count_targets(instruction.qubits);
+        records.insert(
+            records.end(),
+            instruction.qubits.size(),
+            1);
+        return;
+    case CircuitInstructionKind::FeedbackX:
+    case CircuitInstructionKind::FeedbackY:
+    case CircuitInstructionKind::FeedbackZ:
+        for (const auto& target : instruction.feedback_targets) {
+            const std::uint64_t terms = estimated_record_terms(records, target.record);
+            estimate.conditional_pauli_operations += terms;
+            estimate.pullback_event_qubit_touches += terms;
+        }
+        return;
+    }
+    fail("unsupported circuit operation in factorization estimator");
+}
+
+struct FactorizationHistory {
+    long double correction_work = 0.0;
+    long double pullback_touch_work = 0.0;
+    std::uint64_t support_rebuilds = 0;
+    bool support_valid = false;
+};
+
+void select_factorization_strategy(
+    CircuitFactorizationEstimate& estimate,
+    int nqubits,
+    const FactorizationHistory& history) {
+    const long double n = static_cast<long double>(std::max(1, nqubits));
+    const long double nc = static_cast<long double>(estimate.clifford_operations);
+    const long double ne = static_cast<long double>(estimate.conditional_pauli_operations);
+    const long double np = static_cast<long double>(estimate.pending_pauli_operations);
+
+    estimate.frame_work = n * nc + n * ne + (n * n + n * ne) * np;
+    estimate.direct_pullback_work = np * (nc + ne);
+    if (estimate.pending_pauli_operations == 0) {
+        return;
+    }
+
+    // Small collections use the indexed sparse pullback only while their
+    // total history remains smaller than a modest multiple of one tableau.
+    if (estimate.pending_pauli_operations < detail::kMinimumBatchedPullbackCount) {
+        constexpr long double kLocalityBudgetPerTableauEntry = 8.0L;
+        const long double indexed_work =
+            np * static_cast<long double>(estimate.pullback_event_qubit_touches);
+        if (estimate.direct_pullback_work < estimate.frame_work &&
+            indexed_work <= kLocalityBudgetPerTableauEntry * n * n) {
+            estimate.preferred_strategy = FactorizationStrategy::DirectPullback;
+        }
+        return;
+    }
+
+    const long double pauli_words = std::ceil(n / kWordBits);
+    const long double pending_words = std::ceil(np / kWordBits);
+    const long double frame_cost =
+        pauli_words * (nc + ne + np) +
+        history.correction_work / kWordBits +
+        2.0L * n * pauli_words * history.support_rebuilds;
+    const long double pullback_cost =
+        history.pullback_touch_work / kWordBits +
+        static_cast<long double>(estimate.pullback_event_qubit_touches) +
+        2.0L * n * pending_words;
+
+    // The startup floor and 5% margin keep tiny or near-tied cases on the
+    // established frame implementation.
+    constexpr long double kMinimumBatchedWork =
+        static_cast<long double>(kWordBits) * kWordBits;
+    if (pullback_cost >= kMinimumBatchedWork &&
+        1.05L * pullback_cost < frame_cost) {
+        estimate.preferred_strategy = FactorizationStrategy::DirectPullback;
+    }
+}
+
 } // namespace
 
-CircuitLoweringResult lower_circuit_to_factored(const QuantumCircuit& circuit) {
-    CircuitLoweringAccumulator acc{FrameFactoredState(circuit.nqubits, 0), {}};
+CircuitFactorizationEstimate estimate_circuit_factorization(const QuantumCircuit& circuit) {
+    if (circuit.nrecords < 0) {
+        fail("circuit measurement record count is negative");
+    }
+    CircuitFactorizationEstimate estimate;
+    std::vector<std::uint64_t> records;
+    records.reserve(static_cast<std::size_t>(circuit.nrecords));
+    FactorizationHistory history;
+    for (const auto& instruction : circuit.instructions) {
+        const std::uint64_t pending_before = estimate.pending_pauli_operations;
+        const std::uint64_t cliffords_before = estimate.clifford_operations;
+        const std::uint64_t corrections_before =
+            estimate.conditional_pauli_operations;
+        const std::uint64_t history_touches_before =
+            estimate.pullback_event_qubit_touches;
+        accumulate_factorization_counts(estimate, records, instruction);
+        const std::uint64_t pending_delta =
+            estimate.pending_pauli_operations - pending_before;
+        const long double intra_instruction_correction_work =
+            intra_instruction_correction_history_work(instruction);
+        history.pullback_touch_work +=
+            static_cast<long double>(pending_delta) * history_touches_before +
+            intra_instruction_correction_work;
+        history.correction_work +=
+            static_cast<long double>(pending_delta) * corrections_before +
+            intra_instruction_correction_work;
+        const std::uint64_t clifford_delta =
+            estimate.clifford_operations - cliffords_before;
+        const std::uint64_t correction_delta =
+            estimate.conditional_pauli_operations - corrections_before;
+        if (clifford_delta != 0 && !is_phase_only_clifford(instruction.kind)) {
+            history.support_valid = false;
+        }
+        if ((pending_delta != 0 || correction_delta != 0) &&
+            !history.support_valid) {
+            ++history.support_rebuilds;
+            history.support_valid = true;
+        }
+    }
+    if (static_cast<int>(records.size()) != circuit.nrecords) {
+        fail("circuit measurement record count mismatch in factorization estimator");
+    }
+
+    // This selector deliberately models factorization only. Both strategies
+    // produce identical pending operations, so planning is a common downstream
+    // cost and must not influence the choice.
+    select_factorization_strategy(estimate, circuit.nqubits, history);
+    return estimate;
+}
+
+CircuitLoweringResult lower_circuit_to_factored(
+    const QuantumCircuit& circuit,
+    FactorizationStrategy strategy) {
+    CircuitFactorizationEstimate estimate = estimate_circuit_factorization(circuit);
+    if (strategy == FactorizationStrategy::Automatic) {
+        strategy = estimate.preferred_strategy;
+    }
+    CircuitLoweringAccumulator acc{
+        FrameFactoredState(circuit.nqubits, 0, strategy),
+        {}};
+    if (strategy == FactorizationStrategy::DirectPullback) {
+        begin_deferred_direct_pullback(acc.state);
+    }
     std::vector<int> pending_counts;
     pending_counts.reserve(circuit.instructions.size() + 1);
     pending_counts.push_back(0);
@@ -705,7 +1060,14 @@ CircuitLoweringResult lower_circuit_to_factored(const QuantumCircuit& circuit) {
     if (static_cast<int>(acc.records.size()) != circuit.nrecords) {
         fail("circuit measurement record count mismatch");
     }
-    return CircuitLoweringResult{std::move(acc.state), std::move(acc.records), std::move(pending_counts)};
+    finish_deferred_direct_pullback(acc.state);
+    return CircuitLoweringResult{
+        std::move(acc.state),
+        std::move(acc.records),
+        std::move(pending_counts),
+        std::move(estimate),
+        strategy,
+    };
 }
 
 } // namespace symft

@@ -36,6 +36,9 @@ bool rotation_can_cross(
         return pauli_bodies_commute(rotation.body, other->pauli.pauli);
     }
     if (const auto* measurement = std::get_if<PendingPauliMeasurement>(&operation)) {
+        if (measurement->exp_val) {
+            return false;
+        }
         return pauli_bodies_commute(rotation.body, measurement->pauli.pauli);
     }
     // A classical record has no quantum action. Fusion keeps all record events
@@ -189,6 +192,23 @@ PendingOptimizationStats optimize_pending_operations(
     PendingOptimizationStats stats;
     const int operation_count = static_cast<int>(state.pending_operations.size());
     stats.input_operations = operation_count;
+    const bool has_expectation = std::any_of(
+        state.pending_operations.begin(),
+        state.pending_operations.end(),
+        [](const PendingOperation& operation) {
+            const auto* measurement = std::get_if<PendingPauliMeasurement>(&operation);
+            return measurement != nullptr && measurement->exp_val.has_value();
+        });
+    if (has_expectation) {
+        // EXP_VAL probes are ordering barriers, so keep the source order.
+        stats.prefix_remap.resize(static_cast<std::size_t>(operation_count + 1));
+        for (int prefix = 0; prefix <= operation_count; ++prefix) {
+            stats.prefix_remap[static_cast<std::size_t>(prefix)] = prefix;
+        }
+        state.pending_operations_optimized = true;
+        stats.output_operations = operation_count;
+        return stats;
+    }
     stats.prefix_remap.assign(static_cast<std::size_t>(operation_count + 1), -1);
     stats.prefix_remap[0] = 0;
 

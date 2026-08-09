@@ -35,11 +35,65 @@ void test_clifford_frame() {
     left_CX(cf, 0, 1);
     require(preimage(cf, pauli_x(2, 0)) == pauli_string("XX"), "CX maps Xc");
     require(preimage(cf, pauli_z(2, 1)) == pauli_string("ZZ"), "CX maps Zt");
+    const auto stored_body = pauli_z(2, 1);
+    const auto current_correction = pauli_x(2, 0);
+    require(
+        pauli_anticommutes(stored_body, preimage(cf, current_correction)) ==
+            pauli_anticommutes(coordinates_in_frame(cf, stored_body), current_correction),
+        "deferred frame preserves commutation");
 
     CliffordFrame h(1);
     left_H(h, 0);
     left_S(h, 0);
     require(preimage(h, pauli_x(1, 0)) == pauli_y(1, 0), "left composition order");
+
+    CliffordFrame wide(65);
+    auto wide_pauli = pauli_identity(65);
+    wide_pauli.set_xbit(0);
+    wide_pauli.set_zbit(64);
+    require(coordinates_in_frame(wide, wide_pauli) == wide_pauli, "sparse frame coordinates");
+    require(preimage(wide, wide_pauli) == wide_pauli, "sparse frame preimage");
+
+    CliffordFrame columns(1024);
+    for (int q = 1; q < 1024; ++q) {
+        left_CX(columns, 0, q);
+    }
+    const auto column_query = pauli_z(1024, 0);
+    const auto column_first = coordinates_in_frame(columns, column_query);
+    const auto column_second = coordinates_in_frame(columns, column_query);
+    const auto column_third = coordinates_in_frame(columns, column_query);
+    require(column_first == column_second && column_second == column_third, "column frame coordinate cache");
+
+    CliffordFrame cached_support(2);
+    require(
+        preimage(cached_support, pauli_x(2, 0)) == pauli_x(2, 0),
+        "initial sparse support cache");
+    left_CX(cached_support, 0, 1);
+    require(
+        preimage(cached_support, pauli_x(2, 0)) == pauli_string("XX"),
+        "tableau mutation invalidates sparse support automatically");
+
+    CliffordFrame cached_coordinates(1);
+    require(
+        coordinates_in_frame(cached_coordinates, pauli_z(1, 0)) == pauli_z(1, 0),
+        "initial coordinate index");
+    left_H(cached_coordinates, 0);
+    require(
+        coordinates_in_frame(cached_coordinates, pauli_z(1, 0)) == pauli_x(1, 0),
+        "tableau mutation rebuilds the coordinate index lazily");
+
+    CliffordFrame phaseful(1);
+    left_S(phaseful, 0);
+    require(
+        (phaseful.generator(phaseful.xrow(0)).phase_exponent() & 1) != 0,
+        "Clifford frame retains an odd Pauli phase exponent");
+    require(
+        coordinates_in_frame(phaseful, pauli_y(1, 0)) == neg(pauli_x(1, 0)),
+        "body decomposition reconstructs an odd Clifford-frame phase");
+    left_Z(phaseful, 0);
+    require(
+        coordinates_in_frame(phaseful, pauli_y(1, 0)) == pauli_x(1, 0),
+        "phase-only frame updates reuse the body index without losing the sign");
 }
 
 void test_extended_clifford_frame_preimages() {

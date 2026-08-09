@@ -240,6 +240,16 @@ void write_detector_record(FactoredExecutorState& runtime, int detector, bool ou
     }
 }
 
+void write_expectation(FactoredExecutorState& runtime, std::optional<int> exp_val, double value) {
+    if (!exp_val) {
+        return;
+    }
+    if (*exp_val < 0 || *exp_val >= runtime.nexpvals) {
+        fail("expectation value index is out of range");
+    }
+    runtime.exp_values[static_cast<std::size_t>(*exp_val)] = value;
+}
+
 void sample_categorical_distribution(
     FactoredExecutorState& runtime,
     const std::vector<int>& conditions,
@@ -917,6 +927,10 @@ void execute_instruction(FactoredExecutorState& runtime, const PromoteDormantRot
 
 void execute_instruction(FactoredExecutorState& runtime, const RecordMeasurement& instruction) {
     const bool outcome = eval_symbolic_bool_unchecked(instruction.outcome_plan, runtime);
+    if (instruction.exp_val) {
+        write_expectation(runtime, instruction.exp_val, outcome ? -1.0 : 1.0);
+        return;
+    }
     write_measurement_record(runtime, instruction.record, outcome, instruction.record_condition);
 }
 
@@ -933,6 +947,12 @@ void execute_instruction(FactoredExecutorState& runtime, const MeasurePrecompute
                            ? active_diagonal_measurement_branch_probability(runtime, instruction.kernel, true)
                            : active_measurement_branch_probability(runtime, instruction.kernel, true);
     prob_true = std::clamp(prob_true, 0.0, 1.0);
+    if (instruction.exp_val) {
+        const bool sign = eval_symbolic_bool_unchecked(instruction.outcome_plan, runtime);
+        const double value = (sign ? -1.0 : 1.0) * (1.0 - 2.0 * prob_true);
+        write_expectation(runtime, instruction.exp_val, value);
+        return;
+    }
     const double prob_false = 1.0 - prob_true;
     const bool branch = sample_bernoulli(runtime.rng_state, prob_true);
     const double probability = branch ? prob_true : prob_false;
@@ -948,6 +968,10 @@ void execute_instruction(FactoredExecutorState& runtime, const MeasurePrecompute
 }
 
 void execute_instruction(FactoredExecutorState& runtime, const IntroduceDormantMeasurementBranch& instruction) {
+    if (instruction.exp_val) {
+        write_expectation(runtime, instruction.exp_val, 0.0);
+        return;
+    }
     const bool branch = sample_bernoulli(runtime.rng_state, 0.5);
     assign_symbol(runtime, instruction.branch, branch);
     const bool outcome = eval_symbolic_bool_unchecked(instruction.outcome_plan, runtime);
@@ -978,6 +1002,10 @@ void execute_instruction_presampled(
     const SingleShotExpressionEvaluator& evaluator,
     std::size_t instruction_index) {
     const bool outcome = evaluator.eval(instruction_index, runtime);
+    if (instruction.exp_val) {
+        write_expectation(runtime, instruction.exp_val, outcome ? -1.0 : 1.0);
+        return;
+    }
     write_measurement_record(runtime, instruction.record, outcome, instruction.record_condition);
 }
 
@@ -1004,6 +1032,12 @@ void execute_instruction_presampled(
                            ? active_diagonal_measurement_branch_probability(runtime, instruction.kernel, true)
                            : active_measurement_branch_probability(runtime, instruction.kernel, true);
     prob_true = std::clamp(prob_true, 0.0, 1.0);
+    if (instruction.exp_val) {
+        const bool sign = evaluator.eval(instruction_index, runtime);
+        const double value = (sign ? -1.0 : 1.0) * (1.0 - 2.0 * prob_true);
+        write_expectation(runtime, instruction.exp_val, value);
+        return;
+    }
     const double prob_false = 1.0 - prob_true;
     const bool branch = sample_bernoulli(runtime.rng_state, prob_true);
     const double probability = branch ? prob_true : prob_false;
@@ -1023,6 +1057,10 @@ void execute_instruction_presampled(
     const IntroduceDormantMeasurementBranch& instruction,
     const SingleShotExpressionEvaluator& evaluator,
     std::size_t instruction_index) {
+    if (instruction.exp_val) {
+        write_expectation(runtime, instruction.exp_val, 0.0);
+        return;
+    }
     const bool branch = sample_bernoulli(runtime.rng_state, 0.5);
     assign_symbol(runtime, instruction.branch, branch);
     const bool outcome = evaluator.eval(instruction_index, runtime);
@@ -1143,10 +1181,12 @@ FactoredExecutorState::FactoredExecutorState(const FactoredInstructionProgram& p
       nsymbols(program.nsymbols),
       nrecords(program.nrecords),
       ndetectors(program.ndetectors),
+      nexpvals(program.nexpvals),
       value_words(symbol_word_count(program.nsymbols), 0),
       assigned_words(symbol_word_count(program.nsymbols), 0),
       measurement_words(symbol_word_count(program.nrecords), 0),
       detector_words(symbol_word_count(program.ndetectors), 0),
+      exp_values(static_cast<std::size_t>(program.nexpvals), 0.0),
       rng_state(seed) {
     configure_single_shot_components(*this, program);
     reset_single_shot_components(*this, program);
@@ -1168,6 +1208,7 @@ void reset_executor(
     runtime.nsymbols = program.nsymbols;
     runtime.nrecords = program.nrecords;
     runtime.ndetectors = program.ndetectors;
+    runtime.nexpvals = program.nexpvals;
     reset_single_shot_components(runtime, program);
     if (!runtime.active_components_enabled) {
         ensure_runtime_active_capacity(runtime, program.max_k);
@@ -1197,6 +1238,10 @@ void reset_executor(
     if (clear_detector_records) {
         std::fill(runtime.detector_words.begin(), runtime.detector_words.end(), 0);
     }
+    if (runtime.exp_values.size() != static_cast<std::size_t>(program.nexpvals)) {
+        runtime.exp_values.resize(static_cast<std::size_t>(program.nexpvals));
+    }
+    std::fill(runtime.exp_values.begin(), runtime.exp_values.end(), 0.0);
 }
 
 void execute_in_place(FactoredExecutorState& runtime, const FactoredInstructionProgram& program) {
@@ -1399,6 +1444,10 @@ std::vector<std::uint64_t> execute(FactoredExecutorState& runtime, const Factore
     return runtime.measurement_words;
 }
 
+const std::vector<double>& expectation_values(const FactoredExecutorState& runtime) {
+    return runtime.exp_values;
+}
+
 std::vector<std::uint64_t> sample_measurements(const FactoredInstructionProgram& program, std::uint64_t seed) {
     FactoredExecutorState runtime(program, seed);
     return execute(runtime, program);
@@ -1455,6 +1504,48 @@ std::vector<std::vector<std::uint64_t>> sample_measurements(
     int shots,
     std::uint64_t seed) {
     return sample_measurements(program, shots, seed, 0);
+}
+
+MeasurementExpectationSamples sample_measurements_and_expectations(
+    const FactoredInstructionProgram& program,
+    int shots,
+    std::uint64_t seed,
+    int sample_chunk_shots) {
+    if (shots < 0) {
+        fail("shot count must be nonnegative");
+    }
+    const int chunk_shots = normalize_single_shot_sample_chunk_shots(sample_chunk_shots);
+    PackedPresampledExogenous packed_samples;
+    prepare_presampled_exogenous_packed(packed_samples, program);
+    PresampledExpressionPlan expression_plan;
+    prepare_presampled_expression_plan(expression_plan, program, packed_samples);
+    PresampledExpressionBlock expression_block;
+    FactoredExecutorState runtime(program, seed ^ kSingleShotBranchSeedXor);
+
+    MeasurementExpectationSamples out;
+    out.measurements.reserve(static_cast<std::size_t>(shots));
+    out.expectations.reserve(static_cast<std::size_t>(shots));
+    std::uint64_t exogenous_rng_state = seed;
+    for (int offset = 0; offset < shots; offset += chunk_shots) {
+        const int chunk = std::min(chunk_shots, shots - offset);
+        resample_prepared_exogenous_packed_in_place(
+            packed_samples,
+            program,
+            chunk,
+            exogenous_rng_state);
+        exogenous_rng_state = packed_samples.next_rng_state;
+        evaluate_presampled_expression_block(
+            expression_block,
+            expression_plan,
+            packed_samples);
+        for (int shot = 0; shot < chunk; ++shot) {
+            reset_executor(runtime, program);
+            execute_in_place(runtime, program, expression_plan, expression_block, shot);
+            out.measurements.push_back(runtime.measurement_words);
+            out.expectations.push_back(runtime.exp_values);
+        }
+    }
+    return out;
 }
 
 } // namespace symft

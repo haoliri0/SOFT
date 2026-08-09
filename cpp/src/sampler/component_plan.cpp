@@ -245,7 +245,7 @@ std::shared_ptr<const ActiveComponentPlan> build_active_component_plan(
     // Small active states are already cache-resident and cannot repay
     // component dispatch. Avoid even constructing per-instruction metadata for
     // the overwhelmingly common pure-Clifford/small-active fallback.
-    if (program.max_k < 8) {
+    if (program.max_k < 8 || program.nexpvals != 0) {
         return plan;
     }
     plan->instruction_steps.resize(program.instructions.size());
@@ -367,6 +367,15 @@ std::shared_ptr<const ActiveComponentPlan> build_active_component_plan(
 
         if (const auto* measurement =
                 std::get_if<MeasurePrecomputedActivePauli>(&instruction)) {
+            if (measurement->exp_val) {
+                // Expectations are read-only barriers; keep the dense runtime
+                // path so no component coordinates are collapsed.
+                plan->instruction_steps[instruction_index] = {
+                    ActiveComponentStepKind::None,
+                    0,
+                };
+                continue;
+            }
             if (measurement->kernel.action.nqubits != global_k) {
                 fail("component planner saw a measurement with the wrong active width");
             }

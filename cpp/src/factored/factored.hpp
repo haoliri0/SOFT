@@ -1,8 +1,11 @@
 #pragma once
 
 #include "core/frames.hpp"
+#include "core/tableau.hpp"
+#include "factored/pullback.hpp"
 #include "sampler/active.hpp"
 
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <variant>
@@ -21,6 +24,10 @@ struct PendingPauliMeasurement {
     SymbolicPauliString pauli;
     std::optional<int> record;
     std::optional<int> record_condition;
+    // When set, this is a non-destructive expectation probe instead of a
+    // sampled measurement.  Keeping it on the existing measurement path
+    // avoids a second planner/runtime instruction family.
+    std::optional<int> exp_val;
 };
 
 struct PendingClassicalRecord {
@@ -56,6 +63,7 @@ struct RecordMeasurement {
     std::optional<int> record;
     std::optional<int> record_condition;
     SymbolicBoolEvaluationPlan outcome_plan;
+    std::optional<int> exp_val;
 };
 
 struct RecordDetector {
@@ -73,6 +81,7 @@ struct MeasurePrecomputedActivePauli {
     std::optional<int> record;
     std::optional<int> record_condition;
     SymbolicBoolEvaluationPlan outcome_plan;
+    std::optional<int> exp_val;
 };
 
 struct IntroduceDormantMeasurementBranch {
@@ -81,6 +90,7 @@ struct IntroduceDormantMeasurementBranch {
     std::optional<int> record;
     std::optional<int> record_condition;
     SymbolicBoolEvaluationPlan outcome_plan;
+    std::optional<int> exp_val;
 };
 
 using FactoredInstruction = std::variant<
@@ -114,18 +124,54 @@ struct RareCategoricalSampleGroup {
     std::vector<double> event_probabilities;
 };
 
+enum class FactorizationStrategy {
+    // Select after the complete circuit has been parsed and counted.
+    Automatic,
+    // Maintain a global Clifford frame and a packed symbolic Pauli frame.
+    CliffordFrames,
+    // Retain physical events and pull pending Paulis backward. Circuit
+    // lowering processes them as a bit-sliced batch; direct state operations
+    // can still use the indexed single-Pauli path.
+    DirectPullback,
+};
+
 struct FrameFactoredState {
+    struct DeferredPullbackState {
+        struct Entry {
+            std::size_t pending_index = 0;
+            std::size_t event_bound = 0;
+        };
+
+        bool enabled = false;
+        std::vector<Entry> entries;
+    };
+
     int n = 0;
     int k = 0;
     CliffordFrame clifford;
-    ActivePauliFrame active_frame;
-    DormantState dormant;
+    SymbolicPauliFrame pauli_frame;
     std::shared_ptr<SymbolicContext> context;
     std::vector<PendingOperation> pending_operations;
+    // Exactly one representation is populated. Direct pullback deliberately
+    // leaves the two global frames at dimension zero to avoid O(n^2) storage.
+    FactorizationStrategy factorization_strategy = FactorizationStrategy::CliffordFrames;
+    detail::DirectPullbackFrame direct_pullback;
+    DeferredPullbackState deferred_pullback;
 
     explicit FrameFactoredState(int n = 0, int k = 0);
     FrameFactoredState(int n, int k, std::shared_ptr<SymbolicContext> context);
+    FrameFactoredState(int n, int k, FactorizationStrategy strategy);
+    FrameFactoredState(
+        int n,
+        int k,
+        std::shared_ptr<SymbolicContext> context,
+        FactorizationStrategy strategy);
+
+    bool uses_direct_pullback() const;
 };
+
+void begin_deferred_direct_pullback(FrameFactoredState& state);
+void finish_deferred_direct_pullback(FrameFactoredState& state);
 
 void left_H(FrameFactoredState& state, int q);
 void left_H_NXY(FrameFactoredState& state, int q);
@@ -171,9 +217,20 @@ void left_XCZ(FrameFactoredState& state, int control, int target);
 void left_YCX(FrameFactoredState& state, int control, int target);
 void left_YCY(FrameFactoredState& state, int control, int target);
 void left_YCZ(FrameFactoredState& state, int control, int target);
-void apply_pauli(FrameFactoredState& state, const ConditionalPauliString& pauli);
 void apply_pauli(FrameFactoredState& state, const PauliString& pauli, int condition);
 void apply_pauli(FrameFactoredState& state, const PauliString& pauli, const SymbolicBool& condition);
+void apply_single_qubit_pauli(
+    FrameFactoredState& state,
+    int q,
+    bool x,
+    bool z,
+    int condition);
+void apply_single_qubit_pauli(
+    FrameFactoredState& state,
+    int q,
+    bool x,
+    bool z,
+    const SymbolicBool& condition);
 PendingPauliRotation apply_pauli_rotation(FrameFactoredState& state, const PauliString& pauli, double kernel_angle);
 PendingPauliMeasurement apply_pauli_measurement(FrameFactoredState& state, const PauliString& pauli);
 PendingPauliMeasurement apply_pauli_measurement(
@@ -182,6 +239,10 @@ PendingPauliMeasurement apply_pauli_measurement(
     const SymbolicBool& sign,
     std::optional<int> record = std::nullopt,
     std::optional<int> record_condition = std::nullopt);
+PendingPauliMeasurement apply_pauli_expectation(
+    FrameFactoredState& state,
+    const PauliString& pauli,
+    int exp_val);
 PendingClassicalRecord apply_classical_record(
     FrameFactoredState& state,
     const SymbolicBool& outcome,
@@ -195,9 +256,15 @@ struct PendingFactoredState {
     int initial_k = 0;
     int k = 0;
     int max_k = 0;
-    DormantState dormant;
     std::shared_ptr<SymbolicContext> context;
+    PlanningTableau tableau;
     std::vector<PendingOperation> pending_operations;
+    std::size_t pending_operation_cursor = 0;
+    std::vector<std::uint64_t> pending_x_operation_blocks;
+    std::vector<std::uint64_t> pending_z_operation_blocks;
+    bool pending_operation_blocks_valid = false;
+    std::vector<std::optional<SymbolicBool>> pending_substitutions;
+    detail::SymbolicRelationReducer pending_relation_reducer;
     std::vector<FactoredInstruction> instructions;
     std::vector<int> pending_prefix_instruction_indices;
     bool pending_operations_optimized = false;
@@ -240,6 +307,7 @@ struct FactoredInstructionProgram {
     int nsymbols = 0;
     int nrecords = 0;
     int ndetectors = 0;
+    int nexpvals = 0;
     std::vector<SymbolicCategoricalDistribution> sampled_categorical_distributions;
     std::vector<RareCategoricalSampleGroup> sampled_rare_categorical_groups;
     std::vector<int> sampled_bernoulli_conditions;

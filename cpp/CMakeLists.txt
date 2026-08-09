@@ -28,12 +28,14 @@ endif()
 add_library(symft_cpp
     src/core/common.cpp
     src/core/pauli.cpp
+    src/core/tableau.cpp
     src/core/symbolic.cpp
     src/core/frames.cpp
     src/circuit/circuit_lowering.cpp
     src/sampler/active_state.cpp
     src/sampler/contiguous_active.cpp
     src/sampler/component_plan.cpp
+    src/factored/pullback.cpp
     src/factored/factored_state.cpp
     src/factored/factored_planner.cpp
     src/sampler/presampled_expression.cpp
@@ -152,6 +154,12 @@ if(SYMFT_CPP_BUILD_TESTS)
     add_executable(symft_frames_tests tests/frames_tests.cpp)
     target_link_libraries(symft_frames_tests PRIVATE symft_cpp)
     add_test(NAME symft_frames_tests COMMAND symft_frames_tests)
+    add_executable(symft_tableau_tests tests/tableau_tests.cpp)
+    target_link_libraries(symft_tableau_tests PRIVATE symft_cpp)
+    add_test(NAME symft_tableau_tests COMMAND symft_tableau_tests)
+    add_executable(symft_factorization_tests tests/factorization_tests.cpp)
+    target_link_libraries(symft_factorization_tests PRIVATE symft_cpp)
+    add_test(NAME symft_factorization_tests COMMAND symft_factorization_tests)
     if(SYMFT_CPP_ENABLE_CUDA)
         add_executable(symft_cuda_tests tests/symft_cuda_tests.cpp)
         target_link_libraries(symft_cuda_tests PRIVATE symft_cpp)

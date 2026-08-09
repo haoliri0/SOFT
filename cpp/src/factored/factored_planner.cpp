@@ -2,6 +2,7 @@
 #include "sampler/component_plan.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -10,7 +11,7 @@ namespace symft {
 using namespace detail;
 
 bool has_pending_operations(const PendingFactoredState& state) {
-    return !state.pending_operations.empty();
+    return state.pending_operation_cursor < state.pending_operations.size();
 }
 
 namespace {
@@ -22,7 +23,6 @@ void set_planning_active_count(PendingFactoredState& state, int k) {
     }
     state.k = ki;
     state.max_k = std::max(state.max_k, state.k);
-    state.dormant = DormantState(state.n - state.k, state.context);
 }
 
 FactoredInstruction push_instruction(PendingFactoredState& state, FactoredInstruction instruction) {
@@ -32,6 +32,9 @@ FactoredInstruction push_instruction(PendingFactoredState& state, FactoredInstru
 }
 
 std::optional<int> measurement_record(PendingFactoredState& state, const PendingPauliMeasurement& measurement) {
+    if (measurement.exp_val) {
+        return std::nullopt;
+    }
     if (!measurement.record) {
         if (measurement.record_condition) {
             return std::nullopt;
@@ -51,43 +54,6 @@ std::optional<int> measurement_record(PendingFactoredState& state, const Pending
     }
     state.next_record = std::max(state.next_record, *record.record + 1);
     return record.record;
-}
-
-PauliString transform_by_frame(const CliffordFrame& frame, const PauliString& pauli);
-PendingPauliRotation transform_operation_by_frame(const PendingPauliRotation& operation, const CliffordFrame& frame);
-PendingPauliMeasurement transform_operation_by_frame(const PendingPauliMeasurement& operation, const CliffordFrame& frame);
-PendingClassicalRecord transform_operation_by_frame(const PendingClassicalRecord& operation, const CliffordFrame& frame);
-void transform_pending_operations_by_frame(PendingFactoredState& state, const CliffordFrame& frame);
-
-PendingPauliRotation xor_operation_sign_if_anticommutes(
-    const PendingPauliRotation& operation,
-    const PauliString& pauli,
-    const SymbolicBool& sign) {
-    if (!pauli_anticommutes(pauli, operation.pauli.pauli)) {
-        return operation;
-    }
-    return PendingPauliRotation{operation.kernel_angle, SymbolicPauliString(operation.pauli.pauli, xor_bool(operation.pauli.sign, sign))};
-}
-
-PendingPauliMeasurement xor_operation_sign_if_anticommutes(
-    const PendingPauliMeasurement& operation,
-    const PauliString& pauli,
-    const SymbolicBool& sign) {
-    if (!pauli_anticommutes(pauli, operation.pauli.pauli)) {
-        return operation;
-    }
-    return PendingPauliMeasurement{
-        SymbolicPauliString(operation.pauli.pauli, xor_bool(operation.pauli.sign, sign)),
-        operation.record,
-        operation.record_condition,
-    };
-}
-
-PendingClassicalRecord xor_operation_sign_if_anticommutes(
-    const PendingClassicalRecord& operation,
-    const PauliString&,
-    const SymbolicBool&) {
-    return operation;
 }
 
 std::size_t symbolic_word_cost(const SymbolicBool& expr) {
@@ -112,99 +78,212 @@ bool has_lower_sampling_cost(const SymbolicBool& candidate, const SymbolicBool& 
     return candidate.conditions.size() < current.conditions.size();
 }
 
-bool conditions_overlap(const std::vector<int>& lhs, const std::vector<int>& rhs) {
-    std::size_t i = 0;
-    std::size_t j = 0;
-    while (i < lhs.size() && j < rhs.size()) {
-        if (lhs[i] == rhs[j]) {
-            return true;
-        }
-        if (lhs[i] < rhs[j]) {
-            ++i;
-        } else {
-            ++j;
-        }
-    }
-    return false;
-}
-
-SymbolicBool reduce_by_relation_once(const SymbolicBool& expr, const SymbolicBool& relation) {
-    if (relation.conditions.empty() && !relation.constant) {
-        return expr;
-    }
-    if (!conditions_overlap(expr.conditions, relation.conditions)) {
-        return expr;
-    }
-    const SymbolicBool candidate = xor_bool(expr, relation);
-    return has_lower_sampling_cost(candidate, expr) ? candidate : expr;
-}
-
-SymbolicBool reduce_by_relations(SymbolicBool expr, const std::vector<SymbolicBool>& relations) {
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        for (const auto& relation : relations) {
-            const SymbolicBool reduced = reduce_by_relation_once(expr, relation);
-            if (reduced != expr) {
-                expr = reduced;
-                changed = true;
-            }
-        }
-    }
-    return expr;
-}
-
 SymbolicBool measurement_relation(int record_condition, const SymbolicBool& outcome) {
     return xor_bool(symbolic_bool(record_condition), outcome);
 }
 
-template <typename Operation>
-Operation reduce_pending_operation_sign(const Operation& operation, const SymbolicBool& relation) {
-    Operation out = operation;
-    out.pauli.sign = reduce_by_relation_once(out.pauli.sign, relation);
-    return out;
+void ensure_pending_operation_blocks(PendingFactoredState& state) {
+    if (state.pending_operation_blocks_valid) {
+        return;
+    }
+    const std::size_t blocks = (state.pending_operations.size() + 63) >> 6;
+    const std::size_t n = static_cast<std::size_t>(state.n);
+    state.pending_x_operation_blocks.assign(blocks * n, 0);
+    state.pending_z_operation_blocks.assign(blocks * n, 0);
+    for (std::size_t operation = 0; operation < state.pending_operations.size(); ++operation) {
+        const PauliString* body = std::visit(
+            [](const auto& typed) -> const PauliString* {
+                if constexpr (requires { typed.pauli.pauli; }) {
+                    return &typed.pauli.pauli;
+                }
+                return nullptr;
+            },
+            state.pending_operations[operation]);
+        if (body == nullptr) {
+            continue;
+        }
+        const std::size_t base = (operation >> 6) * n;
+        const std::uint64_t mask = std::uint64_t{1} << (operation & 63);
+        for (std::size_t word = 0; word < body->x.size(); ++word) {
+            std::uint64_t x_bits = body->x[word];
+            std::uint64_t z_bits = body->z[word];
+            while (x_bits) {
+                const std::size_t q = word * 64 + static_cast<std::size_t>(trailing_zeros64(x_bits));
+                if (q < n) {
+                    state.pending_x_operation_blocks[base + q] |= mask;
+                }
+                x_bits &= x_bits - 1;
+            }
+            while (z_bits) {
+                const std::size_t q = word * 64 + static_cast<std::size_t>(trailing_zeros64(z_bits));
+                if (q < n) {
+                    state.pending_z_operation_blocks[base + q] |= mask;
+                }
+                z_bits &= z_bits - 1;
+            }
+        }
+    }
+    state.pending_operation_blocks_valid = true;
 }
 
-PendingClassicalRecord reduce_pending_operation_sign(
-    const PendingClassicalRecord& operation,
-    const SymbolicBool& relation) {
-    PendingClassicalRecord out = operation;
-    out.outcome = reduce_by_relation_once(out.outcome, relation);
-    return out;
+void append_pending_branch_sign(
+    PendingOperation& operation,
+    int branch_condition) {
+    std::visit(
+        [&](auto& typed) {
+            if constexpr (requires { typed.pauli.sign; }) {
+                auto& conditions = typed.pauli.sign.conditions;
+                if (!conditions.empty() && conditions.back() >= branch_condition) {
+                    fail("pending branch conditions must be appended in allocation order");
+                }
+                conditions.push_back(branch_condition);
+            }
+        },
+        operation);
 }
 
-void push_symbolic_pauli_through_pending_from(
+void push_symbolic_pauli_through_indexed_pending(
     PendingFactoredState& state,
-    int first_index_one_based,
+    std::size_t start,
     const PauliString& pauli,
-    const SymbolicBool& sign) {
-    state.context->bump_next_condition(sign);
-    const std::size_t start = first_index_one_based <= 1 ? 0 : static_cast<std::size_t>(first_index_one_based - 1);
-    for (std::size_t idx = start; idx < state.pending_operations.size(); ++idx) {
-        state.pending_operations[idx] = std::visit(
-            [&](const auto& op) -> PendingOperation { return xor_operation_sign_if_anticommutes(op, pauli, sign); },
-            state.pending_operations[idx]);
+    int branch_condition) {
+    ensure_pending_operation_blocks(state);
+    const std::size_t n = static_cast<std::size_t>(state.n);
+    const std::size_t blocks = (state.pending_operations.size() + 63) >> 6;
+    for (std::size_t block = start >> 6; block < blocks; ++block) {
+        const std::size_t base = block * n;
+        std::uint64_t anticommuting = 0;
+        for (std::size_t word = 0; word < pauli.x.size(); ++word) {
+            std::uint64_t x_bits = pauli.x[word];
+            std::uint64_t z_bits = pauli.z[word];
+            while (x_bits) {
+                const std::size_t q = word * 64 + static_cast<std::size_t>(trailing_zeros64(x_bits));
+                if (q < n) {
+                    anticommuting ^= state.pending_z_operation_blocks[base + q];
+                }
+                x_bits &= x_bits - 1;
+            }
+            while (z_bits) {
+                const std::size_t q = word * 64 + static_cast<std::size_t>(trailing_zeros64(z_bits));
+                if (q < n) {
+                    anticommuting ^= state.pending_x_operation_blocks[base + q];
+                }
+                z_bits &= z_bits - 1;
+            }
+        }
+        if (block == (start >> 6) && (start & 63) != 0) {
+            anticommuting &= ~((std::uint64_t{1} << (start & 63)) - 1);
+        }
+        while (anticommuting) {
+            const int bit = trailing_zeros64(anticommuting);
+            const std::size_t operation = block * 64 + static_cast<std::size_t>(bit);
+            if (operation < state.pending_operations.size()) {
+                append_pending_branch_sign(
+                    state.pending_operations[operation],
+                    branch_condition);
+            }
+            anticommuting &= anticommuting - 1;
+        }
     }
 }
 
+void push_symbolic_pauli_through_pending(
+    PendingFactoredState& state,
+    const PauliString& pauli,
+    int branch_condition) {
+    push_symbolic_pauli_through_indexed_pending(
+        state,
+        state.pending_operation_cursor,
+        pauli,
+        branch_condition);
+}
+
+void substitute_pending_symbols(
+    SymbolicBool& expression,
+    const std::vector<std::optional<SymbolicBool>>& substitutions);
+
 void reduce_pending_signs_by_measurement_relation(
     PendingFactoredState& state,
-    int first_index_one_based,
     std::optional<int> record_condition,
     const SymbolicBool& outcome) {
     if (!record_condition) {
         return;
     }
-    const SymbolicBool relation = measurement_relation(*record_condition, outcome);
+    SymbolicBool reduced_outcome = outcome;
+    substitute_pending_symbols(reduced_outcome, state.pending_substitutions);
+    const SymbolicBool relation = measurement_relation(*record_condition, reduced_outcome);
     state.context->bump_next_condition(relation);
-    const std::size_t start = first_index_one_based <= 1 ? 0 : static_cast<std::size_t>(first_index_one_based - 1);
-    for (std::size_t idx = start; idx < state.pending_operations.size(); ++idx) {
-        state.pending_operations[idx] = std::visit(
-            [&](const auto& op) -> PendingOperation {
-                return reduce_pending_operation_sign(op, relation);
-            },
-            state.pending_operations[idx]);
+    // The current operation remains at the planning cursor. Deferring the
+    // equivalent substitution avoids rescanning the unprocessed suffix.
+    const int pivot = *record_condition;
+    const bool self_reference = std::binary_search(
+        reduced_outcome.conditions.begin(), reduced_outcome.conditions.end(), pivot);
+    if (!self_reference &&
+        (reduced_outcome.conditions.size() <= 1 ||
+         has_lower_sampling_cost(reduced_outcome, symbolic_bool(pivot)))) {
+        const std::size_t pivot_index = static_cast<std::size_t>(pivot);
+        if (state.pending_substitutions.size() <= pivot_index) {
+            state.pending_substitutions.resize(pivot_index + 1);
+        }
+        state.pending_substitutions[pivot_index] = std::move(reduced_outcome);
+        return;
     }
+    state.pending_relation_reducer.add(relation);
+}
+
+void substitute_pending_symbols(
+    SymbolicBool& expression,
+    const std::vector<std::optional<SymbolicBool>>& substitutions) {
+    if (expression.conditions.empty() || substitutions.empty()) {
+        return;
+    }
+    std::vector<int> expanded = expression.conditions;
+    while (true) {
+        bool changed = false;
+        std::vector<int> next;
+        next.reserve(expanded.size());
+        for (int condition : expanded) {
+            const std::size_t condition_index = static_cast<std::size_t>(condition);
+            if (condition_index >= substitutions.size() ||
+                !substitutions[condition_index]) {
+                next.push_back(condition);
+            } else {
+                const auto& replacement = *substitutions[condition_index];
+                changed = true;
+                expression.constant ^= replacement.constant;
+                next.insert(
+                    next.end(),
+                    replacement.conditions.begin(),
+                    replacement.conditions.end());
+            }
+        }
+        expanded = normalize_conditions(std::move(next));
+        if (!changed) {
+            break;
+        }
+    }
+    expression.conditions = std::move(expanded);
+}
+
+void reduce_pending_symbolic_bool(
+    SymbolicBool& expression,
+    PendingFactoredState& state) {
+    substitute_pending_symbols(expression, state.pending_substitutions);
+    expression = state.pending_relation_reducer.reduce(std::move(expression));
+}
+
+void reduce_pending_operation_signs(
+    PendingOperation& operation,
+    PendingFactoredState& state) {
+    std::visit(
+        [&](auto& typed) {
+            if constexpr (requires { typed.pauli.sign; }) {
+                reduce_pending_symbolic_bool(typed.pauli.sign, state);
+            } else if constexpr (requires { typed.outcome; }) {
+                reduce_pending_symbolic_bool(typed.outcome, state);
+            }
+        },
+        operation);
 }
 
 std::optional<int> highest_dormant_x_qubit(const PendingFactoredState& state, const PauliString& pauli) {
@@ -218,71 +297,6 @@ std::optional<int> highest_dormant_x_qubit(const PendingFactoredState& state, co
 
 SymbolicBool rotation_sign_from_pauli(const SymbolicPauliString& pauli) {
     return xor_bool(pauli.sign, measurement_phase_sign(pauli.pauli));
-}
-
-PauliString positive_hermitian_body(PauliString pauli) {
-    if (!pauli_squares_to_identity(pauli)) {
-        fail("Pauli frame row requires a Hermitian Pauli body");
-    }
-    pauli.set_phase(pauli_body_y_count(pauli));
-    return pauli;
-}
-
-PauliString multiply_by_stabilizer_if_anticommutes(
-    PauliString row,
-    const PauliString& measured_or_rotated,
-    const PauliString& stabilizer) {
-    if (pauli_anticommutes(row, measured_or_rotated)) {
-        row = row * stabilizer;
-        row.set_phase(pauli_body_y_count(row));
-    }
-    return row;
-}
-
-// Planner-only stabilizer tableau basis changes. The runtime alpha vector is
-// changed only by the emitted promote/measure instructions, never by these frames.
-CliffordFrame dormant_rotation_promotion_tableau_frame(
-    const PendingFactoredState& state,
-    const PauliString& rotation_pauli,
-    int picked_dormant) {
-    const int old_k = state.k;
-    const int picked_q = old_k + picked_dormant;
-    const PauliString stabilizer = pauli_z(state.n, picked_q);
-    const PauliString promoted_x = positive_hermitian_body(rotation_pauli);
-    if (!pauli_anticommutes(promoted_x, stabilizer)) {
-        fail("dormant rotation promotion requires an anti-commuting fixed stabilizer");
-    }
-
-    CliffordFrame frame(state.n);
-    for (int q = 0; q < old_k; ++q) {
-        frame.copy_pauli_to_row(
-            frame.zrow(q),
-            multiply_by_stabilizer_if_anticommutes(pauli_z(state.n, q), promoted_x, stabilizer));
-        frame.copy_pauli_to_row(
-            frame.xrow(q),
-            multiply_by_stabilizer_if_anticommutes(pauli_x(state.n, q), promoted_x, stabilizer));
-    }
-
-    frame.copy_pauli_to_row(frame.zrow(old_k), stabilizer);
-    frame.copy_pauli_to_row(frame.xrow(old_k), promoted_x);
-
-    int new_q = old_k + 1;
-    for (int old_q = old_k; old_q < state.n; ++old_q) {
-        if (old_q == picked_q) {
-            continue;
-        }
-        frame.copy_pauli_to_row(
-            frame.zrow(new_q),
-            multiply_by_stabilizer_if_anticommutes(pauli_z(state.n, old_q), promoted_x, stabilizer));
-        frame.copy_pauli_to_row(
-            frame.xrow(new_q),
-            multiply_by_stabilizer_if_anticommutes(pauli_x(state.n, old_q), promoted_x, stabilizer));
-        ++new_q;
-    }
-    if (new_q != state.n) {
-        fail("dormant rotation promotion frame did not repack dormant rows");
-    }
-    return frame;
 }
 
 ApplyPrecomputedActivePauliRotation active_rotation_instruction(
@@ -319,13 +333,8 @@ std::optional<FactoredInstruction> process_nondiagonal_dormant_rotation(
     PendingPauliRotation current,
     int picked_dormant) {
     const int old_k = state.k;
-    const CliffordFrame frame = dormant_rotation_promotion_tableau_frame(state, current.pauli.pauli, picked_dormant);
-    current = transform_operation_by_frame(current, frame);
-    transform_pending_operations_by_frame(state, frame);
-    if (!current.pauli.pauli.same_body(pauli_x(state.n, old_k))) {
-        fail("dormant rotation tableau reduction did not expose promoted X");
-    }
     const SymbolicBool sign = rotation_sign_from_pauli(current.pauli);
+    state.tableau.promote_dormant_rotation(current.pauli.pauli, old_k, picked_dormant);
     PromoteDormantRotation instruction{current.kernel_angle, sign, SymbolicBoolEvaluationPlan(sign)};
     FactoredInstruction pushed = push_instruction(state, std::move(instruction));
     set_planning_active_count(state, old_k + 1);
@@ -339,8 +348,7 @@ SymbolicBool measurement_base_outcome(const SymbolicPauliString& pauli) {
 std::optional<FactoredInstruction> record_deterministic_measurement(
     PendingFactoredState& state,
     const PendingPauliMeasurement& measurement,
-    const SymbolicBool& outcome,
-    bool queued_first) {
+    const SymbolicBool& outcome) {
     const auto instruction = push_instruction(
         state,
         RecordMeasurement{
@@ -348,63 +356,40 @@ std::optional<FactoredInstruction> record_deterministic_measurement(
             measurement_record(state, measurement),
             measurement.record_condition,
             SymbolicBoolEvaluationPlan(outcome),
+            measurement.exp_val,
         });
     reduce_pending_signs_by_measurement_relation(
         state,
-        queued_first ? 2 : 1,
         measurement.record_condition,
         outcome);
     return instruction;
 }
 
-CliffordFrame dormant_measurement_replacement_tableau_frame(
-    const PendingFactoredState& state,
-    const PauliString& measured_pauli,
-    int picked_dormant) {
-    const int picked_q = state.k + picked_dormant;
-    const PauliString old_stabilizer = pauli_z(state.n, picked_q);
-    const PauliString new_stabilizer = positive_hermitian_body(measured_pauli);
-    if (!pauli_anticommutes(new_stabilizer, old_stabilizer)) {
-        fail("dormant measurement replacement requires an anti-commuting fixed stabilizer");
-    }
-
-    CliffordFrame frame(state.n);
-    for (int q = 0; q < state.n; ++q) {
-        if (q == picked_q) {
-            continue;
-        }
-        frame.copy_pauli_to_row(
-            frame.zrow(q),
-            multiply_by_stabilizer_if_anticommutes(pauli_z(state.n, q), new_stabilizer, old_stabilizer));
-        frame.copy_pauli_to_row(
-            frame.xrow(q),
-            multiply_by_stabilizer_if_anticommutes(pauli_x(state.n, q), new_stabilizer, old_stabilizer));
-    }
-    frame.copy_pauli_to_row(frame.zrow(picked_q), new_stabilizer);
-    frame.copy_pauli_to_row(frame.xrow(picked_q), old_stabilizer);
-    return frame;
-}
-
 std::optional<FactoredInstruction> measure_dormant_xy_pauli(
     PendingFactoredState& state,
     PendingPauliMeasurement current,
-    int picked_dormant,
-    bool queued_first) {
-    const int picked_q = state.k + picked_dormant;
-    const CliffordFrame frame = dormant_measurement_replacement_tableau_frame(state, current.pauli.pauli, picked_dormant);
-    current = transform_operation_by_frame(current, frame);
-    transform_pending_operations_by_frame(state, frame);
-    if (!current.pauli.pauli.same_body(pauli_z(state.n, picked_q))) {
-        fail("dormant measurement tableau reduction did not expose fixed Z");
+    int picked_dormant) {
+    if (current.exp_val) {
+        return push_instruction(
+            state,
+            IntroduceDormantMeasurementBranch{
+                0,
+                SymbolicBool(false),
+                std::nullopt,
+                std::nullopt,
+                SymbolicBoolEvaluationPlan(SymbolicBool(false)),
+                current.exp_val,
+            });
     }
     const SymbolicBool base_outcome = measurement_base_outcome(current.pauli);
+    const PauliString correction =
+        state.tableau.replace_dormant_measurement(current.pauli.pauli, state.k, picked_dormant);
     const int branch = state.context->fresh_condition();
     const SymbolicBool branch_bit = symbolic_bool(branch);
-    push_symbolic_pauli_through_pending_from(
+    push_symbolic_pauli_through_pending(
         state,
-        queued_first ? 2 : 1,
-        pauli_x(state.n, state.k + picked_dormant),
-        branch_bit);
+        correction,
+        branch);
     const SymbolicBool outcome = xor_bool(base_outcome, branch_bit);
     const auto instruction = push_instruction(
         state,
@@ -414,103 +399,58 @@ std::optional<FactoredInstruction> measure_dormant_xy_pauli(
             measurement_record(state, current),
             current.record_condition,
             SymbolicBoolEvaluationPlan(outcome),
+            std::nullopt,
         });
     reduce_pending_signs_by_measurement_relation(
         state,
-        queued_first ? 2 : 1,
         current.record_condition,
         outcome);
     return instruction;
 }
 
-PauliString transform_by_frame(const CliffordFrame& frame, const PauliString& pauli) {
-    return coordinates_in_frame(frame, pauli);
-}
-
-PendingPauliRotation transform_operation_by_frame(const PendingPauliRotation& operation, const CliffordFrame& frame) {
-    return PendingPauliRotation{
-        operation.kernel_angle,
-        SymbolicPauliString(transform_by_frame(frame, operation.pauli.pauli), operation.pauli.sign),
-    };
-}
-
-PendingPauliMeasurement transform_operation_by_frame(const PendingPauliMeasurement& operation, const CliffordFrame& frame) {
-    return PendingPauliMeasurement{
-        SymbolicPauliString(transform_by_frame(frame, operation.pauli.pauli), operation.pauli.sign),
-        operation.record,
-        operation.record_condition,
-    };
-}
-
-PendingClassicalRecord transform_operation_by_frame(const PendingClassicalRecord& operation, const CliffordFrame&) {
-    return operation;
-}
-
-void transform_pending_operations_by_frame(PendingFactoredState& state, const CliffordFrame& frame) {
-    for (auto& op : state.pending_operations) {
-        op = std::visit([&](const auto& typed) -> PendingOperation { return transform_operation_by_frame(typed, frame); }, op);
-    }
-}
-
-CliffordFrame active_measurement_coordinate_frame(
-    const PendingFactoredState& state,
+std::optional<FactoredInstruction> evaluate_active_pauli(
+    PendingFactoredState& state,
+    const PendingPauliMeasurement& current,
     const PauliString& active_body,
-    const PrecomputedActivePauliMeasurementKernel& kernel) {
-    CliffordFrame frame(state.n);
-    const int k = state.k;
-    const int pivot = kernel.pivot;
-    const PauliString measured = embed_active_pauli(state.n, active_body);
-    const PauliString fixed_x = kernel.is_diagonal ? pauli_x(state.n, pivot) : pauli_z(state.n, pivot);
-    frame.copy_pauli_to_row(frame.xrow(k - 1), fixed_x);
-    frame.copy_pauli_to_row(frame.zrow(k - 1), measured);
-    int new_q = 0;
-    for (int old_q = 0; old_q < k; ++old_q) {
-        if (old_q == pivot) {
-            continue;
-        }
-        PauliString zrow = pauli_z(state.n, old_q);
-        PauliString xrow = pauli_x(state.n, old_q);
-        if (kernel.is_diagonal) {
-            if (active_body.zbit(old_q)) {
-                xrow = xrow * pauli_x(state.n, pivot);
-            }
-        } else {
-            if (active_body.xbit(old_q)) {
-                zrow = zrow * pauli_z(state.n, pivot);
-            }
-            if (active_body.zbit(old_q)) {
-                xrow = xrow * pauli_z(state.n, pivot);
-            }
-        }
-        frame.copy_pauli_to_row(frame.xrow(new_q), xrow);
-        frame.copy_pauli_to_row(frame.zrow(new_q), zrow);
-        ++new_q;
+    const SymbolicBool& base_outcome) {
+    if (!pauli_squares_to_identity(active_body)) {
+        fail("active expectation Pauli must square to identity");
     }
-    if (new_q != k - 1) {
-        fail("active measurement tableau dropped the wrong number of qubits");
-    }
-    return frame;
+    const PrecomputedActivePauliMeasurementKernel kernel(active_body);
+    return push_instruction(
+        state,
+        MeasurePrecomputedActivePauli{
+            active_body,
+            kernel,
+            0,
+            base_outcome,
+            std::nullopt,
+            std::nullopt,
+            SymbolicBoolEvaluationPlan(base_outcome),
+            current.exp_val,
+        });
 }
 
 std::optional<FactoredInstruction> measure_active_pauli_branches(
     PendingFactoredState& state,
     const PendingPauliMeasurement& current,
     const PauliString& active_body,
-    const SymbolicBool& base_outcome,
-    bool queued_first) {
+    const SymbolicBool& base_outcome) {
     if (!pauli_squares_to_identity(active_body)) {
         fail("active measurement Pauli must square to identity");
     }
     PrecomputedActivePauliMeasurementKernel kernel(active_body);
-    const CliffordFrame frame = active_measurement_coordinate_frame(state, active_body, kernel);
-    transform_pending_operations_by_frame(state, frame);
+    const PauliString correction = state.tableau.remove_active_measurement(
+        current.pauli.pauli,
+        state.k,
+        kernel.pivot,
+        kernel.is_diagonal);
     const int branch = state.context->fresh_condition();
     const SymbolicBool branch_bit = symbolic_bool(branch);
-    push_symbolic_pauli_through_pending_from(
+    push_symbolic_pauli_through_pending(
         state,
-        queued_first ? 2 : 1,
-        pauli_x(state.n, state.k - 1),
-        branch_bit);
+        correction,
+        branch);
     const SymbolicBool outcome = xor_bool(base_outcome, branch_bit);
     MeasurePrecomputedActivePauli instruction{
         active_body,
@@ -520,22 +460,46 @@ std::optional<FactoredInstruction> measure_active_pauli_branches(
         measurement_record(state, current),
         current.record_condition,
         SymbolicBoolEvaluationPlan(outcome),
+        std::nullopt,
     };
     FactoredInstruction pushed = push_instruction(state, std::move(instruction));
     reduce_pending_signs_by_measurement_relation(
         state,
-        queued_first ? 2 : 1,
         current.record_condition,
         outcome);
     set_planning_active_count(state, state.k - 1);
     return pushed;
 }
 
+std::optional<FactoredInstruction> process_pending_measurement_impl(
+    PendingFactoredState& state,
+    const PendingPauliMeasurement& measurement) {
+    state.context->bump_next_condition(max_condition(measurement));
+    PendingPauliMeasurement current = measurement;
+    current.pauli.pauli = state.tableau.decompose(measurement.pauli.pauli);
+    const PauliString active_body = project_pauli_body(current.pauli.pauli, 0, state.k);
+    const auto picked = highest_dormant_x_qubit(state, current.pauli.pauli);
+    if (picked) {
+        return measure_dormant_xy_pauli(state, current, *picked);
+    }
+    const SymbolicBool base_outcome = measurement_base_outcome(current.pauli);
+    if (!active_body.has_nonidentity_body()) {
+        return record_deterministic_measurement(state, current, base_outcome);
+    }
+    if (current.exp_val) {
+        return evaluate_active_pauli(state, current, active_body, base_outcome);
+    }
+    return measure_active_pauli_branches(state, current, active_body, base_outcome);
+}
+
 } // namespace
 
-std::optional<FactoredInstruction> process_pending_rotation(PendingFactoredState& state, const PendingPauliRotation& rotation) {
+std::optional<FactoredInstruction> process_pending_rotation(
+    PendingFactoredState& state,
+    const PendingPauliRotation& rotation) {
     state.context->bump_next_condition(max_condition(rotation));
     PendingPauliRotation current = rotation;
+    current.pauli.pauli = state.tableau.decompose(rotation.pauli.pauli);
     const auto picked = highest_dormant_x_qubit(state, current.pauli.pauli);
     if (!picked) {
         return process_diagonal_dormant_rotation(state, current);
@@ -543,20 +507,10 @@ std::optional<FactoredInstruction> process_pending_rotation(PendingFactoredState
     return process_nondiagonal_dormant_rotation(state, current, *picked);
 }
 
-std::optional<FactoredInstruction> process_pending_measurement(PendingFactoredState& state, const PendingPauliMeasurement& measurement) {
-    state.context->bump_next_condition(max_condition(measurement));
-    const bool queued_first = !state.pending_operations.empty() && state.pending_operations.front() == PendingOperation(measurement);
-    PendingPauliMeasurement current = measurement;
-    const PauliString active_body = project_pauli_body(current.pauli.pauli, 0, state.k);
-    const auto picked = highest_dormant_x_qubit(state, current.pauli.pauli);
-    if (picked) {
-        return measure_dormant_xy_pauli(state, current, *picked, queued_first);
-    }
-    const SymbolicBool base_outcome = measurement_base_outcome(current.pauli);
-    if (!active_body.has_nonidentity_body()) {
-        return record_deterministic_measurement(state, current, base_outcome, queued_first);
-    }
-    return measure_active_pauli_branches(state, current, active_body, base_outcome, queued_first);
+std::optional<FactoredInstruction> process_pending_measurement(
+    PendingFactoredState& state,
+    const PendingPauliMeasurement& measurement) {
+    return process_pending_measurement_impl(state, measurement);
 }
 
 std::optional<FactoredInstruction> process_pending_classical_record(
@@ -570,30 +524,35 @@ std::optional<FactoredInstruction> process_pending_classical_record(
             measurement_record(state, record),
             record.record_condition,
             SymbolicBoolEvaluationPlan(record.outcome),
+            std::nullopt,
         });
 }
 
 std::optional<FactoredInstruction> process_next_pending_operation(PendingFactoredState& state) {
-    if (state.pending_operations.empty()) {
+    if (!has_pending_operations(state)) {
         return std::nullopt;
     }
     if (state.pending_prefix_instruction_indices.empty()) {
         state.pending_prefix_instruction_indices.push_back(static_cast<int>(state.instructions.size()));
     }
-    const PendingOperation operation = state.pending_operations.front();
+    PendingOperation operation = state.pending_operations[
+        state.pending_operation_cursor];
+    reduce_pending_operation_signs(operation, state);
+    // From this point on, the cursor denotes the first later operation. Any
+    // measurement correction is propagated only through that unprocessed suffix.
+    ++state.pending_operation_cursor;
     const std::size_t start = state.instructions.size();
     std::optional<FactoredInstruction> result = std::visit(
         [&](const auto& op) -> std::optional<FactoredInstruction> {
             if constexpr (std::is_same_v<std::decay_t<decltype(op)>, PendingPauliRotation>) {
                 return process_pending_rotation(state, op);
             } else if constexpr (std::is_same_v<std::decay_t<decltype(op)>, PendingPauliMeasurement>) {
-                return process_pending_measurement(state, op);
+                return process_pending_measurement_impl(state, op);
             } else {
                 return process_pending_classical_record(state, op);
             }
         },
         operation);
-    state.pending_operations.erase(state.pending_operations.begin());
     state.pending_prefix_instruction_indices.push_back(static_cast<int>(state.instructions.size()));
     if (state.instructions.size() == start) {
         return result;
@@ -626,12 +585,12 @@ std::vector<FactoredInstruction> process_pending_operations(PendingFactoredState
 namespace {
 
 template <typename T>
-void reduce_instruction_symbolic_expressions(T& instruction, const std::vector<SymbolicBool>& relations) {
+void reduce_instruction_symbolic_expressions(T& instruction, const SymbolicRelationReducer& reducer) {
     if constexpr (requires { instruction.sign; }) {
-        instruction.sign = reduce_by_relations(std::move(instruction.sign), relations);
+        instruction.sign = reducer.reduce(std::move(instruction.sign));
     }
     if constexpr (requires { instruction.outcome; }) {
-        instruction.outcome = reduce_by_relations(std::move(instruction.outcome), relations);
+        instruction.outcome = reducer.reduce(std::move(instruction.outcome));
     }
 }
 
@@ -646,11 +605,11 @@ std::optional<SymbolicBool> measurement_relation_from_instruction(const T& instr
 }
 
 void reduce_program_symbolic_expressions(std::vector<FactoredInstruction>& instructions) {
-    std::vector<SymbolicBool> relations;
+    SymbolicRelationReducer reducer;
     for (auto& instruction : instructions) {
         std::visit(
             [&](auto& inst) {
-                reduce_instruction_symbolic_expressions(inst, relations);
+                reduce_instruction_symbolic_expressions(inst, reducer);
             },
             instruction);
         const auto relation = std::visit(
@@ -659,7 +618,7 @@ void reduce_program_symbolic_expressions(std::vector<FactoredInstruction>& instr
             },
             instruction);
         if (relation && (!relation->conditions.empty() || relation->constant)) {
-            relations.push_back(*relation);
+            reducer.add(*relation);
         }
     }
 }
@@ -803,6 +762,7 @@ FactoredInstructionProgram::FactoredInstructionProgram(
     reduce_program_symbolic_expressions(instructions);
     int record_count = 0;
     int detector_count = 0;
+    int exp_val_count = 0;
     for (auto& instruction : instructions) {
         refresh_instruction_plans(instruction);
         context.bump_next_condition(max_condition(instruction));
@@ -812,8 +772,14 @@ FactoredInstructionProgram::FactoredInstructionProgram(
                     if (inst.record) {
                         record_count = std::max(record_count, *inst.record);
                     }
-                } else if constexpr (requires { inst.detector; }) {
+                }
+                if constexpr (requires { inst.detector; }) {
                     detector_count = std::max(detector_count, inst.detector);
+                }
+                if constexpr (requires { inst.exp_val; }) {
+                    if (inst.exp_val) {
+                        exp_val_count = std::max(exp_val_count, *inst.exp_val + 1);
+                    }
                 }
             },
             instruction);
@@ -821,6 +787,7 @@ FactoredInstructionProgram::FactoredInstructionProgram(
     nsymbols = std::max(0, context.next_condition - 1);
     nrecords = record_count;
     ndetectors = detector_count;
+    nexpvals = exp_val_count;
     build_categorical_sample_plan(
         context.categorical_distributions,
         sampled_categorical_distributions,

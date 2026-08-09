@@ -212,8 +212,144 @@ void scalar_rotate_general_pairs_soa(
     }
 }
 
+void scalar_xor_packed_words(
+    std::uint64_t* destination,
+    const std::uint64_t* source,
+    std::size_t n) {
+    SYMFT_SIMD_LOOP
+    for (std::size_t i = 0; i < n; ++i) {
+        destination[i] ^= source[i];
+    }
+}
+
+void scalar_xor_packed_columns(
+    std::uint64_t* destination,
+    const std::uint64_t* columns,
+    std::size_t column_stride,
+    const std::uint32_t* column_indices,
+    std::size_t column_count,
+    std::size_t word_offset,
+    std::size_t n) {
+    for (std::size_t word = 0; word < n; ++word) {
+        std::uint64_t value = 0;
+        for (std::size_t column = 0; column < column_count; ++column) {
+            value ^= columns[
+                static_cast<std::size_t>(column_indices[column]) * column_stride +
+                word_offset + word];
+        }
+        destination[word] = value;
+    }
+}
+
+std::uint64_t scalar_xor_inputs(
+    const std::array<std::uint64_t, 4>& inputs,
+    std::uint8_t mask) {
+    std::uint64_t out = 0;
+    for (std::size_t input = 0; input < inputs.size(); ++input) {
+        if ((mask & (std::uint8_t{1} << input)) != 0) {
+            out ^= inputs[input];
+        }
+    }
+    return out;
+}
+
+std::uint64_t scalar_evaluate_anf(
+    const std::array<std::uint64_t, 4>& inputs,
+    std::uint16_t coefficients) {
+    std::uint64_t out = 0;
+    while (coefficients != 0) {
+        const unsigned monomial = std::countr_zero(coefficients);
+        std::uint64_t term = ~std::uint64_t{0};
+        for (std::size_t input = 0; input < inputs.size(); ++input) {
+            if ((monomial & (1u << input)) != 0) {
+                term &= inputs[input];
+            }
+        }
+        out ^= term;
+        coefficients &= static_cast<std::uint16_t>(coefficients - 1);
+    }
+    return out;
+}
+
+void scalar_apply_packed_clifford(
+    std::uint64_t* x0,
+    std::uint64_t* z0,
+    std::uint64_t* x1,
+    std::uint64_t* z1,
+    std::uint64_t* phase_low,
+    std::uint64_t* phase_high,
+    std::size_t n,
+    const PackedCliffordTransform& transform) {
+    for (std::size_t word = 0; word < n; ++word) {
+        const std::array<std::uint64_t, 4> inputs{
+            x0[word],
+            z0[word],
+            transform.arity == 2 ? x1[word] : 0,
+            transform.arity == 2 ? z1[word] : 0,
+        };
+        const std::uint64_t new_x0 =
+            scalar_xor_inputs(inputs, transform.output_masks[0]);
+        const std::uint64_t new_z0 =
+            scalar_xor_inputs(inputs, transform.output_masks[1]);
+        const std::uint64_t new_x1 = transform.arity == 2
+            ? scalar_xor_inputs(inputs, transform.output_masks[2])
+            : 0;
+        const std::uint64_t new_z1 = transform.arity == 2
+            ? scalar_xor_inputs(inputs, transform.output_masks[3])
+            : 0;
+        const std::uint64_t delta_low =
+            scalar_evaluate_anf(inputs, transform.phase_low_anf);
+        const std::uint64_t delta_high =
+            scalar_evaluate_anf(inputs, transform.phase_high_anf);
+        const std::uint64_t old_phase_low = phase_low[word];
+
+        x0[word] = new_x0;
+        z0[word] = new_z0;
+        if (transform.arity == 2) {
+            x1[word] = new_x1;
+            z1[word] = new_z1;
+        }
+        phase_low[word] = old_phase_low ^ delta_low;
+        phase_high[word] ^= delta_high ^ (old_phase_low & delta_low);
+    }
+}
+
+void scalar_accumulate_tableau_phase(
+    std::uint64_t* phase_low,
+    std::uint64_t* phase_high,
+    const std::uint64_t* row_x,
+    const std::uint64_t* row_z,
+    const std::uint64_t* selected,
+    std::size_t n,
+    PackedPauliAxis factor_axis) {
+    for (std::size_t word = 0; word < n; ++word) {
+        std::uint64_t local_low = 0;
+        std::uint64_t local_high = 0;
+        switch (factor_axis) {
+        case PackedPauliAxis::Y:
+            local_low = row_x[word] ^ row_z[word];
+            local_high = ~row_x[word] & row_z[word];
+            break;
+        case PackedPauliAxis::X:
+            local_low = row_z[word];
+            local_high = row_x[word] & row_z[word];
+            break;
+        case PackedPauliAxis::Z:
+            local_low = row_x[word];
+            local_high = row_x[word] & ~row_z[word];
+            break;
+        }
+        local_low &= selected[word];
+        local_high &= selected[word];
+        const std::uint64_t carry = phase_low[word] & local_low;
+        phase_low[word] ^= local_low;
+        phase_high[word] ^= local_high ^ carry;
+    }
+}
+
 const KernelTable table = {
     "scalar",
+    1,
     scalar_mul_assign,
     scalar_norm_sum,
     scalar_mul_assign_soa,
@@ -223,6 +359,10 @@ const KernelTable table = {
     scalar_rotate_uniform_imag_pairs_soa,
     scalar_rotate_real_pair_flip_soa,
     scalar_rotate_general_pairs_soa,
+    scalar_xor_packed_words,
+    scalar_xor_packed_columns,
+    scalar_apply_packed_clifford,
+    scalar_accumulate_tableau_phase,
 };
 
 } // namespace
