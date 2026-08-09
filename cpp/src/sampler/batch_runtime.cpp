@@ -1182,6 +1182,20 @@ void compact_active_columns(
     }
 }
 
+void compact_expectation_columns(
+    BatchFactoredExecutorState& runtime,
+    int survivor_count,
+    const std::vector<int>& live_sources) {
+    const std::size_t stride = static_cast<std::size_t>(runtime.batches);
+    for (int exp_val = 0; exp_val < runtime.nexpvals; ++exp_val) {
+        double* values =
+            runtime.exp_values.data() + static_cast<std::size_t>(exp_val) * stride;
+        for (int dst = 0; dst < survivor_count; ++dst) {
+            values[dst] = values[live_sources[static_cast<std::size_t>(dst)]];
+        }
+    }
+}
+
 void compact_surviving_shots(
     BatchFactoredExecutorState& runtime,
     const std::vector<std::uint64_t>& keep_bits,
@@ -1205,6 +1219,7 @@ void compact_surviving_shots(
     }
     collect_live_sources(live_sources, old_shots, survivor_count, keep_bits);
     compact_active_columns(runtime, survivor_count, live_sources);
+    compact_expectation_columns(runtime, survivor_count, live_sources);
     if (expression_words != nullptr) {
         if (expression_last_use == nullptr) {
             fail("internal expression compaction last-use table is missing");

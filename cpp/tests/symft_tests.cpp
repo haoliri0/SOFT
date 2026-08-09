@@ -1957,6 +1957,30 @@ void test_batch_postselection() {
             default_runtime.measurement_words == alternate_runtime.measurement_words,
             "mask-threshold postselection records");
     }
+    {
+        const auto parsed = parse_stim_text(
+            "X_ERROR(0.5) 0\n"
+            "M 0\n"
+            "EXP_VAL Z0\n"
+            "DETECTOR rec[-1]\n");
+        const auto program = planned_stim_program(parsed);
+        const auto samples = presample_exogenous_packed(program, 64, 12345);
+        BatchFactoredExecutorState runtime(program, 64, 999);
+        BatchDetectorPostselectionScratch scratch;
+        const auto result = execute_expression_postselected_for_test(
+            runtime,
+            program,
+            samples,
+            scratch,
+            BatchDetectorPostselectionOptions{64});
+        require(result.discarded > 0, "expectation compaction test rejects some shots");
+        require(result.accepted > 0, "expectation compaction test keeps some shots");
+        for (int shot = 0; shot < runtime.active_shots; ++shot) {
+            require(
+                std::abs(runtime.exp_values[static_cast<std::size_t>(shot)] - 1.0) < 1e-12,
+                "postselection compacts expectation values with surviving shots");
+        }
+    }
 }
 
 void test_detectors() {
