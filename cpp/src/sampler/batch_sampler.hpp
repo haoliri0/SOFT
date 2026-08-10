@@ -45,6 +45,7 @@ struct BatchDetectorPostselectionResult {
 struct BatchDetectorPostselectionOptions {
     int mask_dead_shots_min_fraction_denominator = 2;
     const std::vector<std::vector<int>>* retained_record_uses = nullptr;
+    const std::vector<std::uint64_t>* expected_detector_words = nullptr;
 };
 
 // The prepared batch sampler uses shot-major active storage:

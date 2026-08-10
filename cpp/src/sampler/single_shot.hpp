@@ -80,13 +80,15 @@ bool execute_postselected_in_place(
     FactoredExecutorState& runtime,
     const FactoredInstructionProgram& program,
     const PresampledExogenous& samples,
-    int shot_index);
+    int shot_index,
+    const std::vector<std::uint64_t>* expected_detector_words = nullptr);
 bool execute_postselected_in_place(
     FactoredExecutorState& runtime,
     const FactoredInstructionProgram& program,
     const PresampledExpressionPlan& expression_plan,
     const PresampledExpressionBlock& expression_block,
-    int shot_index);
+    int shot_index,
+    const std::vector<std::uint64_t>* expected_detector_words = nullptr);
 int default_single_shot_sample_chunk_shots();
 std::vector<std::vector<std::uint64_t>> sample_measurements(
     const FactoredInstructionProgram& program,

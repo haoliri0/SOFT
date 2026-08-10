@@ -54,6 +54,7 @@ CircuitSamplingInfo make_cuda_info(
     info.threads = 1;
     info.active_components = false;
     info.detector_postselection = options.postselect_detectors;
+    info.reference_normalized = input.reference_normalized;
     info.batch_mask_threshold_denominator = 0;
     return info;
 }

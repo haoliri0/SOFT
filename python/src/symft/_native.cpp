@@ -98,9 +98,18 @@ struct PyCudaSamplingOptions {
     int threads_per_block = 0;
 };
 
+struct PyReferenceSamplingOptions {
+    bool reference_sample = false;
+    bool reference_normalized = false;
+    std::vector<std::uint64_t> expected_detector_words;
+    std::vector<std::uint64_t> expected_observable_words;
+};
+
 PyTypeObject CircuitType = {PyVarObject_HEAD_INIT(nullptr, 0)};
 PyTypeObject CompiledMeasurementSamplerType = {PyVarObject_HEAD_INIT(nullptr, 0)};
 PyTypeObject CompiledCountsSamplerType = {PyVarObject_HEAD_INIT(nullptr, 0)};
+
+int num_observables(const symft::QuantumCircuit& circuit);
 
 int set_cpp_exception() {
     try {
@@ -172,6 +181,88 @@ bool parse_nonnegative_int_arg(long long value, int& out, const char* name) {
         return false;
     }
     out = static_cast<int>(value);
+    return true;
+}
+
+bool py_object_is_provided(PyObject* object) {
+    return object != nullptr && object != Py_None;
+}
+
+bool bool_sequence_to_packed_bits(
+    PyObject* object,
+    int nbits,
+    const char* argument_name,
+    std::vector<std::uint64_t>& out,
+    bool& provided) {
+    provided = py_object_is_provided(object);
+    out.clear();
+    if (!provided) {
+        return true;
+    }
+    const std::string sequence_error =
+        std::string(argument_name) + " must be a sequence of bools";
+    PyObject* sequence = PySequence_Fast(object, sequence_error.c_str());
+    if (sequence == nullptr) {
+        return false;
+    }
+    const Py_ssize_t size = PySequence_Fast_GET_SIZE(sequence);
+    if (size != static_cast<Py_ssize_t>(nbits)) {
+        PyErr_Format(
+            PyExc_ValueError,
+            "%s length must be %d, got %zd",
+            argument_name,
+            nbits,
+            size);
+        Py_DECREF(sequence);
+        return false;
+    }
+    out.assign(symft::bit_word_count(nbits), 0);
+    PyObject** items = PySequence_Fast_ITEMS(sequence);
+    for (Py_ssize_t idx = 0; idx < size; ++idx) {
+        const int value = PyObject_IsTrue(items[idx]);
+        if (value < 0) {
+            Py_DECREF(sequence);
+            return false;
+        }
+        if (value != 0) {
+            symft::set_packed_bit(out, static_cast<int>(idx));
+        }
+    }
+    Py_DECREF(sequence);
+    return true;
+}
+
+bool make_py_reference_options(
+    const symft::QuantumCircuit& circuit,
+    int reference_sample,
+    PyObject* expected_detectors_object,
+    PyObject* expected_observables_object,
+    PyReferenceSamplingOptions& options) {
+    options.reference_sample = reference_sample != 0;
+    bool expected_detectors_provided = false;
+    bool expected_observables_provided = false;
+    if (!bool_sequence_to_packed_bits(
+            expected_detectors_object,
+            static_cast<int>(circuit.detectors.size()),
+            "expected_detectors",
+            options.expected_detector_words,
+            expected_detectors_provided) ||
+        !bool_sequence_to_packed_bits(
+            expected_observables_object,
+            num_observables(circuit),
+            "expected_observables",
+            options.expected_observable_words,
+            expected_observables_provided)) {
+        return false;
+    }
+    if (options.reference_sample && (expected_detectors_provided || expected_observables_provided)) {
+        PyErr_SetString(
+            PyExc_ValueError,
+            "reference_sample cannot be combined with expected_detectors or expected_observables");
+        return false;
+    }
+    options.reference_normalized =
+        options.reference_sample || expected_detectors_provided || expected_observables_provided;
     return true;
 }
 
@@ -380,7 +471,8 @@ PyObject* doubles_to_numpy(const std::vector<std::vector<double>>& rows, int wid
 std::vector<std::vector<std::uint64_t>> sample_detector_words_single_shot(
     const symft::FactoredInstructionProgram& program,
     int shots,
-    std::uint64_t seed) {
+    std::uint64_t seed,
+    const std::vector<std::uint64_t>& expected_detector_words = {}) {
     symft::FactoredExecutorState runtime(program, seed);
     std::vector<std::vector<std::uint64_t>> out;
     out.reserve(static_cast<std::size_t>(shots));
@@ -388,9 +480,62 @@ std::vector<std::vector<std::uint64_t>> sample_detector_words_single_shot(
         (void)shot;
         symft::reset_executor(runtime, program);
         symft::execute_in_place(runtime, program);
+        if (!expected_detector_words.empty()) {
+            for (std::size_t word = 0; word < runtime.detector_words.size(); ++word) {
+                runtime.detector_words[word] ^= expected_detector_words[word];
+            }
+        }
         out.push_back(runtime.detector_words);
     }
     return out;
+}
+
+std::vector<std::uint64_t> detector_reference_words(const symft::FactoredInstructionProgram& program) {
+    symft::CircuitSamplingInput input;
+    input.program = program;
+    input = symft::with_reference_sample(std::move(input));
+    return std::move(input.expected_detector_words);
+}
+
+PyObject* packed_bits_to_tuple(const std::vector<std::uint64_t>& words, int nbits) {
+    PyObject* tuple = PyTuple_New(static_cast<Py_ssize_t>(nbits));
+    if (tuple == nullptr) {
+        return nullptr;
+    }
+    for (int bit = 0; bit < nbits; ++bit) {
+        const bool value_bit =
+            static_cast<std::size_t>(bit >> 6) < words.size() &&
+            symft::packed_bit(words, bit);
+        PyObject* value = PyBool_FromLong(value_bit);
+        if (value == nullptr) {
+            Py_DECREF(tuple);
+            return nullptr;
+        }
+        PyTuple_SET_ITEM(tuple, static_cast<Py_ssize_t>(bit), value);
+    }
+    return tuple;
+}
+
+PyObject* reference_sample_to_dict(
+    const symft::CircuitSamplingInput& input,
+    int ndetectors,
+    int nobservables) {
+    PyObject* dict = PyDict_New();
+    if (dict == nullptr) {
+        return nullptr;
+    }
+    if (!dict_set_owned(
+            dict,
+            "detectors",
+            packed_bits_to_tuple(input.expected_detector_words, ndetectors)) ||
+        !dict_set_owned(
+            dict,
+            "observables",
+            packed_bits_to_tuple(input.expected_observable_words, nobservables))) {
+        Py_DECREF(dict);
+        return nullptr;
+    }
+    return dict;
 }
 
 std::vector<std::vector<std::uint64_t>> sample_measurement_words(
@@ -477,6 +622,7 @@ PyObject* info_to_dict(const symft::CircuitSamplingInfo& info) {
         !dict_set_owned(dict, "threads", PyLong_FromLong(info.threads)) ||
         !dict_set_owned(dict, "active_components", PyBool_FromLong(info.active_components)) ||
         !dict_set_owned(dict, "detector_postselection", PyBool_FromLong(info.detector_postselection)) ||
+        !dict_set_owned(dict, "reference_normalized", PyBool_FromLong(info.reference_normalized)) ||
         !dict_set_owned(
             dict,
             "batch_mask_threshold_denominator",
@@ -552,6 +698,7 @@ PyObject* create_counts_sampler(
     int use_batch,
     int use_cuda,
     const symft::CircuitSamplingOptions& options,
+    const PyReferenceSamplingOptions& reference_options,
     const PyCudaSamplingOptions& cuda_options) {
 #ifndef SYMFT_CPP_ENABLE_CUDA
     if (use_cuda) {
@@ -561,6 +708,12 @@ PyObject* create_counts_sampler(
         return nullptr;
     }
 #endif
+    if (use_cuda && reference_options.reference_normalized) {
+        PyErr_SetString(
+            SymFTError,
+            "reference-normalized counts are not supported by the CUDA backend yet");
+        return nullptr;
+    }
 
     auto* self = reinterpret_cast<PyCompiledCountsSampler*>(
         CompiledCountsSamplerType.tp_alloc(&CompiledCountsSamplerType, 0));
@@ -583,6 +736,13 @@ PyObject* create_counts_sampler(
     try {
         AllowThreads allow;
         symft::CircuitSamplingInput input = symft::make_stim_circuit_sampling_input(circuit, options);
+        if (reference_options.reference_sample) {
+            input = symft::with_reference_sample(std::move(input));
+        } else if (reference_options.reference_normalized) {
+            input.expected_detector_words = reference_options.expected_detector_words;
+            input.expected_observable_words = reference_options.expected_observable_words;
+            input.reference_normalized = true;
+        }
         if (use_cuda) {
 #ifdef SYMFT_CPP_ENABLE_CUDA
             self->cuda = new symft::cuda::PreparedCircuitCudaSampler(
@@ -743,6 +903,9 @@ PyObject* Circuit_compile_counts_sampler(PyCircuit* self, PyObject* args, PyObje
     int use_batch = 1;
     long long observable_value = 0;
     int postselect_detectors = 0;
+    int reference_sample = 0;
+    PyObject* expected_detectors_object = Py_None;
+    PyObject* expected_observables_object = Py_None;
     long long batch_size_value = 0;
     long long sample_chunk_value = 0;
     long long threads_value = 1;
@@ -755,6 +918,9 @@ PyObject* Circuit_compile_counts_sampler(PyCircuit* self, PyObject* args, PyObje
         "batch",
         "observable",
         "postselect_detectors",
+        "reference_sample",
+        "expected_detectors",
+        "expected_observables",
         "batch_size",
         "sample_chunk_shots",
         "threads",
@@ -767,11 +933,14 @@ PyObject* Circuit_compile_counts_sampler(PyCircuit* self, PyObject* args, PyObje
     if (!PyArg_ParseTupleAndKeywords(
             args,
             kwargs,
-            "|pLpLLLLpOLL:compile_counts_sampler",
+            "|pLppOOLLLLpOLL:compile_counts_sampler",
             const_cast<char**>(kwlist),
             &use_batch,
             &observable_value,
             &postselect_detectors,
+            &reference_sample,
+            &expected_detectors_object,
+            &expected_observables_object,
             &batch_size_value,
             &sample_chunk_value,
             &threads_value,
@@ -800,6 +969,16 @@ PyObject* Circuit_compile_counts_sampler(PyCircuit* self, PyObject* args, PyObje
         return nullptr;
     }
 
+    PyReferenceSamplingOptions reference_options;
+    if (!make_py_reference_options(
+            *self->circuit,
+            reference_sample,
+            expected_detectors_object,
+            expected_observables_object,
+            reference_options)) {
+        return nullptr;
+    }
+
     PyCudaSamplingOptions cuda_options;
     if (!make_py_cuda_options(
             postselect_detectors,
@@ -817,7 +996,13 @@ PyObject* Circuit_compile_counts_sampler(PyCircuit* self, PyObject* args, PyObje
         batch_size,
         threshold,
         threads);
-    return create_counts_sampler(*self->circuit, use_batch, use_cuda, options, cuda_options);
+    return create_counts_sampler(
+        *self->circuit,
+        use_batch,
+        use_cuda,
+        options,
+        reference_options,
+        cuda_options);
 }
 
 PyObject* Circuit_sample(PyCircuit* self, PyObject* args, PyObject* kwargs) {
@@ -988,6 +1173,9 @@ PyObject* Circuit_sample_counts(PyCircuit* self, PyObject* args, PyObject* kwarg
     int use_batch = 1;
     long long observable_value = 0;
     int postselect_detectors = 0;
+    int reference_sample = 0;
+    PyObject* expected_detectors_object = Py_None;
+    PyObject* expected_observables_object = Py_None;
     long long batch_size_value = 0;
     long long sample_chunk_value = 0;
     long long threads_value = 1;
@@ -1002,6 +1190,9 @@ PyObject* Circuit_sample_counts(PyCircuit* self, PyObject* args, PyObject* kwarg
         "batch",
         "observable",
         "postselect_detectors",
+        "reference_sample",
+        "expected_detectors",
+        "expected_observables",
         "batch_size",
         "sample_chunk_shots",
         "threads",
@@ -1014,13 +1205,16 @@ PyObject* Circuit_sample_counts(PyCircuit* self, PyObject* args, PyObject* kwarg
     if (!PyArg_ParseTupleAndKeywords(
             args,
             kwargs,
-            "|LKpLpLLLLpOLL:sample_counts",
+            "|LKpLppOOLLLLpOLL:sample_counts",
             const_cast<char**>(kwlist),
             &shots_value,
             &seed,
             &use_batch,
             &observable_value,
             &postselect_detectors,
+            &reference_sample,
+            &expected_detectors_object,
+            &expected_observables_object,
             &batch_size_value,
             &sample_chunk_value,
             &threads_value,
@@ -1051,6 +1245,16 @@ PyObject* Circuit_sample_counts(PyCircuit* self, PyObject* args, PyObject* kwarg
         return nullptr;
     }
 
+    PyReferenceSamplingOptions reference_options;
+    if (!make_py_reference_options(
+            *self->circuit,
+            reference_sample,
+            expected_detectors_object,
+            expected_observables_object,
+            reference_options)) {
+        return nullptr;
+    }
+
     PyCudaSamplingOptions cuda_options;
     if (!make_py_cuda_options(
             postselect_detectors,
@@ -1068,7 +1272,13 @@ PyObject* Circuit_sample_counts(PyCircuit* self, PyObject* args, PyObject* kwarg
         batch_size,
         threshold,
         threads);
-    PyObject* sampler_object = create_counts_sampler(*self->circuit, use_batch, use_cuda, options, cuda_options);
+    PyObject* sampler_object = create_counts_sampler(
+        *self->circuit,
+        use_batch,
+        use_cuda,
+        options,
+        reference_options,
+        cuda_options);
     if (sampler_object == nullptr) {
         return nullptr;
     }
@@ -1097,15 +1307,25 @@ PyObject* Circuit_sample_detectors(PyCircuit* self, PyObject* args, PyObject* kw
     long long shots_value = 1;
     unsigned long long seed = 1;
     int bit_packed = 0;
-    static const char* kwlist[] = {"shots", "seed", "bit_packed", nullptr};
+    int reference_sample = 0;
+    PyObject* expected_detectors_object = Py_None;
+    static const char* kwlist[] = {
+        "shots",
+        "seed",
+        "bit_packed",
+        "reference_sample",
+        "expected_detectors",
+        nullptr};
     if (!PyArg_ParseTupleAndKeywords(
             args,
             kwargs,
-            "|LKp:sample_detectors",
+            "|LKppO:sample_detectors",
             const_cast<char**>(kwlist),
             &shots_value,
             &seed,
-            &bit_packed)) {
+            &bit_packed,
+            &reference_sample,
+            &expected_detectors_object)) {
         return nullptr;
     }
 
@@ -1117,17 +1337,49 @@ PyObject* Circuit_sample_detectors(PyCircuit* self, PyObject* args, PyObject* kw
     int ndetectors = 0;
     std::vector<std::vector<std::uint64_t>> rows;
     try {
+        PyReferenceSamplingOptions reference_options;
+        if (!make_py_reference_options(
+                *self->circuit,
+                reference_sample,
+                expected_detectors_object,
+                Py_None,
+                reference_options)) {
+            return nullptr;
+        }
         AllowThreads allow;
         symft::FactoredInstructionProgram program = make_program_from_circuit(*self->circuit);
         ndetectors = program.ndetectors;
+        std::vector<std::uint64_t> expected_detector_words =
+            reference_options.reference_sample
+                ? detector_reference_words(program)
+                : std::move(reference_options.expected_detector_words);
         rows = sample_detector_words_single_shot(
             program,
             shots,
-            static_cast<std::uint64_t>(seed));
+            static_cast<std::uint64_t>(seed),
+            expected_detector_words);
     } catch (...) {
         return set_cpp_exception_null();
     }
     return words_to_numpy(rows, ndetectors, bit_packed != 0);
+}
+
+PyObject* Circuit_reference_sample(PyCircuit* self, PyObject*) {
+    symft::CircuitSamplingInput input;
+    try {
+        {
+            AllowThreads allow;
+            symft::CircuitSamplingOptions options;
+            input = symft::make_stim_circuit_sampling_input(*self->circuit, options);
+            input = symft::with_reference_sample(std::move(input));
+        }
+    } catch (...) {
+        return set_cpp_exception_null();
+    }
+    return reference_sample_to_dict(
+        input,
+        static_cast<int>(self->circuit->detectors.size()),
+        num_observables(*self->circuit));
 }
 
 PyObject* Circuit_get_num_qubits(PyCircuit* self, void*) {
@@ -1393,15 +1645,25 @@ PyObject* CompiledMeasurementSampler_sample_detectors(
     long long shots_value = 1;
     unsigned long long seed = 1;
     int bit_packed = 0;
-    static const char* kwlist[] = {"shots", "seed", "bit_packed", nullptr};
+    int reference_sample = 0;
+    PyObject* expected_detectors_object = Py_None;
+    static const char* kwlist[] = {
+        "shots",
+        "seed",
+        "bit_packed",
+        "reference_sample",
+        "expected_detectors",
+        nullptr};
     if (!PyArg_ParseTupleAndKeywords(
             args,
             kwargs,
-            "|LKp:sample_detectors",
+            "|LKppO:sample_detectors",
             const_cast<char**>(kwlist),
             &shots_value,
             &seed,
-            &bit_packed)) {
+            &bit_packed,
+            &reference_sample,
+            &expected_detectors_object)) {
         return nullptr;
     }
 
@@ -1416,11 +1678,31 @@ PyObject* CompiledMeasurementSampler_sample_detectors(
             PyErr_SetString(PyExc_NotImplementedError, "CUDA compiled samplers do not expose detector records");
             return nullptr;
         }
+        bool expected_detectors_provided = false;
+        std::vector<std::uint64_t> expected_detector_words;
+        if (!bool_sequence_to_packed_bits(
+                expected_detectors_object,
+                self->program->ndetectors,
+                "expected_detectors",
+                expected_detector_words,
+                expected_detectors_provided)) {
+            return nullptr;
+        }
+        if (reference_sample != 0 && expected_detectors_provided) {
+            PyErr_SetString(
+                PyExc_ValueError,
+                "reference_sample cannot be combined with expected_detectors");
+            return nullptr;
+        }
         AllowThreadsWithLock allow(self->lock);
+        if (reference_sample != 0) {
+            expected_detector_words = detector_reference_words(*self->program);
+        }
         rows = sample_detector_words_single_shot(
             *self->program,
             shots,
-            static_cast<std::uint64_t>(seed));
+            static_cast<std::uint64_t>(seed),
+            expected_detector_words);
     } catch (...) {
         return set_cpp_exception_null();
     }
@@ -1636,9 +1918,10 @@ PyMethodDef Circuit_methods[] = {
         reinterpret_cast<PyCFunction>(Circuit_compile_counts_sampler),
         METH_VARARGS | METH_KEYWORDS,
         "compile_counts_sampler($self, /, batch=True, observable=0, "
-        "postselect_detectors=False, batch_size=0, sample_chunk_shots=0, "
-        "threads=1, batch_mask_threshold_denominator=2, cuda=False, "
-        "cuda_mode='gpu', shots_per_launch=0, threads_per_block=0)\n"
+        "postselect_detectors=False, reference_sample=False, "
+        "expected_detectors=None, expected_observables=None, batch_size=0, "
+        "sample_chunk_shots=0, threads=1, batch_mask_threshold_denominator=2, "
+        "cuda=False, cuda_mode='gpu', shots_per_launch=0, threads_per_block=0)\n"
         "--\n\n"
         "Compile a reusable detector/logical-error counts sampler.\n\n"
         "Set cuda=True to use the CUDA counts backend when this extension was "
@@ -1673,9 +1956,10 @@ PyMethodDef Circuit_methods[] = {
         reinterpret_cast<PyCFunction>(Circuit_sample_counts),
         METH_VARARGS | METH_KEYWORDS,
         "sample_counts($self, /, shots=1, seed=1, batch=True, observable=0, "
-        "postselect_detectors=False, batch_size=0, sample_chunk_shots=0, "
-        "threads=1, batch_mask_threshold_denominator=2, cuda=False, "
-        "cuda_mode='gpu', shots_per_launch=0, threads_per_block=0)\n"
+        "postselect_detectors=False, reference_sample=False, "
+        "expected_detectors=None, expected_observables=None, batch_size=0, "
+        "sample_chunk_shots=0, threads=1, batch_mask_threshold_denominator=2, "
+        "cuda=False, cuda_mode='gpu', shots_per_launch=0, threads_per_block=0)\n"
         "--\n\n"
         "Sample detector and logical-observable summary counts.\n\n"
         "Set cuda=True to use the CUDA counts backend when available. Returns "
@@ -1686,11 +1970,20 @@ PyMethodDef Circuit_methods[] = {
         "sample_detectors",
         reinterpret_cast<PyCFunction>(Circuit_sample_detectors),
         METH_VARARGS | METH_KEYWORDS,
-        "sample_detectors($self, /, shots=1, seed=1, bit_packed=False)\n"
+        "sample_detectors($self, /, shots=1, seed=1, bit_packed=False, "
+        "reference_sample=False, expected_detectors=None)\n"
         "--\n\n"
         "Sample detector records into a two-dimensional NumPy array.\n\n"
         "The shape is (shots, num_detectors). With bit_packed=True, "
         "the dtype is uint8 and detector 0 is the low bit of byte 0.",
+    },
+    {
+        "reference_sample",
+        reinterpret_cast<PyCFunction>(Circuit_reference_sample),
+        METH_NOARGS,
+        "reference_sample($self, /)\n"
+        "--\n\n"
+        "Return noiseless reference detector and observable parity vectors.",
     },
     {nullptr, nullptr, 0, nullptr},
 };
@@ -1752,7 +2045,8 @@ PyMethodDef CompiledMeasurementSampler_methods[] = {
         "sample_detectors",
         reinterpret_cast<PyCFunction>(CompiledMeasurementSampler_sample_detectors),
         METH_VARARGS | METH_KEYWORDS,
-        "sample_detectors($self, /, shots=1, seed=1, bit_packed=False)\n"
+        "sample_detectors($self, /, shots=1, seed=1, bit_packed=False, "
+        "reference_sample=False, expected_detectors=None)\n"
         "--\n\n"
         "Sample detector records using the compiled program.",
     },

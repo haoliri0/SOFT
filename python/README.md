@@ -271,6 +271,8 @@ detectors = circuit.sample_detectors(
     shots=1000,
     seed=1,
     bit_packed=False,
+    reference_sample=False,
+    expected_detectors=None,
 )
 ```
 
@@ -278,6 +280,14 @@ The regular output shape is `(shots, circuit.num_detectors)` with dtype
 `numpy.bool_`. `True` means the corresponding detector fired in that shot. The
 bit-packing rules are the same as measurement records, with column width
 `ceil(num_detectors / 8)`.
+
+By default detector output is raw detector parity. Pass
+`reference_sample=True` to XOR each detector with SymFT's noiseless reference
+sample, or pass `expected_detectors=[...]` to provide the reference bits
+explicitly.
+
+Use `circuit.reference_sample()` to obtain both full reference vectors as
+`{"detectors": (...), "observables": (...)}`.
 
 `sample_detectors` uses the single-shot detector execution path and does not
 accept `batch`, `batch_size`, or `threads`. Use `sample_counts` when high
@@ -294,6 +304,9 @@ circuit.sample_counts(
     batch=True,
     observable=0,
     postselect_detectors=False,
+    reference_sample=False,
+    expected_detectors=None,
+    expected_observables=None,
     batch_size=0,
     sample_chunk_shots=0,
     threads=1,
@@ -309,6 +322,14 @@ For each shot, any detector firing contributes to `discarded`; otherwise the
 shot contributes to `accepted`. All `OBSERVABLE_INCLUDE` records for the
 selected `observable` are combined by XOR parity, and accepted shots with parity
 1 contribute to `logical_errors`.
+
+The counts sampler uses raw detector and observable parity by default.
+`reference_sample=True` computes a noiseless reference sample and XORs detector
+and selected-observable outcomes with that reference before postselection and
+logical-error classification. Alternatively, provide Clifft-style explicit
+reference vectors using `expected_detectors=[...]` and/or
+`expected_observables=[...]`; `expected_observables` is indexed by observable
+id, not by `OBSERVABLE_INCLUDE` instruction.
 
 Returned dictionary:
 
@@ -341,6 +362,9 @@ sampler = circuit.compile_counts_sampler(cuda=True, cuda_mode="gpu")
 `"gpu_on_demand_expressions"`, or `"gpu_lazy"`. `shots_per_launch=0` and
 `threads_per_block=0` use the CUDA backend defaults. If CUDA support was not
 compiled in, `cuda=True` raises `SymFTError`.
+Reference-normalized counts are currently supported by the CPU single-shot and
+batch backends; `cuda=True` rejects them instead of silently returning raw
+counts.
 
 ```python
 import math
@@ -550,6 +574,9 @@ Circuit.compile_counts_sampler(
     batch=True,
     observable=0,
     postselect_detectors=False,
+    reference_sample=False,
+    expected_detectors=None,
+    expected_observables=None,
     batch_size=0,
     sample_chunk_shots=0,
     threads=1,
@@ -575,6 +602,9 @@ Circuit.sample_counts(
     batch=True,
     observable=0,
     postselect_detectors=False,
+    reference_sample=False,
+    expected_detectors=None,
+    expected_observables=None,
     batch_size=0,
     sample_chunk_shots=0,
     threads=1,
@@ -586,8 +616,11 @@ Circuit.sample_counts(
 ) -> dict
 
 Circuit.sample_detectors(
-    shots=1, seed=1, bit_packed=False
+    shots=1, seed=1, bit_packed=False,
+    reference_sample=False, expected_detectors=None
 ) -> numpy.ndarray
+
+Circuit.reference_sample() -> dict
 ```
 
 Read-only properties: `num_qubits`, `num_measurements`, `num_detectors`,
@@ -597,7 +630,10 @@ Read-only properties: `num_qubits`, `num_measurements`, `num_detectors`,
 
 ```python
 sampler.sample(shots=1, seed=1, bit_packed=False) -> numpy.ndarray
-sampler.sample_detectors(shots=1, seed=1, bit_packed=False) -> numpy.ndarray
+sampler.sample_detectors(
+    shots=1, seed=1, bit_packed=False,
+    reference_sample=False, expected_detectors=None
+) -> numpy.ndarray
 ```
 
 Read-only properties: `num_qubits`, `num_measurements`, `num_detectors`, and

@@ -1,5 +1,5 @@
 from os import PathLike
-from typing import List, Optional, Tuple, TypedDict, Union
+from typing import List, Optional, Sequence, Tuple, TypedDict, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -40,6 +40,11 @@ class CountsResult(TypedDict):
     timing: Timing
 
 
+class ReferenceSample(TypedDict):
+    detectors: Tuple[bool, ...]
+    observables: Tuple[bool, ...]
+
+
 class CountsSamplerInfo(TypedDict):
     num_qubits: int
     num_measurements: int
@@ -52,6 +57,7 @@ class CountsSamplerInfo(TypedDict):
     threads: int
     active_components: bool
     detector_postselection: bool
+    reference_normalized: bool
     batch_mask_threshold_denominator: int
     backend: str
 
@@ -96,6 +102,9 @@ class Circuit:
         batch: bool = ...,
         observable: int = ...,
         postselect_detectors: bool = ...,
+        reference_sample: bool = ...,
+        expected_detectors: Optional[Sequence[bool]] = ...,
+        expected_observables: Optional[Sequence[bool]] = ...,
         batch_size: int = ...,
         sample_chunk_shots: int = ...,
         threads: int = ...,
@@ -132,6 +141,9 @@ class Circuit:
         batch: bool = ...,
         observable: int = ...,
         postselect_detectors: bool = ...,
+        reference_sample: bool = ...,
+        expected_detectors: Optional[Sequence[bool]] = ...,
+        expected_observables: Optional[Sequence[bool]] = ...,
         batch_size: int = ...,
         sample_chunk_shots: int = ...,
         threads: int = ...,
@@ -146,7 +158,10 @@ class Circuit:
         shots: int = ...,
         seed: int = ...,
         bit_packed: bool = ...,
+        reference_sample: bool = ...,
+        expected_detectors: Optional[Sequence[bool]] = ...,
     ) -> Union[BoolSamples, PackedSamples]: ...
+    def reference_sample(self) -> ReferenceSample: ...
 
 
 class CompiledMeasurementSampler:
@@ -165,6 +180,8 @@ class CompiledMeasurementSampler:
         shots: int = ...,
         seed: int = ...,
         bit_packed: bool = ...,
+        reference_sample: bool = ...,
+        expected_detectors: Optional[Sequence[bool]] = ...,
     ) -> Union[BoolSamples, PackedSamples]: ...
     def sample_with_expectations(
         self,

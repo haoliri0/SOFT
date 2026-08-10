@@ -22,6 +22,28 @@ class DetectorSamplingTest(unittest.TestCase):
 
         self.assertTrue(np.all(detectors))
 
+    def test_reference_sample_normalizes_fired_detector(self):
+        circuit = symft.Circuit("X 0\nM 0\nDETECTOR rec[-1]\n")
+
+        detectors = circuit.sample_detectors(
+            shots=5,
+            seed=1,
+            reference_sample=True,
+        )
+
+        self.assertFalse(np.any(detectors))
+
+    def test_explicit_expected_detectors_normalize_fired_detector(self):
+        circuit = symft.Circuit("X 0\nM 0\nDETECTOR rec[-1]\n")
+
+        detectors = circuit.sample_detectors(
+            shots=5,
+            seed=1,
+            expected_detectors=[True],
+        )
+
+        self.assertFalse(np.any(detectors))
+
     def test_compiled_detector_sampler(self):
         circuit = symft.Circuit("X 0\nM 0\nDETECTOR rec[-1]\n")
         sampler = circuit.compile_sampler()
@@ -30,6 +52,19 @@ class DetectorSamplingTest(unittest.TestCase):
 
         self.assertEqual(detectors.shape, (4, circuit.num_detectors))
         self.assertTrue(np.all(detectors))
+
+    def test_compiled_detector_sampler_reference_sample(self):
+        circuit = symft.Circuit("X 0\nM 0\nDETECTOR rec[-1]\n")
+        sampler = circuit.compile_sampler()
+
+        detectors = sampler.sample_detectors(
+            shots=4,
+            seed=2,
+            reference_sample=True,
+        )
+
+        self.assertEqual(detectors.shape, (4, circuit.num_detectors))
+        self.assertFalse(np.any(detectors))
 
     def test_bit_packed_detector_output_spans_multiple_bytes(self):
         text = "X 0\nM 0\n" + "\n".join("DETECTOR rec[-1]" for _ in range(9))

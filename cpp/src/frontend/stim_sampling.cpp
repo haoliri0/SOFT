@@ -145,11 +145,14 @@ CircuitSamplingInput make_stim_circuit_sampling_input(
         std::move(detectors),
         circuit.observables};
     auto program = plan_stim_factored_program(parsed);
+    auto observable_records = observable_records_by_index(parsed.observables);
     return make_circuit_sampling_input(
         std::move(program),
         logical_records_for_observable(parsed.observables, options.observable),
         options.observable,
-        static_cast<int>(parsed.observables.size()));
+        static_cast<int>(parsed.observables.size()),
+        static_cast<int>(observable_records.size()),
+        std::move(observable_records));
 }
 
 CircuitSamplingInput make_stim_circuit_sampling_input_from_file(
