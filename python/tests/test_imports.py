@@ -32,6 +32,8 @@ class ImportApiTest(unittest.TestCase):
         self.assertEqual(str(inspect.signature(symft.Circuit)), "(text=None, path=None)")
         self.assertIn("shots=1", str(inspect.signature(symft.Circuit.sample)))
         self.assertIn("cuda=False", str(inspect.signature(symft.Circuit.sample_counts)))
+        circuit = symft.Circuit("M 0\n")
+        self.assertEqual(str(inspect.signature(circuit.reference_sample)), "()")
         self.assertIn("cuda_mode='gpu'", str(inspect.signature(symft.Circuit.compile_counts_sampler)))
         self.assertIn("stream_id=None", str(inspect.signature(symft.CompiledCountsSampler.sample)))
 

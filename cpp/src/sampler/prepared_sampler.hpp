@@ -49,6 +49,7 @@ struct CircuitSamplingInfo {
     int threads = 1;
     bool active_components = false;
     bool detector_postselection = false;
+    bool reference_normalized = false;
     int batch_mask_threshold_denominator = 0;
 };
 
@@ -61,8 +62,13 @@ struct CircuitSamplingRunResult {
 struct CircuitSamplingInput {
     FactoredInstructionProgram program;
     std::vector<std::vector<int>> logical_records;
+    std::vector<std::vector<std::vector<int>>> observable_records;
+    std::vector<std::uint64_t> expected_detector_words;
+    std::vector<std::uint64_t> expected_observable_words;
     int observable = 0;
+    int observables = 0;
     int observable_includes = 0;
+    bool reference_normalized = false;
     CircuitSamplingTiming preprocessing_timing;
 };
 
@@ -94,6 +100,10 @@ class PreparedCircuitSingleShotSampler {
     CircuitSamplingOptions options_;
     FactoredInstructionProgram program_;
     std::vector<std::vector<int>> logical_records_;
+    std::vector<std::uint64_t> expected_detector_words_;
+    std::vector<std::uint64_t> expected_observable_words_;
+    bool expected_observable_ = false;
+    bool reference_normalized_ = false;
     CircuitSamplingInfo info_;
     CircuitSamplingTiming preprocessing_timing_;
     PresampledExpressionPlan expression_plan_;
@@ -131,6 +141,10 @@ class PreparedCircuitBatchSampler {
     CircuitSamplingOptions options_;
     FactoredInstructionProgram program_;
     std::vector<std::vector<int>> logical_records_;
+    std::vector<std::uint64_t> expected_detector_words_;
+    std::vector<std::uint64_t> expected_observable_words_;
+    bool expected_observable_ = false;
+    bool reference_normalized_ = false;
     CircuitSamplingInfo info_;
     CircuitSamplingTiming preprocessing_timing_;
     PresampledExpressionPlan expression_plan_;
@@ -142,11 +156,19 @@ class PreparedCircuitBatchSampler {
 std::vector<std::vector<int>> logical_records_for_observable(
     const std::vector<CircuitObservableInclude>& observables,
     int observable);
+std::vector<std::vector<std::vector<int>>> observable_records_by_index(
+    const std::vector<CircuitObservableInclude>& observables);
+CircuitSamplingInput with_reference_sample(CircuitSamplingInput input);
 CircuitSamplingInput make_circuit_sampling_input(
     FactoredInstructionProgram program,
     std::vector<std::vector<int>> logical_records = {},
     int observable = 0,
     int observable_includes = 0,
+    int observables = 0,
+    std::vector<std::vector<std::vector<int>>> observable_records = {},
+    std::vector<std::uint64_t> expected_detector_words = {},
+    std::vector<std::uint64_t> expected_observable_words = {},
+    bool reference_normalized = false,
     CircuitSamplingTiming preprocessing_timing = {});
 
 } // namespace symft

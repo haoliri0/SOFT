@@ -158,6 +158,14 @@ bool detector_outcome_from_runtime(
     return eval_symbolic_bool_unchecked(instruction.outcome_plan, runtime);
 }
 
+bool expected_detector_bit(
+    const std::vector<std::uint64_t>* expected_detector_words,
+    const RecordDetector& instruction) {
+    return expected_detector_words != nullptr &&
+           !expected_detector_words->empty() &&
+           packed_bit(*expected_detector_words, instruction.detector - 1);
+}
+
 int normalize_single_shot_sample_chunk_shots(int sample_chunk_shots) {
     if (sample_chunk_shots < 0) {
         fail("single-shot sample chunk count must be nonnegative");
@@ -1142,13 +1150,20 @@ void execute_component_instruction_presampled(
 }
 
 template <typename Instruction>
-bool execute_instruction_postselected(FactoredExecutorState& runtime, const Instruction& instruction) {
+bool execute_instruction_postselected(
+    FactoredExecutorState& runtime,
+    const Instruction& instruction,
+    const std::vector<std::uint64_t>*) {
     execute_instruction(runtime, instruction);
     return true;
 }
 
-bool execute_instruction_postselected(FactoredExecutorState& runtime, const RecordDetector& instruction) {
-    return !detector_outcome_from_runtime(runtime, instruction);
+bool execute_instruction_postselected(
+    FactoredExecutorState& runtime,
+    const RecordDetector& instruction,
+    const std::vector<std::uint64_t>* expected_detector_words) {
+    const bool outcome = detector_outcome_from_runtime(runtime, instruction);
+    return outcome == expected_detector_bit(expected_detector_words, instruction);
 }
 
 template <typename Instruction>
@@ -1156,7 +1171,8 @@ bool execute_instruction_postselected(
     FactoredExecutorState& runtime,
     const Instruction& instruction,
     const SingleShotExpressionEvaluator& evaluator,
-    std::size_t instruction_index) {
+    std::size_t instruction_index,
+    const std::vector<std::uint64_t>*) {
     execute_instruction_presampled(runtime, instruction, evaluator, instruction_index);
     return true;
 }
@@ -1165,11 +1181,12 @@ bool execute_instruction_postselected(
     FactoredExecutorState& runtime,
     const RecordDetector& instruction,
     const SingleShotExpressionEvaluator& evaluator,
-    std::size_t instruction_index) {
+    std::size_t instruction_index,
+    const std::vector<std::uint64_t>* expected_detector_words) {
     const bool outcome = !instruction.records.empty() || instruction.outcome.conditions.empty()
                              ? detector_outcome_from_runtime(runtime, instruction)
                              : evaluator.eval(instruction_index, runtime);
-    return !outcome;
+    return outcome == expected_detector_bit(expected_detector_words, instruction);
 }
 
 } // namespace
@@ -1342,7 +1359,8 @@ bool execute_postselected_in_place(
     FactoredExecutorState& runtime,
     const FactoredInstructionProgram& program,
     const PresampledExogenous& samples,
-    int shot_index) {
+    int shot_index,
+    const std::vector<std::uint64_t>* expected_detector_words) {
     if (runtime.n != program.n || runtime.k + runtime.ndormant != runtime.n) {
         fail("executor state does not match program");
     }
@@ -1351,7 +1369,10 @@ bool execute_postselected_in_place(
         for (std::size_t idx = 0; idx < program.instructions.size(); ++idx) {
             const bool survived = std::visit(
                 [&](const auto& inst) {
-                    return execute_instruction_postselected(runtime, inst);
+                    return execute_instruction_postselected(
+                        runtime,
+                        inst,
+                        expected_detector_words);
                 },
                 program.instructions[idx]);
             if (!survived) {
@@ -1368,7 +1389,10 @@ bool execute_postselected_in_place(
         } else {
             survived = std::visit(
                 [&](const auto& inst) {
-                    return execute_instruction_postselected(runtime, inst);
+                    return execute_instruction_postselected(
+                        runtime,
+                        inst,
+                        expected_detector_words);
                 },
                 program.instructions[idx]);
         }
@@ -1384,7 +1408,8 @@ bool execute_postselected_in_place(
     const FactoredInstructionProgram& program,
     const PresampledExpressionPlan& expression_plan,
     const PresampledExpressionBlock& expression_block,
-    int shot_index) {
+    int shot_index,
+    const std::vector<std::uint64_t>* expected_detector_words) {
     if (runtime.n != program.n || runtime.k + runtime.ndormant != runtime.n) {
         fail("executor state does not match program");
     }
@@ -1403,7 +1428,8 @@ bool execute_postselected_in_place(
                         runtime,
                         inst,
                         evaluator,
-                        idx);
+                        idx,
+                        expected_detector_words);
                 },
                 program.instructions[idx]);
             if (!survived) {
@@ -1428,7 +1454,8 @@ bool execute_postselected_in_place(
                         runtime,
                         inst,
                         evaluator,
-                        idx);
+                        idx,
+                        expected_detector_words);
                 },
                 program.instructions[idx]);
         }

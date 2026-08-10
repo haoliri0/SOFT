@@ -67,6 +67,101 @@ class CountsSamplingTest(unittest.TestCase):
         self.assertEqual(result["discarded"], 8)
         self.assertEqual(result["accepted"], 0)
 
+    def test_reference_sample_normalizes_detector_postselection(self):
+        circuit = symft.Circuit("X 0\nM 0\nDETECTOR rec[-1]\n")
+
+        for batch in [False, True]:
+            with self.subTest(batch=batch):
+                result = circuit.sample_counts(
+                    shots=8,
+                    batch=batch,
+                    batch_size=4,
+                    postselect_detectors=True,
+                    reference_sample=True,
+                )
+
+                self.assertEqual(result["discarded"], 0)
+                self.assertEqual(result["accepted"], 8)
+
+    def test_reference_sample_normalizes_logical_observable(self):
+        circuit = symft.Circuit("X 0\nM 0\nOBSERVABLE_INCLUDE(0) rec[-1]\n")
+
+        raw = circuit.sample_counts(shots=5, batch=False)
+        normalized = circuit.sample_counts(
+            shots=5,
+            batch=False,
+            reference_sample=True,
+        )
+
+        self.assertEqual(raw["logical_errors"], 5)
+        self.assertEqual(normalized["logical_errors"], 0)
+
+    def test_reference_sample_reports_all_detector_and_observable_bits(self):
+        circuit = symft.Circuit(
+            "X 0\n"
+            "M 0\n"
+            "DETECTOR rec[-1]\n"
+            "OBSERVABLE_INCLUDE(0)\n"
+            "OBSERVABLE_INCLUDE(1) rec[-1]\n"
+        )
+
+        reference = circuit.reference_sample()
+
+        self.assertEqual(reference["detectors"], (True,))
+        self.assertEqual(reference["observables"], (False, True))
+
+    def test_full_expected_observable_vector_uses_selected_index(self):
+        circuit = symft.Circuit(
+            "X 0\nM 0\nOBSERVABLE_INCLUDE(0)\nOBSERVABLE_INCLUDE(1) rec[-1]\n"
+        )
+
+        raw = circuit.sample_counts(shots=4, observable=1, batch=True)
+        normalized = circuit.sample_counts(
+            shots=4,
+            observable=1,
+            batch=True,
+            expected_observables=[False, True],
+        )
+
+        self.assertEqual(raw["logical_errors"], 4)
+        self.assertEqual(normalized["logical_errors"], 0)
+
+    def test_reference_sample_uses_selected_observable_index(self):
+        circuit = symft.Circuit(
+            "X 0\nM 0\nOBSERVABLE_INCLUDE(0)\nOBSERVABLE_INCLUDE(1) rec[-1]\n"
+        )
+
+        for batch in [False, True]:
+            with self.subTest(batch=batch):
+                raw = circuit.sample_counts(shots=4, observable=1, batch=batch)
+                normalized = circuit.sample_counts(
+                    shots=4,
+                    observable=1,
+                    batch=batch,
+                    reference_sample=True,
+                )
+
+                self.assertEqual(raw["logical_errors"], 4)
+                self.assertEqual(normalized["logical_errors"], 0)
+
+    def test_explicit_expected_vectors_normalize_counts(self):
+        circuit = symft.Circuit(
+            "X 0\nM 0\nDETECTOR rec[-1]\nOBSERVABLE_INCLUDE(0) rec[-1]\n"
+        )
+
+        result = circuit.sample_counts(
+            shots=6,
+            batch=True,
+            batch_size=3,
+            postselect_detectors=True,
+            expected_detectors=[True],
+            expected_observables=[True],
+        )
+
+        self.assertEqual(result["discarded"], 0)
+        self.assertEqual(result["accepted"], 6)
+        self.assertEqual(result["logical_errors"], 0)
+
     def test_prepared_counts_sampler_reuse_and_info(self):
         circuit = symft.Circuit("M 0\n")
         sampler = circuit.compile_counts_sampler(
@@ -86,7 +181,14 @@ class CountsSamplingTest(unittest.TestCase):
         self.assertEqual(sampler.info["sample_chunk_shots"], 4)
         self.assertEqual(sampler.info["threads"], 1)
         self.assertEqual(sampler.info["backend"], "batch")
+        self.assertFalse(sampler.info["reference_normalized"])
         self.assertIn("sample_s", sampler.preprocessing_timing)
+
+    def test_prepared_counts_sampler_reports_reference_mode(self):
+        circuit = symft.Circuit("X 0\nM 0\nDETECTOR rec[-1]\n")
+        sampler = circuit.compile_counts_sampler(reference_sample=True)
+
+        self.assertTrue(sampler.info["reference_normalized"])
 
     def test_stream_id_reproducibility(self):
         circuit = symft.Circuit("H 0\nM 0\nOBSERVABLE_INCLUDE(0) rec[-1]\n")

@@ -93,15 +93,52 @@ bool record_parity(const std::vector<std::uint64_t>& words, const std::vector<in
     return parity;
 }
 
-void accumulate_accepted_single_counts(
-    CircuitSamplingCounts& counts,
+bool expected_detector_bit(const std::vector<std::uint64_t>& expected_detector_words, int detector_index) {
+    return !expected_detector_words.empty() && packed_bit(expected_detector_words, detector_index);
+}
+
+bool expected_observable_bit(const std::vector<std::uint64_t>& expected_observable_words, int observable) {
+    return observable >= 0 &&
+           !expected_observable_words.empty() &&
+           packed_bit(expected_observable_words, observable);
+}
+
+bool all_expected_detector_bits_are_zero(const std::vector<std::uint64_t>& expected_detector_words) {
+    return std::all_of(
+        expected_detector_words.begin(),
+        expected_detector_words.end(),
+        [](std::uint64_t word) { return word == 0; });
+}
+
+bool logical_observable_outcome(
     const std::vector<std::uint64_t>& measurement_words,
     const std::vector<std::vector<int>>& logical_records) {
-    ++counts.accepted;
     bool logical = false;
     for (const auto& records : logical_records) {
         logical ^= record_parity(measurement_words, records);
     }
+    return logical;
+}
+
+std::vector<std::uint64_t> observable_outcome_words(
+    const std::vector<std::uint64_t>& measurement_words,
+    const std::vector<std::vector<std::vector<int>>>& observable_records) {
+    std::vector<std::uint64_t> out(bit_word_count(static_cast<int>(observable_records.size())), 0);
+    for (std::size_t observable = 0; observable < observable_records.size(); ++observable) {
+        if (logical_observable_outcome(measurement_words, observable_records[observable])) {
+            set_packed_bit(out, static_cast<int>(observable));
+        }
+    }
+    return out;
+}
+
+void accumulate_accepted_single_counts(
+    CircuitSamplingCounts& counts,
+    const std::vector<std::uint64_t>& measurement_words,
+    const std::vector<std::vector<int>>& logical_records,
+    bool expected_observable) {
+    ++counts.accepted;
+    const bool logical = logical_observable_outcome(measurement_words, logical_records) != expected_observable;
     if (logical) {
         ++counts.logical_errors;
     }
@@ -112,28 +149,46 @@ void accumulate_single_counts(
     const std::vector<std::uint64_t>& measurement_words,
     const std::vector<std::uint64_t>& detector_words,
     int ndetectors,
-    const std::vector<std::vector<int>>& logical_records) {
+    const std::vector<std::vector<int>>& logical_records,
+    const std::vector<std::uint64_t>& expected_detector_words,
+    bool expected_observable) {
     for (int detector = 0; detector < ndetectors; ++detector) {
-        if (packed_bit(detector_words, detector)) {
+        if (packed_bit(detector_words, detector) != expected_detector_bit(expected_detector_words, detector)) {
             ++counts.discarded;
             return;
         }
     }
-    accumulate_accepted_single_counts(counts, measurement_words, logical_records);
+    accumulate_accepted_single_counts(counts, measurement_words, logical_records, expected_observable);
 }
 
 void accumulate_block_counts(
     CircuitSamplingCounts& counts,
     const BatchFactoredExecutorState& runtime,
     int block,
+    int ndetectors,
     const std::vector<std::vector<int>>& logical_records,
+    const std::vector<std::uint64_t>& expected_detector_words,
+    bool expected_observable,
     std::vector<std::uint64_t>& discard_bits,
     std::vector<std::uint64_t>& logical_bits,
     std::vector<std::uint64_t>& scratch) {
     const std::size_t stride_words = runtime.batch_words;
     const std::size_t nwords = batch_word_count(block);
-    for (std::size_t word = 0; word < nwords; ++word) {
-        discard_bits[word] = runtime.detector_any_words[word] & live_word_mask(block, word);
+    if (expected_detector_words.empty() || all_expected_detector_bits_are_zero(expected_detector_words)) {
+        for (std::size_t word = 0; word < nwords; ++word) {
+            discard_bits[word] = runtime.detector_any_words[word] & live_word_mask(block, word);
+        }
+    } else {
+        std::fill(discard_bits.begin(), discard_bits.begin() + static_cast<std::ptrdiff_t>(nwords), 0);
+        for (int detector = 0; detector < ndetectors; ++detector) {
+            const bool expected = expected_detector_bit(expected_detector_words, detector);
+            const std::size_t base = static_cast<std::size_t>(detector) * stride_words;
+            for (std::size_t word = 0; word < nwords; ++word) {
+                const std::uint64_t live = live_word_mask(block, word);
+                const std::uint64_t raw = runtime.detector_words[base + word];
+                discard_bits[word] |= (expected ? ~raw : raw) & live;
+            }
+        }
     }
 
     bool any_accepted = false;
@@ -145,7 +200,17 @@ void accumulate_block_counts(
         counts.discarded += static_cast<std::uint64_t>(popcount64(discarded_word));
         counts.accepted += static_cast<std::uint64_t>(popcount64(accepted_word));
     }
-    if (!any_accepted || logical_records.empty()) {
+    if (!any_accepted) {
+        return;
+    }
+    if (logical_records.empty()) {
+        if (expected_observable) {
+            for (std::size_t word = 0; word < nwords; ++word) {
+                const std::uint64_t live = live_word_mask(block, word);
+                const std::uint64_t accepted_word = (~discard_bits[word]) & live;
+                counts.logical_errors += static_cast<std::uint64_t>(popcount64(accepted_word));
+            }
+        }
         return;
     }
 
@@ -160,7 +225,9 @@ void accumulate_block_counts(
     for (std::size_t word = 0; word < nwords; ++word) {
         const std::uint64_t live = live_word_mask(block, word);
         const std::uint64_t accepted_word = (~discard_bits[word]) & live;
-        counts.logical_errors += static_cast<std::uint64_t>(popcount64(logical_bits[word] & accepted_word));
+        const std::uint64_t normalized_logical =
+            logical_bits[word] ^ (expected_observable ? live : 0);
+        counts.logical_errors += static_cast<std::uint64_t>(popcount64(normalized_logical & accepted_word));
     }
 }
 
@@ -168,10 +235,17 @@ void accumulate_logical_counts_for_survivors(
     CircuitSamplingCounts& counts,
     const BatchFactoredExecutorState& runtime,
     const std::vector<std::vector<int>>& logical_records,
+    bool expected_observable,
     std::vector<std::uint64_t>& logical_bits,
     std::vector<std::uint64_t>& scratch) {
     counts.accepted += static_cast<std::uint64_t>(runtime.active_shots);
-    if (runtime.active_shots == 0 || logical_records.empty()) {
+    if (runtime.active_shots == 0) {
+        return;
+    }
+    if (logical_records.empty()) {
+        if (expected_observable) {
+            counts.logical_errors += static_cast<std::uint64_t>(runtime.active_shots);
+        }
         return;
     }
     const std::size_t nwords = batch_word_count(runtime.active_shots);
@@ -183,8 +257,11 @@ void accumulate_logical_counts_for_survivors(
         }
     }
     for (std::size_t word = 0; word < nwords; ++word) {
+        const std::uint64_t live = live_word_mask(runtime.active_shots, word);
+        const std::uint64_t normalized_logical =
+            logical_bits[word] ^ (expected_observable ? live : 0);
         counts.logical_errors += static_cast<std::uint64_t>(
-            popcount64(logical_bits[word] & live_word_mask(runtime.active_shots, word)));
+            popcount64(normalized_logical & live));
     }
 }
 
@@ -193,6 +270,7 @@ CircuitSamplingInfo make_info(
     int observable,
     int observable_includes,
     const CircuitSamplingOptions& options,
+    bool reference_normalized,
     int batch_size,
     int sample_chunk_shots,
     int threads) {
@@ -208,6 +286,7 @@ CircuitSamplingInfo make_info(
     info.threads = threads;
     info.active_components = program.use_active_components;
     info.detector_postselection = options.postselect_detectors;
+    info.reference_normalized = reference_normalized;
     info.batch_mask_threshold_denominator =
         options.postselect_detectors ? options.batch_mask_threshold_denominator : 0;
     return info;
@@ -319,18 +398,90 @@ std::vector<std::vector<int>> logical_records_for_observable(
     return out;
 }
 
+std::vector<std::vector<std::vector<int>>> observable_records_by_index(
+    const std::vector<CircuitObservableInclude>& observables) {
+    int count = 0;
+    for (const auto& include : observables) {
+        count = std::max(count, include.index + 1);
+    }
+    std::vector<std::vector<std::vector<int>>> out(static_cast<std::size_t>(count));
+    for (const auto& include : observables) {
+        out[static_cast<std::size_t>(include.index)].push_back(include.records);
+    }
+    return out;
+}
+
 CircuitSamplingInput make_circuit_sampling_input(
     FactoredInstructionProgram program,
     std::vector<std::vector<int>> logical_records,
     int observable,
     int observable_includes,
+    int observables,
+    std::vector<std::vector<std::vector<int>>> observable_records,
+    std::vector<std::uint64_t> expected_detector_words,
+    std::vector<std::uint64_t> expected_observable_words,
+    bool reference_normalized,
     CircuitSamplingTiming preprocessing_timing) {
+    const std::size_t expected_detector_word_count = bit_word_count(program.ndetectors);
+    if (!expected_detector_words.empty() &&
+        expected_detector_words.size() != expected_detector_word_count) {
+        throw Error("expected_detectors length does not match circuit detector count");
+    }
+    if (observables < 0) {
+        throw Error("observable count must be nonnegative");
+    }
+    if (observable_records.empty() && observables > 0) {
+        observable_records.resize(static_cast<std::size_t>(observables));
+    }
+    if (!observable_records.empty()) {
+        observables = static_cast<int>(observable_records.size());
+    }
+    const std::size_t expected_observable_word_count = bit_word_count(observables);
+    if (!expected_observable_words.empty() &&
+        expected_observable_words.size() != expected_observable_word_count) {
+        throw Error("expected_observables length does not match circuit observable count");
+    }
     CircuitSamplingInput input;
     input.program = std::move(program);
     input.logical_records = std::move(logical_records);
+    input.observable_records = std::move(observable_records);
+    input.expected_detector_words = std::move(expected_detector_words);
+    input.expected_observable_words = std::move(expected_observable_words);
     input.observable = observable;
+    input.observables = observables;
     input.observable_includes = observable_includes;
+    input.reference_normalized = reference_normalized;
     input.preprocessing_timing = preprocessing_timing;
+    return input;
+}
+
+CircuitSamplingInput with_reference_sample(CircuitSamplingInput input) {
+    PresampledExogenous samples;
+    prepare_presampled_exogenous(samples, input.program);
+    samples.nshots = 1;
+    samples.value_words.assign(samples.nwords, 0);
+
+    FactoredExecutorState runtime(input.program, 1);
+    reset_executor(runtime, input.program);
+    execute_in_place(runtime, input.program, samples, 0);
+
+    input.expected_detector_words = runtime.detector_words;
+    if (input.observable_records.empty() && input.observables > 0) {
+        input.observable_records.resize(static_cast<std::size_t>(input.observables));
+        if (input.observable >= 0 && input.observable < input.observables) {
+            input.observable_records[static_cast<std::size_t>(input.observable)] = input.logical_records;
+        }
+    }
+    if (!input.observable_records.empty()) {
+        input.expected_observable_words =
+            observable_outcome_words(runtime.measurement_words, input.observable_records);
+        input.observables = static_cast<int>(input.observable_records.size());
+    } else if (logical_observable_outcome(runtime.measurement_words, input.logical_records)) {
+        input.observables = std::max(input.observables, input.observable + 1);
+        input.expected_observable_words = std::vector<std::uint64_t>(bit_word_count(input.observables), 0);
+        set_packed_bit(input.expected_observable_words, input.observable);
+    }
+    input.reference_normalized = true;
     return input;
 }
 
@@ -358,6 +509,10 @@ PreparedCircuitSingleShotSampler::PreparedCircuitSingleShotSampler(
     : options_(options) {
     program_ = std::move(input.program);
     logical_records_ = std::move(input.logical_records);
+    expected_detector_words_ = std::move(input.expected_detector_words);
+    expected_observable_words_ = std::move(input.expected_observable_words);
+    expected_observable_ = expected_observable_bit(expected_observable_words_, input.observable);
+    reference_normalized_ = input.reference_normalized;
     preprocessing_timing_ = input.preprocessing_timing;
 
     options_.sample_chunk_shots = sample_chunk_or_default(options_.sample_chunk_shots);
@@ -367,6 +522,7 @@ PreparedCircuitSingleShotSampler::PreparedCircuitSingleShotSampler(
         input.observable,
         input.observable_includes,
         options_,
+        reference_normalized_,
         0,
         options_.sample_chunk_shots,
         options_.threads);
@@ -441,14 +597,16 @@ CircuitSamplingRunResult PreparedCircuitSingleShotSampler::sample(
                         program_,
                         expression_plan_,
                         context.expression_block,
-                        shot);
+                        shot,
+                        &expected_detector_words_);
                     if (!survived) {
                         ++context.counts.discarded;
                     } else {
                         accumulate_accepted_single_counts(
                             context.counts,
                             context.runtime.measurement_words,
-                            logical_records_);
+                            logical_records_,
+                            expected_observable_);
                     }
                     continue;
                 }
@@ -463,7 +621,9 @@ CircuitSamplingRunResult PreparedCircuitSingleShotSampler::sample(
                     context.runtime.measurement_words,
                     context.runtime.detector_words,
                     program_.ndetectors,
-                    logical_records_);
+                    logical_records_,
+                    expected_detector_words_,
+                    expected_observable_);
             }
             context.timing.execute_s += seconds_between(execute_start, Clock::now());
             context.counts.shots += static_cast<std::uint64_t>(chunk);
@@ -512,6 +672,10 @@ PreparedCircuitBatchSampler::PreparedCircuitBatchSampler(
     : options_(options) {
     program_ = std::move(input.program);
     logical_records_ = std::move(input.logical_records);
+    expected_detector_words_ = std::move(input.expected_detector_words);
+    expected_observable_words_ = std::move(input.expected_observable_words);
+    expected_observable_ = expected_observable_bit(expected_observable_words_, input.observable);
+    reference_normalized_ = input.reference_normalized;
     preprocessing_timing_ = input.preprocessing_timing;
 
     options_.batch_size = batch_size_or_default(
@@ -524,12 +688,14 @@ PreparedCircuitBatchSampler::PreparedCircuitBatchSampler(
     postselection_options_.mask_dead_shots_min_fraction_denominator =
         options_.batch_mask_threshold_denominator;
     postselection_options_.retained_record_uses = &logical_records_;
+    postselection_options_.expected_detector_words = &expected_detector_words_;
 
     info_ = make_info(
         program_,
         input.observable,
         input.observable_includes,
         options_,
+        reference_normalized_,
         options_.batch_size,
         options_.sample_chunk_shots,
         options_.threads);
@@ -540,7 +706,8 @@ PreparedCircuitBatchSampler::PreparedCircuitBatchSampler(
         auto context = std::make_unique<WorkerContext>(
             program_,
             options_.batch_size);
-        context->runtime.store_detector_records = false;
+        context->runtime.store_detector_records =
+            !expected_detector_words_.empty() && !all_expected_detector_bits_are_zero(expected_detector_words_);
         context->runtime.dense_shot_major_active = true;
         if (options_.postselect_detectors) {
             prepare_batch_detector_postselection_scratch(
@@ -564,6 +731,10 @@ PreparedCircuitBatchSampler::PreparedCircuitBatchSampler(
     : options_(std::move(other.options_)),
       program_(std::move(other.program_)),
       logical_records_(std::move(other.logical_records_)),
+      expected_detector_words_(std::move(other.expected_detector_words_)),
+      expected_observable_words_(std::move(other.expected_observable_words_)),
+      expected_observable_(other.expected_observable_),
+      reference_normalized_(other.reference_normalized_),
       info_(std::move(other.info_)),
       preprocessing_timing_(std::move(other.preprocessing_timing_)),
       expression_plan_(std::move(other.expression_plan_)),
@@ -581,6 +752,10 @@ PreparedCircuitBatchSampler& PreparedCircuitBatchSampler::operator=(
     options_ = std::move(other.options_);
     program_ = std::move(other.program_);
     logical_records_ = std::move(other.logical_records_);
+    expected_detector_words_ = std::move(other.expected_detector_words_);
+    expected_observable_words_ = std::move(other.expected_observable_words_);
+    expected_observable_ = other.expected_observable_;
+    reference_normalized_ = other.reference_normalized_;
     info_ = std::move(other.info_);
     preprocessing_timing_ = std::move(other.preprocessing_timing_);
     expression_plan_ = std::move(other.expression_plan_);
@@ -593,6 +768,7 @@ PreparedCircuitBatchSampler& PreparedCircuitBatchSampler::operator=(
 
 void PreparedCircuitBatchSampler::rebind_after_move() noexcept {
     postselection_options_.retained_record_uses = &logical_records_;
+    postselection_options_.expected_detector_words = &expected_detector_words_;
 }
 
 CircuitSamplingRunResult PreparedCircuitBatchSampler::sample(std::uint64_t shots) {
@@ -676,6 +852,7 @@ CircuitSamplingRunResult PreparedCircuitBatchSampler::sample(
                         context.counts,
                         context.runtime,
                         logical_records_,
+                        expected_observable_,
                         context.logical_bits,
                         context.scratch);
                 } else {
@@ -683,7 +860,10 @@ CircuitSamplingRunResult PreparedCircuitBatchSampler::sample(
                         context.counts,
                         context.runtime,
                         block,
+                        program_.ndetectors,
                         logical_records_,
+                        expected_detector_words_,
+                        expected_observable_,
                         context.discard_bits,
                         context.logical_bits,
                         context.scratch);

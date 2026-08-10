@@ -1311,7 +1311,8 @@ void compact_dead_shots_if_needed(
 int mark_dead_from_detector_bits(
     BatchFactoredExecutorState& runtime,
     const std::vector<std::uint64_t>& detector_bits,
-    BatchDetectorPostselectionScratch& scratch) {
+    BatchDetectorPostselectionScratch& scratch,
+    bool expected) {
     if (runtime.active_shots == 0) {
         return 0;
     }
@@ -1319,7 +1320,7 @@ int mark_dead_from_detector_bits(
     int discarded_now = 0;
     for (std::size_t word = 0; word < nwords; ++word) {
         const std::uint64_t live = live_word_mask_for_shots(runtime.active_shots, word);
-        const std::uint64_t fired = detector_bits[word] & live;
+        const std::uint64_t fired = (expected ? ~detector_bits[word] : detector_bits[word]) & live;
         const std::uint64_t newly_dead = fired & ~scratch.dead_bits[word];
         scratch.dead_bits[word] |= fired;
         discarded_now += detail::popcount64(newly_dead);
@@ -1332,8 +1333,10 @@ int mark_dead_from_detector_bits(
 
 int mark_dead_from_constant_detector(
     BatchFactoredExecutorState& runtime,
-    bool fired,
-    BatchDetectorPostselectionScratch& scratch) {
+    bool raw_fired,
+    BatchDetectorPostselectionScratch& scratch,
+    bool expected) {
+    const bool fired = raw_fired != expected;
     if (!fired || runtime.active_shots == 0) {
         return 0;
     }
@@ -1354,7 +1357,8 @@ int mark_dead_from_constant_detector(
 int mark_dead_from_detector_records(
     BatchFactoredExecutorState& runtime,
     const RecordDetector& instruction,
-    BatchDetectorPostselectionScratch& scratch) {
+    BatchDetectorPostselectionScratch& scratch,
+    bool expected) {
     if (runtime.active_shots == 0 || instruction.records.empty()) {
         return 0;
     }
@@ -1370,7 +1374,8 @@ int mark_dead_from_detector_records(
         const std::size_t base = batch_record_offset(runtime, instruction.records.front(), 0);
         for (std::size_t word = 0; word < nwords; ++word) {
             const std::uint64_t live = live_word_mask_for_shots(runtime.active_shots, word);
-            const std::uint64_t fired = runtime.measurement_words[base + word] & live;
+            const std::uint64_t raw = runtime.measurement_words[base + word];
+            const std::uint64_t fired = (expected ? ~raw : raw) & live;
             const std::uint64_t newly_dead = fired & ~scratch.dead_bits[word];
             scratch.dead_bits[word] |= fired;
             discarded_now += detail::popcount64(newly_dead);
@@ -1381,7 +1386,7 @@ int mark_dead_from_detector_records(
             for (int record : instruction.records) {
                 fired ^= runtime.measurement_words[batch_record_offset(runtime, record, word)];
             }
-            fired &= live_word_mask_for_shots(runtime.active_shots, word);
+            fired = (expected ? ~fired : fired) & live_word_mask_for_shots(runtime.active_shots, word);
             const std::uint64_t newly_dead = fired & ~scratch.dead_bits[word];
             scratch.dead_bits[word] |= fired;
             discarded_now += detail::popcount64(newly_dead);
@@ -1391,6 +1396,14 @@ int mark_dead_from_detector_records(
         scratch.dead_count += discarded_now;
     }
     return discarded_now;
+}
+
+bool expected_detector_bit(
+    const BatchDetectorPostselectionOptions& options,
+    const RecordDetector& instruction) {
+    return options.expected_detector_words != nullptr &&
+           !options.expected_detector_words->empty() &&
+           packed_bit(*options.expected_detector_words, instruction.detector - 1);
 }
 
 const std::vector<std::uint64_t>& detector_record_outcome_bits(
@@ -1736,18 +1749,50 @@ int execute_batch_instruction_postselected(
 
 int execute_batch_instruction_postselected(
     BatchFactoredExecutorState& runtime,
+    const ApplyPrecomputedActivePauliRotation& instruction,
+    const BatchExpressionEvaluator& evaluator,
+    std::size_t instruction_index,
+    BatchDetectorPostselectionScratch& scratch,
+    const BatchDetectorPostselectionOptions&) {
+    return execute_batch_instruction_postselected(
+        runtime,
+        instruction,
+        evaluator,
+        instruction_index,
+        scratch);
+}
+
+int execute_batch_instruction_postselected(
+    BatchFactoredExecutorState& runtime,
+    const PromoteDormantRotation& instruction,
+    const BatchExpressionEvaluator& evaluator,
+    std::size_t instruction_index,
+    BatchDetectorPostselectionScratch& scratch,
+    const BatchDetectorPostselectionOptions&) {
+    return execute_batch_instruction_postselected(
+        runtime,
+        instruction,
+        evaluator,
+        instruction_index,
+        scratch);
+}
+
+int execute_batch_instruction_postselected(
+    BatchFactoredExecutorState& runtime,
     const RecordDetector& instruction,
     const BatchExpressionEvaluator& evaluator,
     std::size_t instruction_index,
-    BatchDetectorPostselectionScratch& scratch) {
+    BatchDetectorPostselectionScratch& scratch,
+    const BatchDetectorPostselectionOptions& options) {
+    const bool expected = expected_detector_bit(options, instruction);
     if (!instruction.records.empty()) {
-        return mark_dead_from_detector_records(runtime, instruction, scratch);
+        return mark_dead_from_detector_records(runtime, instruction, scratch, expected);
     }
     if (instruction.outcome.conditions.empty()) {
-        return mark_dead_from_constant_detector(runtime, instruction.outcome.constant, scratch);
+        return mark_dead_from_constant_detector(runtime, instruction.outcome.constant, scratch, expected);
     }
     const auto& outcome_bits = evaluator.eval(instruction_index, runtime);
-    return mark_dead_from_detector_bits(runtime, outcome_bits, scratch);
+    return mark_dead_from_detector_bits(runtime, outcome_bits, scratch, expected);
 }
 
 void execute_batch_instruction_presampled(
@@ -1881,10 +1926,15 @@ int execute_batch_instruction_postselected(
     const Instruction& instruction,
     const BatchExpressionEvaluator& evaluator,
     std::size_t instruction_index,
-    BatchDetectorPostselectionScratch& scratch) {
+    BatchDetectorPostselectionScratch& scratch,
+    const BatchDetectorPostselectionOptions& options) {
     execute_batch_instruction_presampled(runtime, instruction, evaluator, instruction_index);
     if constexpr (std::is_same_v<std::decay_t<Instruction>, RecordDetector>) {
-        return mark_dead_from_detector_bits(runtime, runtime.eval_scratch, scratch);
+        return mark_dead_from_detector_bits(
+            runtime,
+            runtime.eval_scratch,
+            scratch,
+            expected_detector_bit(options, instruction));
     }
     return 0;
 }
@@ -1894,7 +1944,8 @@ int execute_batch_component_instruction_postselected(
     const FactoredInstructionProgram& program,
     const BatchExpressionEvaluator& evaluator,
     std::size_t instruction_index,
-    BatchDetectorPostselectionScratch& scratch) {
+    BatchDetectorPostselectionScratch& scratch,
+    const BatchDetectorPostselectionOptions& options) {
     const auto& plan = *program.active_component_plan;
     const auto ref = plan.instruction_steps[instruction_index];
     if (ref.kind == ActiveComponentStepKind::IgnoredGlobalPhase) {
@@ -1936,7 +1987,8 @@ int execute_batch_component_instruction_postselected(
                 inst,
                 evaluator,
                 instruction_index,
-                scratch);
+                scratch,
+                options);
         },
         program.instructions[instruction_index]);
 }
@@ -2058,7 +2110,8 @@ BatchDetectorPostselectionResult execute_batch_postselected_with_expressions(
                 *detector,
                 evaluator,
                 idx,
-                scratch);
+                scratch,
+                options);
             if (scratch.dead_count >= runtime.active_shots) {
                 runtime.active_shots = 0;
                 break;
@@ -2071,7 +2124,8 @@ BatchDetectorPostselectionResult execute_batch_postselected_with_expressions(
                 program,
                 evaluator,
                 idx,
-                scratch);
+                scratch,
+                options);
         } else {
             discarded += std::visit(
                 [&](const auto& inst) {
@@ -2080,7 +2134,8 @@ BatchDetectorPostselectionResult execute_batch_postselected_with_expressions(
                         inst,
                         evaluator,
                         idx,
-                        scratch);
+                        scratch,
+                        options);
                 },
                 instruction);
         }
