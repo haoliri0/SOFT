@@ -168,12 +168,47 @@ void test_fixture_discard_rates() {
     }
 }
 
+void test_aggregate_boundaries() {
+    const auto logical_path=write_temp_stim("symft_cuda_logical_one.stim",
+        "X 0\nM 0\nOBSERVABLE_INCLUDE(0) rec[-1]\n");
+    const auto reject_path=write_temp_stim("symft_cuda_all_rejected.stim",
+        "X 0\nM 0\nDETECTOR rec[-1]\nOBSERVABLE_INCLUDE(0) rec[-1]\n");
+    for(std::uint64_t shots:{0ULL,1ULL,31ULL,32ULL,33ULL,63ULL,64ULL,65ULL,257ULL}) {
+        auto a=run_cuda_file(logical_path,shots,true,CudaMode::GpuPresampleExpressions);
+        require(a.counts.shots==shots && a.counts.accepted==shots &&
+                a.counts.logical_errors==shots && a.counts.discarded==0,
+                "CUDA aggregate nonzero logical counts and partial blocks");
+        auto b=run_cuda_file(reject_path,shots,true,CudaMode::GpuPresampleExpressions);
+        require(b.counts.shots==shots && b.counts.discarded==shots &&
+                b.counts.accepted==0 && b.counts.logical_errors==0,
+                "CUDA aggregate all rejected and partial blocks");
+    }
+    std::remove(logical_path.c_str());std::remove(reject_path.c_str());
+}
+
+void test_scalar_measurement_records() {
+    auto input = symft::make_stim_circuit_sampling_input(
+        symft::parse_stim_circuit_text("X 0\nM 0\n"));
+    symft::cuda::CudaSamplingOptions options;
+    options.gpu_presample_expressions = true;
+    options.sample_exogenous_on_device = false;
+    options.shots_per_launch = 65;
+    symft::cuda::PreparedCircuitCudaSampler sampler(std::move(input), options);
+    const auto records = sampler.sample_records(257, 19);
+    require(records.measurements.size() == 257, "CUDA scalar measurement row count");
+    for (const auto& row : records.measurements) {
+        require(row.size() == 1 && row[0] == 1, "CUDA scalar executor must write every shot's records");
+    }
+}
+
 } // namespace
 
 int main() {
     test_deterministic_postselection();
     test_large_per_shot_workspace();
     test_fixture_discard_rates();
+    test_aggregate_boundaries();
+    test_scalar_measurement_records();
     std::cout << "symft_cuda_tests passed\n";
     return 0;
 }

@@ -14,3 +14,16 @@ __pycache__
 
 # ide/vscode
 /.vscode
+
+# Local builds, benchmark evidence and packaging artifacts
+/build-*/
+dist/
+*.egg-info/
+wheelhouse/
+*.o
+*.a
+*.so
+*.pyd
+.pytest_cache/
+/jit-cache/
+/review-artifacts/

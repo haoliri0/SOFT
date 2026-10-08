@@ -1,8 +1,10 @@
 #include "frontend/stim_prepared_sampler.hpp"
+#include "sampler/cpu_profile.hpp"
 
 #include <algorithm>
 #include <cerrno>
 #include <cstdint>
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -38,6 +40,11 @@ struct BenchResult {
     bool detector_postselection = false;
     int batch_mask_threshold_denominator = 0;
     symft::CircuitSamplingTiming timing;
+    symft::CpuProfile profile;
+    bool print_profile = false;
+    std::uint64_t stream_start = 0;
+    symft::CircuitSamplingInfo info;
+    double prepare_wall_s = 0;
 };
 
 std::uint64_t parse_u64(const char* raw, const char* name) {
@@ -146,6 +153,11 @@ struct Options {
     int batch_mask_threshold_denominator = 2;
     SamplerMode sampler = SamplerMode::Batch;
     ActiveComponentMode active_components = ActiveComponentMode::Auto;
+    std::uint64_t stream_start = 0;
+    bool profile = false;
+    bool cpu_compiled = false;
+    bool cpu_real = true;
+    bool cpu_hoist = true;
 };
 
 void print_usage(const char* argv0) {
@@ -160,6 +172,11 @@ void print_usage(const char* argv0) {
         << "  --sampler single|batch|both       Sampler to benchmark; default: batch\n"
         << "  --sample-chunk-shots N|auto       Presample requested shots in sampler-owned chunks; default: auto\n"
         << "  --repeats N                       Number of repeats\n"
+        << "  --stream-id N                     First stream ID (increments per repeat)\n"
+        << "  --cpu-profile                     Diagnostic build only; threads=1\n"
+        << "  --cpu-backend legacy|compiled     Opt-in compiled counts (cpu-shot-v1 RNG)\n"
+        << "  --cpu-complex                     Disable real gauge in compiled backend\n"
+        << "  --cpu-no-hoist                    Keep original detector positions\n"
         << "  --observable N                    Observable index\n"
         << "  --postselect-detectors            Enable detector postselection inside the sampler\n"
         << "  --no-postselect-detectors         Disable detector postselection\n"
@@ -250,6 +267,18 @@ Options parse_options(int argc, char** argv) {
         } else if (name == "--repeats") {
             const std::string raw = require_option_value(name, value, idx, argc, argv);
             options.repeats = parse_positive_int(raw.c_str(), "repeats");
+        } else if (name == "--stream-id") {
+            options.stream_start = parse_u64(require_option_value(name, value, idx, argc, argv).c_str(), "stream-id");
+        } else if (name == "--cpu-profile") {
+            options.profile = true;
+        } else if (name == "--cpu-backend") {
+            const auto raw = require_option_value(name, value, idx, argc, argv);
+            if (raw != "legacy" && raw != "compiled") throw std::runtime_error("invalid CPU backend");
+            options.cpu_compiled = raw == "compiled";
+        } else if (name == "--cpu-complex") {
+            options.cpu_real = false;
+        } else if (name == "--cpu-no-hoist") {
+            options.cpu_hoist = false;
         } else if (name == "--observable") {
             const std::string raw = require_option_value(name, value, idx, argc, argv);
             options.observable = parse_nonnegative_int(raw.c_str(), "observable");
@@ -273,6 +302,15 @@ Options parse_options(int argc, char** argv) {
             throw std::runtime_error("unknown option: " + name);
         }
     }
+    if (options.profile && (!symft::cpu_diagnostics_available || options.threads != 1)) {
+        throw std::runtime_error("--cpu-profile requires a SYMFT_CPU_DIAGNOSTICS build and --threads 1");
+    }
+    if ((options.cpu_compiled || options.profile) && options.sampler != SamplerMode::Batch) {
+        throw std::runtime_error("compiled CPU backend and CPU profiling require --sampler batch");
+    }
+    if (options.stream_start > std::numeric_limits<std::uint64_t>::max() - (options.repeats - 1)) {
+        throw std::runtime_error("stream ID range overflows");
+    }
     return options;
 }
 
@@ -284,6 +322,9 @@ symft::CircuitSamplingOptions make_sampler_options(const Options& options) {
     out.batch_size = options.batch_size;
     out.batch_mask_threshold_denominator = options.batch_mask_threshold_denominator;
     out.threads = options.threads;
+    out.cpu_compiled = options.cpu_compiled;
+    out.cpu_real_gauge = options.cpu_real;
+    out.cpu_hoist_detectors = options.cpu_hoist;
     return out;
 }
 
@@ -319,6 +360,9 @@ BenchResult make_result_shell(
     result.active_components = info.active_components;
     result.detector_postselection = info.detector_postselection;
     result.batch_mask_threshold_denominator = info.batch_mask_threshold_denominator;
+    result.print_profile = options.profile;
+    result.stream_start = options.stream_start;
+    result.info = info;
     return result;
 }
 
@@ -341,6 +385,7 @@ void average_repeated_timings(BenchResult& result) {
 }
 
 BenchResult run_single_sampler(const Options& options) {
+    const auto prepare_start = std::chrono::steady_clock::now();
     const std::string sampler_name = options.postselect_detectors ? "single_postselected" : "single";
     const auto sampler_options = make_sampler_options(options);
     auto sampler = symft::PreparedCircuitSingleShotSampler(
@@ -350,15 +395,17 @@ BenchResult run_single_sampler(const Options& options) {
         options,
         sampler.info(),
         sampler_name);
+    result.prepare_wall_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - prepare_start).count();
 
     for (int repeat = 0; repeat < options.repeats; ++repeat) {
-        accumulate_run(result, sampler.sample(options.shots, repeat));
+        accumulate_run(result, sampler.sample(options.shots, options.stream_start + repeat));
     }
     average_repeated_timings(result);
     return result;
 }
 
 BenchResult run_batch_sampler(const Options& options) {
+    const auto prepare_start = std::chrono::steady_clock::now();
     const std::string sampler_name = options.postselect_detectors ? "batch_postselected" : "batch";
     const auto sampler_options = make_sampler_options(options);
     auto sampler = symft::PreparedCircuitBatchSampler(
@@ -368,9 +415,17 @@ BenchResult run_batch_sampler(const Options& options) {
         options,
         sampler.info(),
         sampler_name);
+    result.prepare_wall_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - prepare_start).count();
 
+    struct ProfileScope {
+        symft::CpuProfile* previous;
+        explicit ProfileScope(symft::CpuProfile* p) : previous(symft::active_cpu_profile) {
+            symft::active_cpu_profile = p;
+        }
+        ~ProfileScope() { symft::active_cpu_profile = previous; }
+    } profile_scope(options.profile ? &result.profile : nullptr);
     for (int repeat = 0; repeat < options.repeats; ++repeat) {
-        accumulate_run(result, sampler.sample(options.shots, repeat));
+        accumulate_run(result, sampler.sample(options.shots, options.stream_start + repeat));
     }
     average_repeated_timings(result);
     return result;
@@ -389,6 +444,13 @@ void print_result(const BenchResult& result) {
                                     : static_cast<double>(result.counts.logical_errors) / static_cast<double>(result.counts.accepted);
 
     std::cout << "sampler " << result.sampler << "\n";
+    std::cout << "cpu_backend " << (result.info.cpu_compiled ? "compiled" : "legacy") << "\n";
+    std::cout << "prepare_wall_s " << result.prepare_wall_s << "\n";
+    std::cout << "cpu_rng " << (result.info.cpu_compiled ? "cpu-shot-v1" : "legacy") << "\n";
+    std::cout << "cpu_real_gauge " << result.info.cpu_real_gauge << "\n";
+    std::cout << "cpu_noise_only_detectors " << result.info.cpu_noise_only_detectors << "\n";
+    std::cout << "cpu_initial_checks " << result.info.cpu_initial_checks << "\n";
+    if (!result.info.cpu_fallback_reason.empty()) std::cout << "cpu_fallback " << result.info.cpu_fallback_reason << "\n";
     std::cout << "file " << result.path << "\n";
     std::cout << "shots " << result.requested_shots << "\n";
     std::cout << "sampled_shots " << result.counts.shots << "\n";
@@ -401,6 +463,7 @@ void print_result(const BenchResult& result) {
     }
     std::cout << "sample_chunk_shots " << result.sample_chunk_shots << "\n";
     std::cout << "repeats " << result.repeats << "\n";
+    std::cout << "stream_start " << result.stream_start << "\n";
     std::cout << "threads " << result.threads << "\n";
     if (result.requested_threads != result.threads) {
         std::cout << "requested_threads " << result.requested_threads << "\n";
@@ -420,6 +483,18 @@ void print_result(const BenchResult& result) {
     std::cout << "logical_errors " << result.counts.logical_errors << "\n";
     std::cout << "discard_rate " << discard_rate << "\n";
     std::cout << "logical_error_rate " << logical_rate << "\n";
+    if (result.print_profile) {
+        for (unsigned p = 0; p < symft::cpu_phase_count; ++p) {
+            const auto name = symft::cpu_phase_names[p];
+            std::cout << "profile_" << name << "_s " << result.profile.seconds[p] << "\n";
+            for (unsigned k = 0; k <= 16; ++k) {
+                if (result.profile.shot_visits[p][k]) {
+                    std::cout << "visits_" << name << "_k" << k << " "
+                              << result.profile.shot_visits[p][k] << "\n";
+                }
+            }
+        }
+    }
 }
 
 } // namespace

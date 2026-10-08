@@ -1,0 +1,1145 @@
+{
+  "schema_version": 1,
+  "description": "Curated excerpts from archived September 2026 experiments; not fresh long-run results for this review checkout.",
+  "definitions": {
+    "throughput": "attempted shots / sampling time; timing contract recorded per experiment",
+    "discard_rate": "discarded / shots",
+    "error_rate_after_postselection": "logical_errors / accepted",
+    "intervals": "95% Wilson for discard; two-sided 95% Clopper-Pearson for accepted errors"
+  },
+  "common": {
+    "precision": "FP64",
+    "physical_error_probability": 0.001,
+    "observable": 0,
+    "postselect_all_detectors": true,
+    "circuit_scope": "MSC injection+cultivation, no escape"
+  },
+  "circuits": {
+    "d3": {
+      "path": "benchmark/circuit/msc_d3_inject_cultivate_p1e-3.stim",
+      "sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "max_k": 4
+    },
+    "d5": {
+      "path": "benchmark/circuit/msc_d5_inject_cultivate_p1e-3.stim",
+      "sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "max_k": 10
+    }
+  },
+  "source_archive": {
+    "root_description": "Original SymFT_CUDA_Astra experiment workspace (not bundled)",
+    "files": [
+      {
+        "path": "results/cpu_final_paired_20260928/analysis.json",
+        "sha256": "76c2f02f6b675fccc23c7c4ac30d9d2e90e5bcc9e6157009a47bd63b25529854"
+      },
+      {
+        "path": "results/cpu_final_paired_20260928/results.json",
+        "sha256": "b47ccd1ae2abf000cf846bc5f7b006159fa10dd715ac1d8a6b3ce31d77e71d50"
+      },
+      {
+        "path": "results/cpu_socket40_d5_50B_20260928/analysis.json",
+        "sha256": "7b85ea477850e05f222f8c8846336e93998892a128863c1524a5d0fb0482cc21"
+      },
+      {
+        "path": "results/cpu_socket40_d5_50B_20260928/metadata.json",
+        "sha256": "4d5ea908b0b7f3ac29161f2e9adedab592bb756b66d4b39db3653644569a3c25"
+      },
+      {
+        "path": "results/longrun_50B_phase2_fp64/analysis.json",
+        "sha256": "c6e4abf4de448824d0018d2355687d6de7f1d97bdcd9ab0f6b6754d70ac0f6c3"
+      },
+      {
+        "path": "results/longrun_50B_phase2_fp64/metadata.json",
+        "sha256": "dcdfd2fdda4747809d6943f4a0b7c1de7a8ef32d30ae3bd8a11bcb293a3ed2d1"
+      },
+      {
+        "path": "results/d3_1B_phase2_fp64_20260923/analysis.json",
+        "sha256": "4c807bf5e7f648d4f5f9c631797deb472d7e07b3494a3c2bf43297c189f20368"
+      },
+      {
+        "path": "results/baseline_matched_fp64/results.json",
+        "sha256": "6baad5330c711e73879dc5d0e71583f69c598c7d3f89a0779fc9dbd24730ca64"
+      }
+    ]
+  },
+  "cpu_single_core": {
+    "date": "2026-09-28",
+    "cpu_model": "Intel Xeon Gold 5218R",
+    "logical_cpu": 5,
+    "threads": 1,
+    "compiler": "GCC 13.3",
+    "build": "Release, native; LTO only in compiled_lto variant",
+    "repeats": 7,
+    "streams": [
+      901,
+      902,
+      903,
+      904,
+      905,
+      906,
+      907
+    ],
+    "timing": "native sample_s excludes preparation; process wall and preparation retained in summary",
+    "summary": {
+      "d3_legacy": {
+        "median": 1656350,
+        "min": 1629000,
+        "max": 1666160,
+        "prepare_wall_s_median": 0.0293626,
+        "sampled_shots": 84000000,
+        "accepted": 57691183,
+        "discarded": 26308817,
+        "logical_errors": 51,
+        "discard_rate": 0.31320020238095236,
+        "error_rate_after_postselection": 8.84017233621297e-7,
+        "discard_wilson_95": [
+          0.3131010285412317,
+          0.3132993933059991
+        ],
+        "error_clopper_pearson_95": [
+          6.58208964036681e-7,
+          0.0000011623192411524266
+        ],
+        "smt_sibling_busy_fraction": {
+          "cpu45": {
+            "median": 0.004149377593360981,
+            "max": 0.013736263736263687
+          }
+        },
+        "sample_s_median": 7.24485,
+        "process_wall_s_median": 7.27675272594206,
+        "median_speedup_vs_legacy": 1
+      },
+      "d3_compiled": {
+        "median": 1846280,
+        "min": 1822820,
+        "max": 1856580,
+        "prepare_wall_s_median": 0.0286505,
+        "sampled_shots": 84000000,
+        "accepted": 57691231,
+        "discarded": 26308769,
+        "logical_errors": 59,
+        "discard_rate": 0.31319963095238096,
+        "error_rate_after_postselection": 0.0000010226857527099743,
+        "discard_wilson_95": [
+          0.31310045716190416,
+          0.3132988218282361
+        ],
+        "error_clopper_pearson_95": [
+          7.785158670423441e-7,
+          0.0000013191899143171008
+        ],
+        "smt_sibling_busy_fraction": {
+          "cpu45": {
+            "median": 0.004531722054380682,
+            "max": 0.0060975609756097615
+          }
+        },
+        "sample_s_median": 6.49954,
+        "process_wall_s_median": 6.531691869022325,
+        "median_speedup_vs_legacy": 1.114667793642648
+      },
+      "d3_compiled_lto": {
+        "median": 1981020,
+        "min": 1899340,
+        "max": 2027420,
+        "prepare_wall_s_median": 0.0273419,
+        "sampled_shots": 84000000,
+        "accepted": 57691231,
+        "discarded": 26308769,
+        "logical_errors": 59,
+        "discard_rate": 0.31319963095238096,
+        "error_rate_after_postselection": 0.0000010226857527099743,
+        "discard_wilson_95": [
+          0.31310045716190416,
+          0.3132988218282361
+        ],
+        "error_clopper_pearson_95": [
+          7.785158670423441e-7,
+          0.0000013191899143171008
+        ],
+        "smt_sibling_busy_fraction": {
+          "cpu45": {
+            "median": 0.008077544426494332,
+            "max": 0.013093289689034338
+          }
+        },
+        "sample_s_median": 6.05749,
+        "process_wall_s_median": 6.090406416915357,
+        "median_speedup_vs_legacy": 1.1960153349231744
+      },
+      "d5_legacy": {
+        "median": 105713,
+        "min": 102394,
+        "max": 111968,
+        "prepare_wall_s_median": 0.937777,
+        "sampled_shots": 10500000,
+        "accepted": 1512453,
+        "discarded": 8987547,
+        "logical_errors": 0,
+        "discard_rate": 0.8559568571428572,
+        "error_rate_after_postselection": 0,
+        "discard_wilson_95": [
+          0.8557443410176092,
+          0.8561691128122749
+        ],
+        "error_clopper_pearson_95": [
+          0,
+          0.0000024390013808832845
+        ],
+        "error_one_sided_95_upper": 0.0000019807090248199686,
+        "smt_sibling_busy_fraction": {
+          "cpu45": {
+            "median": 0.005115089514066473,
+            "max": 0.0077871512005190935
+          }
+        },
+        "sample_s_median": 14.1893,
+        "process_wall_s_median": 15.134192887926474,
+        "median_speedup_vs_legacy": 1
+      },
+      "d5_compiled": {
+        "median": 247562,
+        "min": 234683,
+        "max": 256522,
+        "prepare_wall_s_median": 0.940439,
+        "sampled_shots": 10500000,
+        "accepted": 1512458,
+        "discarded": 8987542,
+        "logical_errors": 0,
+        "discard_rate": 0.8559563809523809,
+        "error_rate_after_postselection": 0,
+        "discard_wilson_95": [
+          0.8557438645353236,
+          0.8561686369139564
+        ],
+        "error_clopper_pearson_95": [
+          0,
+          0.000002438993317854736
+        ],
+        "error_one_sided_95_upper": 0.000001980702476846196,
+        "smt_sibling_busy_fraction": {
+          "cpu45": {
+            "median": 0.008053691275167751,
+            "max": 0.018840579710144967
+          }
+        },
+        "sample_s_median": 6.05908,
+        "process_wall_s_median": 7.006496686954051,
+        "median_speedup_vs_legacy": 2.341831184433324
+      },
+      "d5_compiled_lto": {
+        "median": 254392,
+        "min": 234863,
+        "max": 264391,
+        "prepare_wall_s_median": 0.903998,
+        "sampled_shots": 10500000,
+        "accepted": 1512458,
+        "discarded": 8987542,
+        "logical_errors": 0,
+        "discard_rate": 0.8559563809523809,
+        "error_rate_after_postselection": 0,
+        "discard_wilson_95": [
+          0.8557438645353236,
+          0.8561686369139564
+        ],
+        "error_clopper_pearson_95": [
+          0,
+          0.000002438993317854736
+        ],
+        "error_one_sided_95_upper": 0.000001980702476846196,
+        "smt_sibling_busy_fraction": {
+          "cpu45": {
+            "median": 0.00544959128065392,
+            "max": 0.025787965616045794
+          }
+        },
+        "sample_s_median": 5.89642,
+        "process_wall_s_median": 6.803209902951494,
+        "median_speedup_vs_legacy": 2.406440078325277
+      }
+    },
+    "paired_speedups": {
+      "d3_legacy": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "d3_compiled": {
+        "median": 1.1162161512192776,
+        "min": 1.108104863878619,
+        "max": 1.1269442127471665
+      },
+      "d3_compiled_lto": {
+        "median": 1.2113365389333202,
+        "min": 1.1587559178095563,
+        "max": 1.244561080417434
+      },
+      "d5_legacy": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "d5_compiled": {
+        "median": 2.299346104872141,
+        "min": 2.1425584749940656,
+        "max": 2.4343480979175682
+      },
+      "d5_compiled_lto": {
+        "median": 2.3720234328385197,
+        "min": 2.204004715633038,
+        "max": 2.5312443155163664
+      }
+    },
+    "compiled_replays_counts_identical": {
+      "compiled_lto": true
+    },
+    "binary_sha256": {
+      "legacy": "92dd0a4e33bbaf14fdaabb3df9cac4850f563b60e471ac6c3a5058c847517c91",
+      "compiled": "92dd0a4e33bbaf14fdaabb3df9cac4850f563b60e471ac6c3a5058c847517c91",
+      "compiled_lto": "12d19ac67cfbec3099700a7a8d8c9c4628f95a4dd9a9ea81072683363e1da5c4"
+    },
+    "runs": [
+      {
+        "distance": 3,
+        "variant": "legacy",
+        "repeat": 0,
+        "stream_id": 901,
+        "sampled_shots": 12000000,
+        "discarded": 3759521,
+        "accepted": 8240479,
+        "logical_errors": 4,
+        "sample_s": 7.21467,
+        "attempted_shots_per_s": 1663280,
+        "prepare_wall_s": 0.0295178,
+        "process_wall_s": 7.24798004492186
+      },
+      {
+        "distance": 3,
+        "variant": "compiled",
+        "repeat": 0,
+        "stream_id": 901,
+        "sampled_shots": 12000000,
+        "discarded": 3759492,
+        "accepted": 8240508,
+        "logical_errors": 7,
+        "sample_s": 6.46351,
+        "attempted_shots_per_s": 1856580,
+        "prepare_wall_s": 0.0279236,
+        "process_wall_s": 6.496238314080983
+      },
+      {
+        "distance": 3,
+        "variant": "compiled_lto",
+        "repeat": 0,
+        "stream_id": 901,
+        "sampled_shots": 12000000,
+        "discarded": 3759492,
+        "accepted": 8240508,
+        "logical_errors": 7,
+        "sample_s": 6.05749,
+        "attempted_shots_per_s": 1981020,
+        "prepare_wall_s": 0.0282977,
+        "process_wall_s": 6.090406416915357
+      },
+      {
+        "distance": 5,
+        "variant": "legacy",
+        "repeat": 0,
+        "stream_id": 901,
+        "sampled_shots": 1500000,
+        "discarded": 1283653,
+        "accepted": 216347,
+        "logical_errors": 0,
+        "sample_s": 14.3607,
+        "attempted_shots_per_s": 104451,
+        "prepare_wall_s": 0.938123,
+        "process_wall_s": 15.306291413959116
+      },
+      {
+        "distance": 5,
+        "variant": "compiled",
+        "repeat": 0,
+        "stream_id": 901,
+        "sampled_shots": 1500000,
+        "discarded": 1283642,
+        "accepted": 216358,
+        "logical_errors": 0,
+        "sample_s": 6.24561,
+        "attempted_shots_per_s": 240169,
+        "prepare_wall_s": 0.92897,
+        "process_wall_s": 7.18112121312879
+      },
+      {
+        "distance": 5,
+        "variant": "compiled_lto",
+        "repeat": 0,
+        "stream_id": 901,
+        "sampled_shots": 1500000,
+        "discarded": 1283642,
+        "accepted": 216358,
+        "logical_errors": 0,
+        "sample_s": 5.67341,
+        "attempted_shots_per_s": 264391,
+        "prepare_wall_s": 0.900627,
+        "process_wall_s": 6.579710797872394
+      },
+      {
+        "distance": 3,
+        "variant": "compiled",
+        "repeat": 1,
+        "stream_id": 902,
+        "sampled_shots": 12000000,
+        "discarded": 3756394,
+        "accepted": 8243606,
+        "logical_errors": 9,
+        "sample_s": 6.48879,
+        "attempted_shots_per_s": 1849340,
+        "prepare_wall_s": 0.0286505,
+        "process_wall_s": 6.522525105858222
+      },
+      {
+        "distance": 3,
+        "variant": "compiled_lto",
+        "repeat": 1,
+        "stream_id": 902,
+        "sampled_shots": 12000000,
+        "discarded": 3756394,
+        "accepted": 8243606,
+        "logical_errors": 9,
+        "sample_s": 5.91884,
+        "attempted_shots_per_s": 2027420,
+        "prepare_wall_s": 0.0270788,
+        "process_wall_s": 5.949380005011335
+      },
+      {
+        "distance": 3,
+        "variant": "legacy",
+        "repeat": 1,
+        "stream_id": 902,
+        "sampled_shots": 12000000,
+        "discarded": 3756436,
+        "accepted": 8243564,
+        "logical_errors": 12,
+        "sample_s": 7.21876,
+        "attempted_shots_per_s": 1662340,
+        "prepare_wall_s": 0.0284759,
+        "process_wall_s": 7.250541944988072
+      },
+      {
+        "distance": 5,
+        "variant": "compiled",
+        "repeat": 1,
+        "stream_id": 902,
+        "sampled_shots": 1500000,
+        "discarded": 1283968,
+        "accepted": 216032,
+        "logical_errors": 0,
+        "sample_s": 6.39161,
+        "attempted_shots_per_s": 234683,
+        "prepare_wall_s": 1.03816,
+        "process_wall_s": 7.437675884924829
+      },
+      {
+        "distance": 5,
+        "variant": "compiled_lto",
+        "repeat": 1,
+        "stream_id": 902,
+        "sampled_shots": 1500000,
+        "discarded": 1283968,
+        "accepted": 216032,
+        "logical_errors": 0,
+        "sample_s": 5.89642,
+        "attempted_shots_per_s": 254392,
+        "prepare_wall_s": 0.900578,
+        "process_wall_s": 6.803209902951494
+      },
+      {
+        "distance": 5,
+        "variant": "legacy",
+        "repeat": 1,
+        "stream_id": 902,
+        "sampled_shots": 1500000,
+        "discarded": 1283970,
+        "accepted": 216030,
+        "logical_errors": 0,
+        "sample_s": 13.6944,
+        "attempted_shots_per_s": 109534,
+        "prepare_wall_s": 0.933775,
+        "process_wall_s": 14.634265339933336
+      },
+      {
+        "distance": 3,
+        "variant": "compiled_lto",
+        "repeat": 2,
+        "stream_id": 903,
+        "sampled_shots": 12000000,
+        "discarded": 3758997,
+        "accepted": 8241003,
+        "logical_errors": 12,
+        "sample_s": 5.94383,
+        "attempted_shots_per_s": 2018900,
+        "prepare_wall_s": 0.0273419,
+        "process_wall_s": 5.974817055044696
+      },
+      {
+        "distance": 3,
+        "variant": "legacy",
+        "repeat": 2,
+        "stream_id": 903,
+        "sampled_shots": 12000000,
+        "discarded": 3759003,
+        "accepted": 8240997,
+        "logical_errors": 9,
+        "sample_s": 7.24485,
+        "attempted_shots_per_s": 1656350,
+        "prepare_wall_s": 0.0283728,
+        "process_wall_s": 7.27675272594206
+      },
+      {
+        "distance": 3,
+        "variant": "compiled",
+        "repeat": 2,
+        "stream_id": 903,
+        "sampled_shots": 12000000,
+        "discarded": 3758997,
+        "accepted": 8241003,
+        "logical_errors": 12,
+        "sample_s": 6.4741,
+        "attempted_shots_per_s": 1853540,
+        "prepare_wall_s": 0.0293498,
+        "process_wall_s": 6.507163199130446
+      },
+      {
+        "distance": 5,
+        "variant": "compiled_lto",
+        "repeat": 2,
+        "stream_id": 903,
+        "sampled_shots": 1500000,
+        "discarded": 1283152,
+        "accepted": 216848,
+        "logical_errors": 0,
+        "sample_s": 6.38671,
+        "attempted_shots_per_s": 234863,
+        "prepare_wall_s": 0.954553,
+        "process_wall_s": 7.347661531064659
+      },
+      {
+        "distance": 5,
+        "variant": "legacy",
+        "repeat": 2,
+        "stream_id": 903,
+        "sampled_shots": 1500000,
+        "discarded": 1283139,
+        "accepted": 216861,
+        "logical_errors": 0,
+        "sample_s": 14.428,
+        "attempted_shots_per_s": 103965,
+        "prepare_wall_s": 0.984988,
+        "process_wall_s": 15.419143232051283
+      },
+      {
+        "distance": 5,
+        "variant": "compiled",
+        "repeat": 2,
+        "stream_id": 903,
+        "sampled_shots": 1500000,
+        "discarded": 1283152,
+        "accepted": 216848,
+        "logical_errors": 0,
+        "sample_s": 5.92681,
+        "attempted_shots_per_s": 253087,
+        "prepare_wall_s": 0.922189,
+        "process_wall_s": 6.85578215890564
+      },
+      {
+        "distance": 3,
+        "variant": "legacy",
+        "repeat": 3,
+        "stream_id": 904,
+        "sampled_shots": 12000000,
+        "discarded": 3758907,
+        "accepted": 8241093,
+        "logical_errors": 5,
+        "sample_s": 7.321,
+        "attempted_shots_per_s": 1639120,
+        "prepare_wall_s": 0.0292898,
+        "process_wall_s": 7.354596290970221
+      },
+      {
+        "distance": 3,
+        "variant": "compiled",
+        "repeat": 3,
+        "stream_id": 904,
+        "sampled_shots": 12000000,
+        "discarded": 3758893,
+        "accepted": 8241107,
+        "logical_errors": 6,
+        "sample_s": 6.58322,
+        "attempted_shots_per_s": 1822820,
+        "prepare_wall_s": 0.0304538,
+        "process_wall_s": 6.618959276005626
+      },
+      {
+        "distance": 3,
+        "variant": "compiled_lto",
+        "repeat": 3,
+        "stream_id": 904,
+        "sampled_shots": 12000000,
+        "discarded": 3758893,
+        "accepted": 8241107,
+        "logical_errors": 6,
+        "sample_s": 6.31798,
+        "attempted_shots_per_s": 1899340,
+        "prepare_wall_s": 0.0285052,
+        "process_wall_s": 6.352093075867742
+      },
+      {
+        "distance": 5,
+        "variant": "legacy",
+        "repeat": 3,
+        "stream_id": 904,
+        "sampled_shots": 1500000,
+        "discarded": 1284513,
+        "accepted": 215487,
+        "logical_errors": 0,
+        "sample_s": 14.6493,
+        "attempted_shots_per_s": 102394,
+        "prepare_wall_s": 0.982622,
+        "process_wall_s": 15.639256520196795
+      },
+      {
+        "distance": 5,
+        "variant": "compiled",
+        "repeat": 3,
+        "stream_id": 904,
+        "sampled_shots": 1500000,
+        "discarded": 1284522,
+        "accepted": 215478,
+        "logical_errors": 0,
+        "sample_s": 6.30622,
+        "attempted_shots_per_s": 237860,
+        "prepare_wall_s": 1.03176,
+        "process_wall_s": 7.345424595056102
+      },
+      {
+        "distance": 5,
+        "variant": "compiled_lto",
+        "repeat": 3,
+        "stream_id": 904,
+        "sampled_shots": 1500000,
+        "discarded": 1284522,
+        "accepted": 215478,
+        "logical_errors": 0,
+        "sample_s": 5.92069,
+        "attempted_shots_per_s": 253349,
+        "prepare_wall_s": 0.909206,
+        "process_wall_s": 6.836427330970764
+      },
+      {
+        "distance": 3,
+        "variant": "compiled",
+        "repeat": 4,
+        "stream_id": 905,
+        "sampled_shots": 12000000,
+        "discarded": 3757382,
+        "accepted": 8242618,
+        "logical_errors": 9,
+        "sample_s": 6.54408,
+        "attempted_shots_per_s": 1833720,
+        "prepare_wall_s": 0.0291551,
+        "process_wall_s": 6.577987655997276
+      },
+      {
+        "distance": 3,
+        "variant": "compiled_lto",
+        "repeat": 4,
+        "stream_id": 905,
+        "sampled_shots": 12000000,
+        "discarded": 3757382,
+        "accepted": 8242618,
+        "logical_errors": 9,
+        "sample_s": 5.91893,
+        "attempted_shots_per_s": 2027390,
+        "prepare_wall_s": 0.0266368,
+        "process_wall_s": 5.950456785038114
+      },
+      {
+        "distance": 3,
+        "variant": "legacy",
+        "repeat": 4,
+        "stream_id": 905,
+        "sampled_shots": 12000000,
+        "discarded": 3757408,
+        "accepted": 8242592,
+        "logical_errors": 7,
+        "sample_s": 7.36647,
+        "attempted_shots_per_s": 1629000,
+        "prepare_wall_s": 0.0297076,
+        "process_wall_s": 7.40137053700164
+      },
+      {
+        "distance": 5,
+        "variant": "compiled",
+        "repeat": 4,
+        "stream_id": 905,
+        "sampled_shots": 1500000,
+        "discarded": 1283538,
+        "accepted": 216462,
+        "logical_errors": 0,
+        "sample_s": 6.05908,
+        "attempted_shots_per_s": 247562,
+        "prepare_wall_s": 0.940439,
+        "process_wall_s": 7.006496686954051
+      },
+      {
+        "distance": 5,
+        "variant": "compiled_lto",
+        "repeat": 4,
+        "stream_id": 905,
+        "sampled_shots": 1500000,
+        "discarded": 1283538,
+        "accepted": 216462,
+        "logical_errors": 0,
+        "sample_s": 5.71691,
+        "attempted_shots_per_s": 262379,
+        "prepare_wall_s": 0.887888,
+        "process_wall_s": 6.610389010980725
+      },
+      {
+        "distance": 5,
+        "variant": "legacy",
+        "repeat": 4,
+        "stream_id": 905,
+        "sampled_shots": 1500000,
+        "discarded": 1283546,
+        "accepted": 216454,
+        "logical_errors": 0,
+        "sample_s": 13.5607,
+        "attempted_shots_per_s": 110614,
+        "prepare_wall_s": 0.911157,
+        "process_wall_s": 14.478129593189806
+      },
+      {
+        "distance": 3,
+        "variant": "compiled_lto",
+        "repeat": 5,
+        "stream_id": 906,
+        "sampled_shots": 12000000,
+        "discarded": 3760635,
+        "accepted": 8239365,
+        "logical_errors": 6,
+        "sample_s": 6.07576,
+        "attempted_shots_per_s": 1975060,
+        "prepare_wall_s": 0.0298834,
+        "process_wall_s": 6.110951019916683
+      },
+      {
+        "distance": 3,
+        "variant": "legacy",
+        "repeat": 5,
+        "stream_id": 906,
+        "sampled_shots": 12000000,
+        "discarded": 3760608,
+        "accepted": 8239392,
+        "logical_errors": 7,
+        "sample_s": 7.35981,
+        "attempted_shots_per_s": 1630480,
+        "prepare_wall_s": 0.0294965,
+        "process_wall_s": 7.39341608597897
+      },
+      {
+        "distance": 3,
+        "variant": "compiled",
+        "repeat": 5,
+        "stream_id": 906,
+        "sampled_shots": 12000000,
+        "discarded": 3760635,
+        "accepted": 8239365,
+        "logical_errors": 6,
+        "sample_s": 6.53076,
+        "attempted_shots_per_s": 1837460,
+        "prepare_wall_s": 0.0279167,
+        "process_wall_s": 6.562957332003862
+      },
+      {
+        "distance": 5,
+        "variant": "compiled_lto",
+        "repeat": 5,
+        "stream_id": 906,
+        "sampled_shots": 1500000,
+        "discarded": 1283822,
+        "accepted": 216178,
+        "logical_errors": 0,
+        "sample_s": 5.83385,
+        "attempted_shots_per_s": 257120,
+        "prepare_wall_s": 0.907909,
+        "process_wall_s": 6.749423230998218
+      },
+      {
+        "distance": 5,
+        "variant": "legacy",
+        "repeat": 5,
+        "stream_id": 906,
+        "sampled_shots": 1500000,
+        "discarded": 1283813,
+        "accepted": 216187,
+        "logical_errors": 0,
+        "sample_s": 14.1893,
+        "attempted_shots_per_s": 105713,
+        "prepare_wall_s": 0.9375,
+        "process_wall_s": 15.134192887926474
+      },
+      {
+        "distance": 5,
+        "variant": "compiled",
+        "repeat": 5,
+        "stream_id": 906,
+        "sampled_shots": 1500000,
+        "discarded": 1283822,
+        "accepted": 216178,
+        "logical_errors": 0,
+        "sample_s": 5.84744,
+        "attempted_shots_per_s": 256522,
+        "prepare_wall_s": 0.929199,
+        "process_wall_s": 6.781980069121346
+      },
+      {
+        "distance": 3,
+        "variant": "legacy",
+        "repeat": 6,
+        "stream_id": 907,
+        "sampled_shots": 12000000,
+        "discarded": 3756934,
+        "accepted": 8243066,
+        "logical_errors": 7,
+        "sample_s": 7.2022,
+        "attempted_shots_per_s": 1666160,
+        "prepare_wall_s": 0.0293626,
+        "process_wall_s": 7.235819378867745
+      },
+      {
+        "distance": 3,
+        "variant": "compiled",
+        "repeat": 6,
+        "stream_id": 907,
+        "sampled_shots": 12000000,
+        "discarded": 3756976,
+        "accepted": 8243024,
+        "logical_errors": 10,
+        "sample_s": 6.49954,
+        "attempted_shots_per_s": 1846280,
+        "prepare_wall_s": 0.0283795,
+        "process_wall_s": 6.531691869022325
+      },
+      {
+        "distance": 3,
+        "variant": "compiled_lto",
+        "repeat": 6,
+        "stream_id": 907,
+        "sampled_shots": 12000000,
+        "discarded": 3756976,
+        "accepted": 8243024,
+        "logical_errors": 10,
+        "sample_s": 6.15898,
+        "attempted_shots_per_s": 1948370,
+        "prepare_wall_s": 0.027069,
+        "process_wall_s": 6.189469835953787
+      },
+      {
+        "distance": 5,
+        "variant": "legacy",
+        "repeat": 6,
+        "stream_id": 907,
+        "sampled_shots": 1500000,
+        "discarded": 1284913,
+        "accepted": 215087,
+        "logical_errors": 0,
+        "sample_s": 13.3967,
+        "attempted_shots_per_s": 111968,
+        "prepare_wall_s": 0.937777,
+        "process_wall_s": 14.341386216925457
+      },
+      {
+        "distance": 5,
+        "variant": "compiled",
+        "repeat": 6,
+        "stream_id": 907,
+        "sampled_shots": 1500000,
+        "discarded": 1284898,
+        "accepted": 215102,
+        "logical_errors": 0,
+        "sample_s": 5.97523,
+        "attempted_shots_per_s": 251036,
+        "prepare_wall_s": 0.941272,
+        "process_wall_s": 6.921975715085864
+      },
+      {
+        "distance": 5,
+        "variant": "compiled_lto",
+        "repeat": 6,
+        "stream_id": 907,
+        "sampled_shots": 1500000,
+        "discarded": 1284898,
+        "accepted": 215102,
+        "logical_errors": 0,
+        "sample_s": 6.07834,
+        "attempted_shots_per_s": 246778,
+        "prepare_wall_s": 0.903998,
+        "process_wall_s": 6.987974165938795
+      }
+    ],
+    "notes": [
+      "Paired replays across variants are not independent additional samples.",
+      "Host was not exclusively reserved; sibling CPU load was recorded.",
+      "Printed timings/throughputs have limited precision."
+    ]
+  },
+  "cpu_d5_50B": {
+    "counts": {
+      "shots": 50000000000,
+      "discarded": 42802205779,
+      "accepted": 7197794221,
+      "logical_errors": 25
+    },
+    "discard_rate": 0.85604411558,
+    "discard_rate_wilson_95": [
+      0.8560410385641462,
+      0.8560471925411448
+    ],
+    "error_rate_after_postselection": 3.4732862919394092e-9,
+    "error_rate_after_postselection_clopper_pearson_95": [
+      2.2477277565698115e-9,
+      5.127255730559535e-9
+    ],
+    "journal_sha256": "0dc833a352dc0435355522660067dad436714668692276a9dd5445490af24621",
+    "date_started": "2026-09-28T13:31:18.519204+00:00",
+    "cpu_model": "Intel Xeon Gold 5218R",
+    "sampling_wall_s": 16897.1639549681,
+    "attempted_shots_per_s": 2959076.4540873747,
+    "accepted_shots_per_s": 425976.46801454556,
+    "total_invocation_wall_s": 16905.602121894946,
+    "sessions": 1,
+    "socket_ids": [
+      "0"
+    ],
+    "logical_cpu_count": 40,
+    "physical_core_count": 20,
+    "steady_window_speeds_min_median_max": [
+      2958311.380463161,
+      2960420.707760773,
+      2976156.100141165
+    ],
+    "steady_worker_cpu_equivalents": 39.984332317474625,
+    "paired_nonzero_error_replays": {
+      "segments": [
+        683,
+        1377
+      ],
+      "counts_match": true,
+      "replayed_shots": 10000000,
+      "added_to_production_counts": false,
+      "control": "FP64 complex amplitudes with detector hoisting disabled",
+      "results_sha256": "7f3649f9d4a3e52f3792acdfa8bd396f71d4b0d90270824df4a1a2a121da8540"
+    },
+    "caveats": [
+      "One socket is 20 physical cores / 40 logical CPUs on this host, not 40 physical cores.",
+      "Throughput is measured common wall time, including dispatch gaps and the final drain; preparation/warmup excluded.",
+      "600s interior-window speeds linearly allocate boundary segments; global wall-time throughput is exact.",
+      "The machine was not reserved exclusively; background contention is included.",
+      "Non-rejection is not a proof of identical distributions; rare-error intervals remain broad.",
+      "Historical CPU 30B has no frozen original binary/input, and is only a secondary contextual comparison.",
+      "Born RNG uniqueness is asserted for stream/shot identities, not all 64-bit initial states.",
+      "Warmup, preflight, historical CPU and GPU runs are not pooled into the requested 50B."
+    ],
+    "config": {
+      "target_shots": 50000000000,
+      "segment_shots": 5000000,
+      "warmup_shots": 500000,
+      "cpus": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59
+      ],
+      "stream_start": 50000000,
+      "warmup_stream_start": 49000000,
+      "precision": "FP64",
+      "cpu_backend": "compiled",
+      "cpu_real_gauge": true,
+      "cpu_rng": "cpu-shot-v1",
+      "sample_chunk_shots": 2048,
+      "threads_per_worker": 1,
+      "observable": 0,
+      "postselect_detectors": true,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "worker_sha256": "313eec6442fed8862c8eca183e088612a4f0ca9a62928f40621da36439dff738",
+      "script_sha256": "c7d59fb7f9c06bbae0ccfd0ef78828ce359c489fba3ecbe38b51818745a96815"
+    },
+    "comparison_to_gpu_50B": {
+      "baseline_counts": {
+        "shots": 50000000000,
+        "discarded": 42802148564,
+        "accepted": 7197851436,
+        "logical_errors": 28
+      },
+      "baseline_discard_rate": 0.85604297128,
+      "baseline_error_rate_after_postselection": 3.890049725110775e-9,
+      "discard_difference_percentage_points": 0.00011443000000888048,
+      "discard_two_proportion_z": 0.5154023569186319,
+      "discard_two_sided_normal_p": 0.6062718858234364,
+      "logical_errors_two_sided_fisher_p": 0.7838463019078907
+    },
+    "timing": "Common sampling wall span across persistent processes, including dispatch gaps and final drain; preparation/warmup excluded. Interior 600s window rates use linear interpolation at segment boundaries."
+  },
+  "gpu_d5_50B": {
+    "counts": {
+      "shots": 50000000000,
+      "accepted": 7197851436,
+      "discarded": 42802148564,
+      "logical_errors": 28
+    },
+    "discard_rate": 0.85604297128,
+    "discard_rate_wilson_95": [
+      0.8560398942539733,
+      0.8560460482513177
+    ],
+    "error_rate_after_postselection": 3.890049725110775e-9,
+    "error_rate_after_postselection_clopper_pearson_95": [
+      2.5849097931710515e-9,
+      5.622204941021784e-9
+    ],
+    "journal_sha256": "13544daacd0d9ccb9e66ce5ff73af9cd9d7d1be8cc2eb3bfa2572a73a1fbd0ed",
+    "date_started": "2026-09-22T10:28:42.989530+00:00",
+    "gpu_model": "NVIDIA GeForce RTX 4090",
+    "driver": "580.173.02",
+    "sample_s": 2021.420763965,
+    "attempted_shots_per_s": 24735077.86767037,
+    "chunk_speed_min_median_max": [
+      24718344.87766545,
+      24731761.0038066,
+      24863790.63761202
+    ],
+    "caveats": [
+      "Non-rejection of equality is not a proof of identical distributions.",
+      "Few accepted logical errors imply a wide exact-binomial confidence interval.",
+      "Historical CPU logs do not freeze original executable and input hashes; surviving input matches.",
+      "Prior and current sampling results are reported separately, not pooled into the requested 50B.",
+      "Published exact-result circuit and fieldStabilizer hardware/precision/timing contracts differ."
+    ],
+    "config": {
+      "target_shots": 50000000000,
+      "chunk_shots": 500000000,
+      "stream_start": 3000000,
+      "shots_per_launch": 524288,
+      "threads_per_block": 128,
+      "precision": "FP64",
+      "postselect_detectors": true,
+      "observable": 0,
+      "cuda_mode": "gpu_presample_expressions",
+      "native_sha256": "0b045133186e250da9b21028966d36685ab8e71a97503e2ba65465b080905b68",
+      "distinct_launch_seeds": 95400,
+      "prior_20B_launch_seed_overlap": 0
+    },
+    "environment": {
+      "SYMFT_CUDA_JIT": "1",
+      "SYMFT_CUDA_PACKED_NOISE": "1",
+      "SYMFT_CUDA_SCALAR_NOISE": "1",
+      "SYMFT_JIT_SYMBOLIC": "1",
+      "SYMFT_JIT_ROW_REDUCE": "1",
+      "SYMFT_JIT_COMPLEX": "0",
+      "SYMFT_JIT_REGS": "128",
+      "SYMFT_JIT_THREADS": "128",
+      "SYMFT_JIT_CACHE": "<local-cache>"
+    },
+    "timing": "Sum of sampling-call times, including noise/evolution/reduction/synchronization/count transfer, excluding initial preparation/JIT and between-call journaling."
+  },
+  "gpu_d3_1B": {
+    "counts": {
+      "shots": 1000000000,
+      "discarded": 313194348,
+      "accepted": 686805652,
+      "logical_errors": 616
+    },
+    "discard_rate": 0.313194348,
+    "discard_rate_wilson_95": [
+      0.3131656030778538,
+      0.3132230943573586
+    ],
+    "error_rate_after_postselection": 8.969058396741324e-7,
+    "error_rate_after_postselection_clopper_pearson_95": [
+      8.274669252674311e-7,
+      9.70616055240028e-7
+    ],
+    "date": "2026-09-23",
+    "gpu_model": "NVIDIA GeForce RTX 4090",
+    "stream_id": 8000000,
+    "sampling_time_seconds_reported": 6.79237,
+    "attempted_shots_per_second_reported": 147224000,
+    "process_wall_seconds": 7.155932100024074,
+    "binary_sha256": "16af458654bf807632d809255b32314f763a975990acfe9e1453f98fa3c5cfc9",
+    "source_results_sha256": "bfee0d8cfbf110ab4e52a3cbfac5af605e429847b750353d0beb5bf35612c757",
+    "source_stdout_sha256": "b9f7d6af191a59a22b1b4326cc95a86eaaa4705cf3e154edf95aafb81b2014e2",
+    "notes": [
+      "Fresh run of 1000000000 attempted shots; not 1000000000 accepted shots.",
+      "Rates and confidence intervals are recomputed from exact integer counters.",
+      "Discard interval: two-sided 95% Wilson; postselection error interval: two-sided 95% Clopper-Pearson.",
+      "Intervals quantify binomial sampling uncertainty, not systematic simulator error.",
+      "Timing and throughput are native printed values with limited decimal precision, from one run.",
+      "The benchmark wrapper speedup_vs_2_6M field uses a d=5 baseline and is not a valid d=3 speedup comparison."
+    ],
+    "timing": "One native CLI run, approximately 6.79 s sampling; rounded printed timing/rate. Not a sustained long-run benchmark."
+  },
+  "gpu_d5_preoptimization": {
+    "gpu_model": "NVIDIA GeForce RTX 4090",
+    "shots_per_run": 50000000,
+    "repeats": 3,
+    "shots_per_launch": 524288,
+    "threads_per_block": 128,
+    "binary_sha256": "558223d1a24080bfa88d836fd76d2b23896f0d6fd2559f8b33143570eee82a30",
+    "attempted_shots_per_s": [
+      2619700,
+      2619360,
+      2617830
+    ],
+    "median_attempted_shots_per_s": 2619360,
+    "note": "Three timing replays of the same stream; not three independent statistical samples. This is the previous SOFT v2 CUDA executor, not SOFT v1."
+  }
+}

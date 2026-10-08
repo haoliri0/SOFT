@@ -1,9 +1,12 @@
 #include "cuda/cuda_runtime.hpp"
+#include "cuda/cuda_jit.hpp"
 
 #include <cuda_runtime.h>
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
+#include <cstdio>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -1386,9 +1389,8 @@ __device__ void copy_shot_outputs(
     int shot,
     const std::uint64_t* measurement_words,
     std::uint64_t* measurement_out) {
-    if (threadIdx.x != 0) {
-        return;
-    }
+    // The scalar executor owns one shot per thread, whereas the persistent
+    // executor owns one shot per block. The caller selects the writer.
     if (measurement_out != nullptr) {
         for (int idx = 0; idx < program.record_words; ++idx) {
             measurement_out[static_cast<std::size_t>(shot) * static_cast<std::size_t>(program.record_words) +
@@ -2157,6 +2159,184 @@ extern "C" __global__ void symft_generate_expression_words_kernel(
     }
 }
 
+// Transpose the linear expression map once. A rare sampled event can then
+// toggle its affected expressions directly, without scanning every mask.
+__device__ void xor_condition_influence(
+    unsigned long long* values, const std::uint64_t* influence, int words, int condition) {
+    for(int w=0;w<words;++w) {
+        auto mask=static_cast<unsigned long long>(influence[static_cast<std::size_t>(condition)*words+w]);
+        if(mask) atomicXor(values+w,mask);
+    }
+}
+
+__device__ void xor_assignment_influence(
+    DeviceProgramView p, unsigned long long* values, const std::uint64_t* influence,
+    int words,int offset,std::uint64_t assignment) {
+    while(assignment) {
+        int bit=__ffsll(static_cast<long long>(assignment))-1;
+        xor_condition_influence(values,influence,words,p.sample_condition_table[offset+bit]);
+        assignment&=assignment-1;
+    }
+}
+
+extern "C" __global__ void symft_sparse_expression_kernel(
+    DeviceProgramView p,const std::uint64_t* influence,const std::uint64_t* constants,
+    int words,std::uint64_t* output,std::size_t shot_words,int shots,std::uint64_t seed,bool packed) {
+    int lane=threadIdx.x&31;
+    int warp=threadIdx.x>>5;
+    int shot=(blockIdx.x*blockDim.x+threadIdx.x)>>5;
+    if(shot>=shots) return;
+    extern __shared__ unsigned long long sparse_shared[];
+    auto* values=sparse_shared+warp*words;
+    for(int w=lane;w<words;w+=32) values[w]=constants[w];
+    __syncwarp();
+    for(int idx=lane;idx<p.categorical_count;idx+=32) {
+        const auto& d=p.categorical_distributions[idx];
+        int ri=0;
+        int row=device_counter_sample_categorical_row(seed,shot,d.sampler_id,ri,
+                                                     p.sample_probability_table+d.probability_offset,d.row_count);
+        xor_assignment_influence(p,values,influence,words,d.condition_offset,p.sample_assignment_table[d.assignment_offset+row]);
+    }
+    for(int idx=lane;idx<p.rare_categorical_count;idx+=32) {
+        const auto& g=p.rare_categorical_groups[idx];
+        if(g.event_probability<=0 || g.set_count<=0) continue;
+        int draw=0,ri=0;
+        while(true) {
+            int gap=device_counter_sample_geometric_gap(seed,shot,g.sampler_id,ri,g.inverse_log_survival);
+            if(gap>=g.set_count-draw) break;
+            draw+=gap;
+            int event=device_counter_sample_categorical_row(seed,shot,g.sampler_id,ri,
+                p.sample_probability_table+g.event_probability_offset,g.event_count);
+            int row=p.sample_event_row_table[g.event_row_offset+event];
+            xor_assignment_influence(p,values,influence,words,g.condition_offset+draw*g.nbits,
+                                     p.sample_assignment_table[g.assignment_offset+row]);
+            ++draw;
+        }
+    }
+    for(int idx=lane;idx<p.bernoulli_count;idx+=32) {
+        const auto& b=p.bernoulli_conditions[idx];
+        int ri=0;
+        if(device_counter_sample_bernoulli(seed,shot,b.sampler_id,ri,b.probability))
+            xor_condition_influence(values,influence,words,b.condition);
+    }
+    for(int idx=lane;idx<p.low_probability_group_count;idx+=32) {
+        const auto& g=p.low_probability_bernoulli_groups[idx];
+        if(g.probability<=0 || g.condition_count<=0) continue;
+        int draw=0,ri=0;
+        while(true) {
+            int gap=device_counter_sample_geometric_gap(seed,shot,g.sampler_id,ri,g.inverse_log_survival);
+            if(gap>=g.condition_count-draw) break;
+            draw+=gap;
+            xor_condition_influence(values,influence,words,p.sample_condition_table[g.condition_offset+draw]);
+            ++draw;
+        }
+    }
+    __syncwarp();
+    if(packed) {
+        for(int w=lane;w<words;w+=32) output[static_cast<std::size_t>(shot)*words+w]=values[w];
+        return;
+    }
+    for(int e=lane;e<p.block_expression_count;e+=32) {
+        if((values[e>>6]>>(e&63))&1ULL)
+            atomicOr(reinterpret_cast<unsigned long long*>(output+static_cast<std::size_t>(e)*shot_words+(shot>>6)),1ULL<<(shot&63));
+    }
+}
+
+// A thread owns a complete small expression vector. This keeps the identical
+// counter streams and categorical assignments, but avoids idle warp lanes and
+// shared-memory atomics when a plan has only a few grouped noise samplers.
+template<int Words>
+__device__ __forceinline__ void xor_local_condition(
+    std::uint64_t (&values)[Words],const std::uint64_t* influence,int condition) {
+    #pragma unroll
+    for(int w=0;w<Words;++w) values[w]^=influence[static_cast<std::size_t>(condition)*Words+w];
+}
+
+template<int Words>
+__device__ __forceinline__ void xor_local_assignment(
+    DeviceProgramView p,std::uint64_t (&values)[Words],const std::uint64_t* influence,
+    int offset,std::uint64_t assignment) {
+    while(assignment) {
+        int bit=__ffsll(static_cast<long long>(assignment))-1;
+        xor_local_condition(values,influence,p.sample_condition_table[offset+bit]);
+        assignment&=assignment-1;
+    }
+}
+
+template<int Words>
+__global__ void symft_scalar_sparse_expression_kernel(
+    DeviceProgramView p,const std::uint64_t* influence,const std::uint64_t* constants,
+    std::uint64_t* output,int shots,std::uint64_t seed) {
+    int shot=blockIdx.x*blockDim.x+threadIdx.x;
+    if(shot>=shots) return;
+    std::uint64_t values[Words];
+    #pragma unroll
+    for(int w=0;w<Words;++w) values[w]=constants[w];
+    for(int idx=0;idx<p.categorical_count;++idx) {
+        const auto& d=p.categorical_distributions[idx];
+        int ri=0;
+        int row=device_counter_sample_categorical_row(seed,shot,d.sampler_id,ri,
+            p.sample_probability_table+d.probability_offset,d.row_count);
+        xor_local_assignment(p,values,influence,d.condition_offset,p.sample_assignment_table[d.assignment_offset+row]);
+    }
+    for(int idx=0;idx<p.rare_categorical_count;++idx) {
+        const auto& g=p.rare_categorical_groups[idx];
+        if(g.event_probability<=0 || g.set_count<=0) continue;
+        int draw=0,ri=0;
+        while(true) {
+            int gap=device_counter_sample_geometric_gap(seed,shot,g.sampler_id,ri,g.inverse_log_survival);
+            if(gap>=g.set_count-draw) break;
+            draw+=gap;
+            int event=device_counter_sample_categorical_row(seed,shot,g.sampler_id,ri,
+                p.sample_probability_table+g.event_probability_offset,g.event_count);
+            int row=p.sample_event_row_table[g.event_row_offset+event];
+            xor_local_assignment(p,values,influence,g.condition_offset+draw*g.nbits,
+                p.sample_assignment_table[g.assignment_offset+row]);
+            ++draw;
+        }
+    }
+    for(int idx=0;idx<p.bernoulli_count;++idx) {
+        const auto& b=p.bernoulli_conditions[idx];
+        int ri=0;
+        if(device_counter_sample_bernoulli(seed,shot,b.sampler_id,ri,b.probability))
+            xor_local_condition(values,influence,b.condition);
+    }
+    for(int idx=0;idx<p.low_probability_group_count;++idx) {
+        const auto& g=p.low_probability_bernoulli_groups[idx];
+        if(g.probability<=0 || g.condition_count<=0) continue;
+        int draw=0,ri=0;
+        while(true) {
+            int gap=device_counter_sample_geometric_gap(seed,shot,g.sampler_id,ri,g.inverse_log_survival);
+            if(gap>=g.condition_count-draw) break;
+            draw+=gap;
+            xor_local_condition(values,influence,p.sample_condition_table[g.condition_offset+draw]);
+            ++draw;
+        }
+    }
+    #pragma unroll
+    for(int w=0;w<Words;++w) output[static_cast<std::size_t>(shot)*Words+w]=values[w];
+}
+
+void launch_scalar_sparse_expression_kernel(
+    DeviceProgramView p,const std::uint64_t* influence,const std::uint64_t* constants,
+    int words,std::uint64_t* output,int shots,std::uint64_t seed) {
+    constexpr int threads=128;
+    const int blocks=(shots+threads-1)/threads;
+    switch(words) {
+    #define SYMFT_SCALAR_NOISE_CASE(N) case N: symft_scalar_sparse_expression_kernel<N><<<blocks,threads>>>(p,influence,constants,output,shots,seed);break;
+    SYMFT_SCALAR_NOISE_CASE(1)
+    SYMFT_SCALAR_NOISE_CASE(2)
+    SYMFT_SCALAR_NOISE_CASE(3)
+    SYMFT_SCALAR_NOISE_CASE(4)
+    SYMFT_SCALAR_NOISE_CASE(5)
+    SYMFT_SCALAR_NOISE_CASE(6)
+    SYMFT_SCALAR_NOISE_CASE(7)
+    SYMFT_SCALAR_NOISE_CASE(8)
+    #undef SYMFT_SCALAR_NOISE_CASE
+    default: throw Error("scalar noise expression width is outside [1,8]");
+    }
+}
+
 extern "C" __global__ void symft_generate_expression_words_by_word_kernel(
     DeviceProgramView program,
     DeviceAuxiliaryView aux,
@@ -2631,8 +2811,8 @@ __device__ __forceinline__ void symft_persistent_sample_body(
         const bool discarded = detector_any != 0;
         discarded_out[shot] = discarded ? 1 : 0;
         logical_out[shot] = !discarded && logical_error_outcome(program, measurement_words) ? 1 : 0;
+        copy_shot_outputs(program, shot, measurement_words, measurement_out);
     }
-    copy_shot_outputs(program, shot, measurement_words, measurement_out);
 }
 
 extern "C" __global__ void symft_persistent_sample_kernel_fast(
@@ -2723,10 +2903,24 @@ extern "C" __global__ void symft_persistent_sample_kernel_lazy(
         expectation_out);
 }
 
+__global__ void symft_reduce_flags_kernel(const std::uint8_t* discarded,const std::uint8_t* logical,
+                                         int shots,unsigned long long* totals) {
+    unsigned d=0,l=0;
+    int shot=blockIdx.x*blockDim.x+threadIdx.x;
+    if(shot<shots){d=discarded[shot]!=0;l=logical[shot]!=0 && !d;}
+    for(int delta=16;delta;delta>>=1) {
+        d+=__shfl_down_sync(0xffffffffU,d,delta);
+        l+=__shfl_down_sync(0xffffffffU,l,delta);
+    }
+    if((threadIdx.x&31)==0) {atomicAdd(totals,static_cast<unsigned long long>(d));atomicAdd(totals+1,static_cast<unsigned long long>(l));}
+}
+
 } // namespace
 
 struct CudaRuntimeProgram::Impl {
     CudaProgramData host;
+    std::unique_ptr<CudaJitSampler> jit;
+    bool sparse_noise = false;
     DeviceArray<CudaInstruction> instructions;
     DeviceArray<CudaRotationRunItem> rotation_run_items;
     DeviceArray<CudaExpression> expressions;
@@ -2752,13 +2946,16 @@ struct CudaRuntimeProgram::Impl {
     DeviceArray<int> sample_event_row_table;
     DeviceArray<CudaConditionSamplerRef> condition_sampler_refs;
     DeviceArray<std::uint64_t> expression_words;
+    DeviceArray<std::uint64_t> expression_influence;
+    DeviceArray<std::uint64_t> expression_constants;
     DeviceArray<std::uint8_t> discarded_flags;
     DeviceArray<std::uint8_t> logical_flags;
+    DeviceArray<unsigned long long> totals;
     DeviceArray<std::uint64_t> global_workspace;
     std::vector<std::uint8_t> host_discarded;
     std::vector<std::uint8_t> host_logical;
 
-    explicit Impl(const CudaProgramData& program) : host(program) {
+    explicit Impl(const CudaProgramData& program, bool allow_jit) : host(program) {
         instructions.upload(host.instructions);
         rotation_run_items.upload(host.rotation_run_items);
         expressions.upload(host.expressions);
@@ -2783,6 +2980,31 @@ struct CudaRuntimeProgram::Impl {
         sample_probability_table.upload(host.sample_probability_table);
         sample_event_row_table.upload(host.sample_event_row_table);
         condition_sampler_refs.upload(host.condition_sampler_refs);
+        // The specialized kernel is counts-only and cannot execute EXP_VAL.
+        // Keep main's non-destructive probes on the general CUDA runtime.
+        const bool enable_jit=allow_jit && cuda_env_enabled("SYMFT_CUDA_JIT") &&
+                              host.max_k<=10 && host.nexpvals==0;
+        sparse_noise=cuda_env_enabled("SYMFT_CUDA_SPARSE_NOISE") ||
+                     (enable_jit && cuda_env_enabled("SYMFT_CUDA_PACKED_NOISE"));
+        if(sparse_noise) {
+            const int words=(host.block_expression_count+63)/64;
+            std::vector<std::uint64_t> influence(static_cast<std::size_t>(host.symbol_count+1)*words,0);
+            std::vector<std::uint64_t> constants(words,0);
+            for(int e=0;e<host.block_expression_count;++e) {
+                const auto& b=host.block_expression_plans[e];
+                auto mask=std::uint64_t{1}<<(e&63);
+                if(b.constant) constants[e>>6]^=mask;
+                for(int j=0;j<b.condition_count;++j) {
+                    int condition=host.block_expression_condition_table[b.condition_offset+j];
+                    influence[static_cast<std::size_t>(condition)*words+(e>>6)]^=mask;
+                }
+            }
+            expression_influence.upload(influence);
+            expression_constants.upload(constants);
+        }
+        if (enable_jit) {
+            jit = std::make_unique<CudaJitSampler>(host);
+        }
     }
 
     DeviceProgramView view() const {
@@ -2838,8 +3060,8 @@ struct CudaRuntimeProgram::Impl {
     }
 };
 
-CudaRuntimeProgram::CudaRuntimeProgram(const CudaProgramData& program)
-    : impl_(std::make_unique<Impl>(program)) {}
+CudaRuntimeProgram::CudaRuntimeProgram(const CudaProgramData& program, bool allow_jit)
+    : impl_(std::make_unique<Impl>(program, allow_jit)) {}
 
 CudaRuntimeProgram::~CudaRuntimeProgram() = default;
 
@@ -2881,6 +3103,8 @@ CudaKernelRunResult CudaRuntimeProgram::run(
     if (options.on_demand_expression_blocks && impl_->host.block_expression_count <= 0) {
         throw Error("CUDA on-demand expression mode requires block expressions");
     }
+    const bool use_jit = impl_->jit && options.generate_expressions_on_device && !options.capture_records;
+    const bool packed_noise = use_jit && impl_->jit->packed_expressions();
     if (options.generate_expressions_on_device) {
         if (impl_->host.block_expression_count <= 0) {
             throw Error("CUDA generated expression mode requires block expressions");
@@ -2889,7 +3113,9 @@ CudaKernelRunResult CudaRuntimeProgram::run(
         if (shot_words != expected_shot_words) {
             throw Error("CUDA generated expression mode received an invalid shot_words value");
         }
-        expression_word_count = static_cast<std::size_t>(impl_->host.block_expression_count) * shot_words;
+        expression_word_count = packed_noise
+            ? static_cast<std::size_t>(shots)*((impl_->host.block_expression_count+63)/64)
+            : static_cast<std::size_t>(impl_->host.block_expression_count) * shot_words;
     } else if (uses_host_expression_words) {
         if (expression_word_count != static_cast<std::size_t>(impl_->host.block_expression_count) * shot_words) {
             throw Error("CUDA expression block shape does not match program");
@@ -3020,9 +3246,13 @@ CudaKernelRunResult CudaRuntimeProgram::run(
     }
     auto* measurement_output_ptr = options.capture_records ? measurement_output.ptr : nullptr;
     auto* expectation_output_ptr = options.capture_records ? expectation_output.ptr : nullptr;
+    if (use_jit) impl_->totals.resize_uninitialized(2);
 
     cudaEvent_t start{};
     cudaEvent_t stop{};
+    cudaEvent_t midpoint{};
+    const bool profile = cuda_env_enabled("SYMFT_CUDA_PROFILE");
+    if (profile) check_cuda(cudaEventCreate(&midpoint), "cudaEventCreate midpoint");
     check_cuda(cudaEventCreate(&start), "cudaEventCreate");
     check_cuda(cudaEventCreate(&stop), "cudaEventCreate");
     check_cuda(cudaEventRecord(start), "cudaEventRecord");
@@ -3033,15 +3263,53 @@ CudaKernelRunResult CudaRuntimeProgram::run(
                 0,
                 expression_word_count * sizeof(std::uint64_t)),
             "cudaMemset expression words");
-        symft_generate_expression_words_kernel<<<shots, threads, generator_shared_bytes>>>(
-            program_view,
-            impl_->aux_view(),
-            impl_->expression_words.ptr,
-            shot_words,
-            shots,
-            host_mix_u64(seed ^ 0x51ed5eed1234abcdULL));
+        if(impl_->sparse_noise) {
+            int words=(impl_->host.block_expression_count+63)/64;
+            if(packed_noise && words>=1 && words<=8 && cuda_env_enabled("SYMFT_CUDA_SCALAR_NOISE")) {
+                launch_scalar_sparse_expression_kernel(program_view,impl_->expression_influence.ptr,
+                    impl_->expression_constants.ptr,words,impl_->expression_words.ptr,shots,
+                    host_mix_u64(seed ^ 0x51ed5eed1234abcdULL));
+            } else {
+                int sparse_threads=128;
+                symft_sparse_expression_kernel<<<(shots+3)/4,sparse_threads,4*words*sizeof(std::uint64_t)>>>(
+                    program_view,impl_->expression_influence.ptr,impl_->expression_constants.ptr,words,
+                    impl_->expression_words.ptr,shot_words,shots,host_mix_u64(seed ^ 0x51ed5eed1234abcdULL),packed_noise);
+            }
+        } else {
+            symft_generate_expression_words_kernel<<<shots, threads, generator_shared_bytes>>>(
+                program_view,
+                impl_->aux_view(),
+                impl_->expression_words.ptr,
+                shot_words,
+                shots,
+                host_mix_u64(seed ^ 0x51ed5eed1234abcdULL));
+        }
         check_cuda(cudaGetLastError(), "CUDA expression generation launch");
-        if (use_scalar_small_k_sampler) {
+        if(cuda_env_enabled("SYMFT_VALIDATE_NOISE")) {
+            DeviceArray<std::uint64_t> reference;
+            const auto reference_words=static_cast<std::size_t>(impl_->host.block_expression_count)*shot_words;
+            reference.resize_uninitialized(reference_words);
+            check_cuda(cudaMemset(reference.ptr,0,reference_words*sizeof(std::uint64_t)),"noise reference memset");
+            symft_generate_expression_words_kernel<<<shots,threads,generator_shared_bytes>>>(
+                program_view,impl_->aux_view(),reference.ptr,shot_words,shots,
+                host_mix_u64(seed ^ 0x51ed5eed1234abcdULL));
+            std::vector<std::uint64_t> expected(reference_words),actual(expression_word_count);
+            check_cuda(cudaMemcpy(expected.data(),reference.ptr,reference_words*sizeof(std::uint64_t),cudaMemcpyDeviceToHost),"noise reference copy");
+            check_cuda(cudaMemcpy(actual.data(),impl_->expression_words.ptr,expression_word_count*sizeof(std::uint64_t),cudaMemcpyDeviceToHost),"noise optimized copy");
+            if(packed_noise) {
+                int words=(impl_->host.block_expression_count+63)/64;
+                for(int shot=0;shot<shots;++shot) for(int e=0;e<impl_->host.block_expression_count;++e)
+                    if(((expected[e*shot_words+(shot>>6)]>>(shot&63))&1ULL)!=((actual[static_cast<std::size_t>(shot)*words+(e>>6)]>>(e&63))&1ULL))
+                        throw Error("packed sparse noise differs from original expression bits");
+            } else if(expected!=actual) throw Error("sparse noise differs from original expression bits");
+            std::fprintf(stderr,"noise_exact_match shots=%d expression_words=%zu seed=%llu\n",shots,expression_word_count,static_cast<unsigned long long>(seed));
+        }
+        if(profile) check_cuda(cudaEventRecord(midpoint), "cudaEventRecord midpoint");
+        if (use_jit) {
+            impl_->jit->launch(impl_->expression_words.ptr, shot_words, shots, seed,
+                               options.postselect_detectors, impl_->discarded_flags.ptr,
+                               impl_->logical_flags.ptr);
+        } else if (use_scalar_small_k_sampler) {
             const int scalar_blocks = (shots + threads - 1) / threads;
             symft_scalar_small_k_sample_kernel<<<scalar_blocks, threads>>>(
                 program_view,
@@ -3112,13 +3380,32 @@ CudaKernelRunResult CudaRuntimeProgram::run(
             expectation_output_ptr);
     }
     check_cuda(cudaGetLastError(), "CUDA sampler launch");
+    if(use_jit) {
+        check_cuda(cudaMemset(impl_->totals.ptr,0,2*sizeof(unsigned long long)),"counts memset");
+        symft_reduce_flags_kernel<<<(shots+255)/256,256>>>(impl_->discarded_flags.ptr,impl_->logical_flags.ptr,shots,impl_->totals.ptr);
+        check_cuda(cudaGetLastError(),"counts reduction launch");
+    }
     check_cuda(cudaEventRecord(stop), "cudaEventRecord");
     check_cuda(cudaEventSynchronize(stop), "cudaEventSynchronize");
     float elapsed_ms = 0.0f;
     check_cuda(cudaEventElapsedTime(&elapsed_ms, start, stop), "cudaEventElapsedTime");
+    if(profile) {
+        float noise_ms=0;
+        if(options.generate_expressions_on_device)
+            check_cuda(cudaEventElapsedTime(&noise_ms,start,midpoint), "cudaEventElapsedTime noise");
+        std::fprintf(stderr,"profile shots=%d noise_ms=%.6f sample_ms=%.6f\n",shots,noise_ms,elapsed_ms-noise_ms);
+        cudaEventDestroy(midpoint);
+    }
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
     result.elapsed_s = static_cast<double>(elapsed_ms) * 1.0e-3;
+
+    if(use_jit) {
+        unsigned long long totals[2]{};
+        check_cuda(cudaMemcpy(totals,impl_->totals.ptr,sizeof(totals),cudaMemcpyDeviceToHost),"counts device-to-host");
+        result.discarded=totals[0];result.accepted=static_cast<std::uint64_t>(shots)-totals[0];result.logical_errors=totals[1];
+        return result;
+    }
 
     impl_->host_discarded.resize(static_cast<std::size_t>(shots));
     impl_->host_logical.resize(static_cast<std::size_t>(shots));

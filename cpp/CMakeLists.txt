@@ -10,9 +10,11 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(SYMFT_CPP_BUILD_TESTS "Build C++ SymFT tests" ON)
+option(SYMFT_CPP_BUILD_VALIDATION_TOOLS "Build Linux-only persistent sampling validation worker" OFF)
 option(SYMFT_CPP_ENABLE_AVX2 "Build AVX2 active kernels when the compiler supports them" ON)
 option(SYMFT_CPP_ENABLE_AVX512 "Build AVX512 active kernels when the compiler supports them" ON)
 option(SYMFT_CPP_NATIVE "Build host-vectorized kernels with -march=native" ON)
+option(SYMFT_CPU_DIAGNOSTICS "Instrument CPU sampling (not for performance claims)" OFF)
 option(SYMFT_CPP_ENABLE_CUDA "Build CUDA SymFT sampler" OFF)
 option(SYMFT_CPP_CUDA_REAL_DOUBLE "Build CUDA sampler active-state arithmetic with double precision" OFF)
 set(SYMFT_CPP_CUDA_ARCH "" CACHE STRING "CUDA architectures for CMAKE_CUDA_ARCHITECTURES, e.g. 89, 90, or 120")
@@ -34,6 +36,8 @@ add_library(symft_cpp
     src/circuit/circuit_lowering.cpp
     src/sampler/active_state.cpp
     src/sampler/contiguous_active.cpp
+    src/sampler/real_active.cpp
+    src/sampler/cpu_sampling_plan.cpp
     src/sampler/component_plan.cpp
     src/factored/pullback.cpp
     src/factored/factored_state.cpp
@@ -59,6 +63,7 @@ if(SYMFT_CPP_ENABLE_CUDA)
     target_sources(symft_cpp PRIVATE
         src/cuda/cuda_program.cpp
         src/cuda/cuda_sampler.cpp
+        src/cuda/cuda_jit.cpp
         src/cuda/cuda_runtime.cu
     )
 endif()
@@ -66,12 +71,15 @@ endif()
 target_include_directories(symft_cpp PUBLIC src)
 target_link_libraries(symft_cpp PUBLIC Threads::Threads)
 target_compile_features(symft_cpp PUBLIC cxx_std_20)
+if(SYMFT_CPU_DIAGNOSTICS)
+    target_compile_definitions(symft_cpp PUBLIC SYMFT_CPU_DIAGNOSTICS=1)
+endif()
 target_compile_options(symft_cpp PRIVATE
     $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU,Clang,AppleClang>>:-Wall -Wextra -Wpedantic>
 )
 
 if(SYMFT_CPP_ENABLE_CUDA)
-    target_link_libraries(symft_cpp PUBLIC CUDA::cudart)
+    target_link_libraries(symft_cpp PUBLIC CUDA::cudart CUDA::nvrtc CUDA::cuda_driver)
     target_compile_definitions(symft_cpp PUBLIC SYMFT_CPP_ENABLE_CUDA=1)
     if(SYMFT_CPP_CUDA_REAL_DOUBLE)
         target_compile_definitions(symft_cpp PUBLIC SYMFT_CUDA_REAL_DOUBLE=1)
@@ -132,6 +140,14 @@ target_link_libraries(symft_batch_active_layout_bench PRIVATE symft_cpp)
 add_executable(symft_rate_bench tools/symft_rate_bench.cpp)
 target_link_libraries(symft_rate_bench PRIVATE symft_cpp Threads::Threads)
 
+if(SYMFT_CPP_BUILD_VALIDATION_TOOLS)
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        message(FATAL_ERROR "The persistent validation worker requires Linux CPU affinity APIs")
+    endif()
+    add_executable(symft_cpu_stream_worker ../benchmark/validation/cpu_stream_worker.cpp)
+    target_link_libraries(symft_cpu_stream_worker PRIVATE symft_cpp Threads::Threads)
+endif()
+
 if(SYMFT_CPP_ENABLE_CUDA)
     add_executable(symft_cuda_rate_bench tools/symft_cuda_rate_bench.cpp)
     target_link_libraries(symft_cuda_rate_bench PRIVATE symft_cpp)
@@ -151,6 +167,10 @@ if(SYMFT_CPP_BUILD_TESTS)
     add_executable(symft_cpp_tests tests/symft_tests.cpp)
     target_link_libraries(symft_cpp_tests PRIVATE symft_cpp)
     add_test(NAME symft_cpp_tests COMMAND symft_cpp_tests)
+    add_executable(symft_cpu_plan_tests tests/cpu_sampling_plan_tests.cpp)
+    target_link_libraries(symft_cpu_plan_tests PRIVATE symft_cpp)
+    add_test(NAME symft_cpu_plan_tests COMMAND symft_cpu_plan_tests)
+    set_tests_properties(symft_cpu_plan_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
     add_executable(symft_frames_tests tests/frames_tests.cpp)
     target_link_libraries(symft_frames_tests PRIVATE symft_cpp)
     add_test(NAME symft_frames_tests COMMAND symft_frames_tests)
@@ -165,5 +185,17 @@ if(SYMFT_CPP_BUILD_TESTS)
         target_link_libraries(symft_cuda_tests PRIVATE symft_cpp)
         add_test(NAME symft_cuda_tests COMMAND symft_cuda_tests)
         set_tests_properties(symft_cuda_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+        add_executable(symft_cuda_jit_tests tests/cuda_jit_tests.cpp)
+        target_link_libraries(symft_cuda_jit_tests PRIVATE symft_cpp)
+        add_test(NAME symft_cuda_jit_tests COMMAND symft_cuda_jit_tests)
+        set_tests_properties(symft_cuda_jit_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+        add_test(NAME symft_cuda_jit_packed_tests COMMAND symft_cuda_jit_tests)
+        set_tests_properties(symft_cuda_jit_packed_tests PROPERTIES
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            ENVIRONMENT "SYMFT_CUDA_PACKED_NOISE=1")
+        add_test(NAME symft_cuda_jit_symbolic_tests COMMAND symft_cuda_jit_tests)
+        set_tests_properties(symft_cuda_jit_symbolic_tests PROPERTIES
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            ENVIRONMENT "SYMFT_CUDA_PACKED_NOISE=1;SYMFT_JIT_SYMBOLIC=1;SYMFT_JIT_ROW_REDUCE=1")
     endif()
 endif()

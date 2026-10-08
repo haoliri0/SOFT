@@ -1,0 +1,566 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-09",
+  "release": "symft_26_10_08",
+  "branch": "symft-26-10-08",
+  "base_main_commit": "c89b98514a919240b8afa53a271e08d926d3c987",
+  "optimization_source_commit": "89c00eff971847f6aa8cbbbaf15592a724f5bd3d",
+  "status": "prepared_worktree_not_committed_or_pushed",
+  "host": {
+    "cpu": "Intel Xeon Gold 5218R",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "compiler": "GCC 13.3.0",
+    "cuda_toolkit": "13.0.88",
+    "platform": "Linux x86_64",
+    "python": "3.12.3"
+  },
+  "checks": {
+    "original_main_cpp": {
+      "passed": 4
+    },
+    "native_cpu_cpp": {
+      "passed": 5
+    },
+    "scalar_cpu_cpp": {
+      "passed": 5
+    },
+    "asan_ubsan_native_cpp": {
+      "passed": 5,
+      "leak_detection": true,
+      "undefined_behavior_halt": true
+    },
+    "cuda_fp64_cpp": {
+      "passed": 9,
+      "nvrtc_cold_tests_passed": true,
+      "final_suite_jit_cache_reused": true
+    },
+    "native_cpu_python": {
+      "passed": 92,
+      "skipped": 21,
+      "skip_reason": "GPU tests require CUDA build",
+      "subtests_passed": 4
+    },
+    "portable_cuda_fp64_python": {
+      "passed": 113,
+      "skipped": 0,
+      "subtests_passed": 4
+    },
+    "portable_cpu_sdist_wheel_python": {
+      "passed": 92,
+      "skipped": 21,
+      "subtests_passed": 4,
+      "version_metadata_matches": true
+    },
+    "worker_journal_statistics": {
+      "passed": 16
+    },
+    "independent_cpu_reference": {
+      "trajectories": 4092,
+      "intermediate_states": 102702,
+      "max_state_error": 6.67928e-15,
+      "max_probability_error": 1.11022e-14
+    },
+    "d5_gpu_noise_bit_comparison": {
+      "shots": 100003,
+      "chunks": [
+        65536,
+        34467
+      ],
+      "exact_match": true
+    },
+    "main_legacy_cpu_stream0_replays": {
+      "d3_shots": 2000000,
+      "d5_shots": 400000,
+      "all_counters_match": true
+    },
+    "main_archive_and_release_workflow_unchanged": true,
+    "conflicting_index_entries": 0
+  },
+  "cpu_smoke_comparison": {
+    "timer": "native sampling-call timer; preparation excluded; attempted shots/s",
+    "precision": "FP64",
+    "build": "CMake Release/native/LTO, diagnostics disabled",
+    "pinned_logical_cpu": 5,
+    "smt_siblings": "5,45",
+    "repeats": 3,
+    "variants": {
+      "legacy": "unmodified main c89b985, existing CPU executor",
+      "before": "previous symft 89c00ef compiled backend",
+      "after": "main-based integration, compiled backend"
+    },
+    "notes": [
+      "Three short interleaved repeats; warmups excluded; host not exclusively reserved.",
+      "Main baseline timing repeats replay stream 0, not independent rare-error statistics.",
+      "Before/after use matching streams 261009100..261009102; all four counters match in every pair, including 8 total d3 errors.",
+      "This smoke check does not rerun or replace the archived 50B experiments."
+    ],
+    "binaries": {
+      "legacy": {
+        "sha256": "f0d996e60b621815832b982d42c5f489c2a4a03d76e25765ab884d793efb4617"
+      },
+      "before": {
+        "sha256": "7461a5581b6b5152535cffd5619d856280fab646d02d9fdf66648a6b36da6de4"
+      },
+      "after": {
+        "sha256": "c21db736b565f01ff7edadbb213738dcab55da4b8e88f6e46aede95caad2267d"
+      }
+    },
+    "runs": [
+      {
+        "distance": 3,
+        "variant": "legacy",
+        "repeat": 0,
+        "stream_id": 0,
+        "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+        "sampled_shots": 2000000,
+        "discarded": 628070,
+        "accepted": 1371930,
+        "logical_errors": 0,
+        "sample_s": 1.11797,
+        "attempted_shots_per_s": 1788950
+      },
+      {
+        "distance": 3,
+        "variant": "before",
+        "repeat": 0,
+        "stream_id": 261009100,
+        "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+        "sampled_shots": 2000000,
+        "discarded": 627058,
+        "accepted": 1372942,
+        "logical_errors": 3,
+        "sample_s": 0.955419,
+        "attempted_shots_per_s": 2093320
+      },
+      {
+        "distance": 3,
+        "variant": "after",
+        "repeat": 0,
+        "stream_id": 261009100,
+        "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+        "sampled_shots": 2000000,
+        "discarded": 627058,
+        "accepted": 1372942,
+        "logical_errors": 3,
+        "sample_s": 0.996546,
+        "attempted_shots_per_s": 2006930
+      },
+      {
+        "distance": 5,
+        "variant": "legacy",
+        "repeat": 0,
+        "stream_id": 0,
+        "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+        "sampled_shots": 400000,
+        "discarded": 342597,
+        "accepted": 57403,
+        "logical_errors": 0,
+        "sample_s": 3.29763,
+        "attempted_shots_per_s": 121299
+      },
+      {
+        "distance": 5,
+        "variant": "before",
+        "repeat": 0,
+        "stream_id": 261009100,
+        "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+        "sampled_shots": 400000,
+        "discarded": 342563,
+        "accepted": 57437,
+        "logical_errors": 0,
+        "sample_s": 1.14006,
+        "attempted_shots_per_s": 350859
+      },
+      {
+        "distance": 5,
+        "variant": "after",
+        "repeat": 0,
+        "stream_id": 261009100,
+        "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+        "sampled_shots": 400000,
+        "discarded": 342563,
+        "accepted": 57437,
+        "logical_errors": 0,
+        "sample_s": 1.10986,
+        "attempted_shots_per_s": 360407
+      },
+      {
+        "distance": 3,
+        "variant": "before",
+        "repeat": 1,
+        "stream_id": 261009101,
+        "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+        "sampled_shots": 2000000,
+        "discarded": 626762,
+        "accepted": 1373238,
+        "logical_errors": 4,
+        "sample_s": 0.947912,
+        "attempted_shots_per_s": 2109900
+      },
+      {
+        "distance": 3,
+        "variant": "after",
+        "repeat": 1,
+        "stream_id": 261009101,
+        "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+        "sampled_shots": 2000000,
+        "discarded": 626762,
+        "accepted": 1373238,
+        "logical_errors": 4,
+        "sample_s": 0.983074,
+        "attempted_shots_per_s": 2034440
+      },
+      {
+        "distance": 3,
+        "variant": "legacy",
+        "repeat": 1,
+        "stream_id": 0,
+        "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+        "sampled_shots": 2000000,
+        "discarded": 628070,
+        "accepted": 1371930,
+        "logical_errors": 0,
+        "sample_s": 1.11095,
+        "attempted_shots_per_s": 1800260
+      },
+      {
+        "distance": 5,
+        "variant": "before",
+        "repeat": 1,
+        "stream_id": 261009101,
+        "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+        "sampled_shots": 400000,
+        "discarded": 342618,
+        "accepted": 57382,
+        "logical_errors": 0,
+        "sample_s": 1.15301,
+        "attempted_shots_per_s": 346918
+      },
+      {
+        "distance": 5,
+        "variant": "after",
+        "repeat": 1,
+        "stream_id": 261009101,
+        "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+        "sampled_shots": 400000,
+        "discarded": 342618,
+        "accepted": 57382,
+        "logical_errors": 0,
+        "sample_s": 1.10946,
+        "attempted_shots_per_s": 360536
+      },
+      {
+        "distance": 5,
+        "variant": "legacy",
+        "repeat": 1,
+        "stream_id": 0,
+        "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+        "sampled_shots": 400000,
+        "discarded": 342597,
+        "accepted": 57403,
+        "logical_errors": 0,
+        "sample_s": 3.29685,
+        "attempted_shots_per_s": 121328
+      },
+      {
+        "distance": 3,
+        "variant": "after",
+        "repeat": 2,
+        "stream_id": 261009102,
+        "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+        "sampled_shots": 2000000,
+        "discarded": 625874,
+        "accepted": 1374126,
+        "logical_errors": 1,
+        "sample_s": 0.990449,
+        "attempted_shots_per_s": 2019290
+      },
+      {
+        "distance": 3,
+        "variant": "legacy",
+        "repeat": 2,
+        "stream_id": 0,
+        "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+        "sampled_shots": 2000000,
+        "discarded": 628070,
+        "accepted": 1371930,
+        "logical_errors": 0,
+        "sample_s": 1.11005,
+        "attempted_shots_per_s": 1801720
+      },
+      {
+        "distance": 3,
+        "variant": "before",
+        "repeat": 2,
+        "stream_id": 261009102,
+        "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+        "sampled_shots": 2000000,
+        "discarded": 625874,
+        "accepted": 1374126,
+        "logical_errors": 1,
+        "sample_s": 0.960103,
+        "attempted_shots_per_s": 2083110
+      },
+      {
+        "distance": 5,
+        "variant": "after",
+        "repeat": 2,
+        "stream_id": 261009102,
+        "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+        "sampled_shots": 400000,
+        "discarded": 342414,
+        "accepted": 57586,
+        "logical_errors": 0,
+        "sample_s": 1.14237,
+        "attempted_shots_per_s": 350149
+      },
+      {
+        "distance": 5,
+        "variant": "legacy",
+        "repeat": 2,
+        "stream_id": 0,
+        "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+        "sampled_shots": 400000,
+        "discarded": 342597,
+        "accepted": 57403,
+        "logical_errors": 0,
+        "sample_s": 3.2656,
+        "attempted_shots_per_s": 122489
+      },
+      {
+        "distance": 5,
+        "variant": "before",
+        "repeat": 2,
+        "stream_id": 261009102,
+        "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+        "sampled_shots": 400000,
+        "discarded": 342414,
+        "accepted": 57586,
+        "logical_errors": 0,
+        "sample_s": 1.157,
+        "attempted_shots_per_s": 345722
+      }
+    ],
+    "summary": {
+      "d3_legacy": {
+        "repeats": 3,
+        "median": 1800260,
+        "min": 1788950,
+        "max": 1801720,
+        "sampled_shots": 6000000,
+        "discarded": 1884210,
+        "accepted": 4115790,
+        "logical_errors": 0
+      },
+      "d3_before": {
+        "repeats": 3,
+        "median": 2093320,
+        "min": 2083110,
+        "max": 2109900,
+        "sampled_shots": 6000000,
+        "discarded": 1879694,
+        "accepted": 4120306,
+        "logical_errors": 8
+      },
+      "d3_after": {
+        "repeats": 3,
+        "median": 2019290,
+        "min": 2006930,
+        "max": 2034440,
+        "sampled_shots": 6000000,
+        "discarded": 1879694,
+        "accepted": 4120306,
+        "logical_errors": 8,
+        "speedup_vs_legacy": 1.1216657593903103,
+        "speedup_vs_before": 0.9646351250644909
+      },
+      "d5_legacy": {
+        "repeats": 3,
+        "median": 121328,
+        "min": 121299,
+        "max": 122489,
+        "sampled_shots": 1200000,
+        "discarded": 1027791,
+        "accepted": 172209,
+        "logical_errors": 0
+      },
+      "d5_before": {
+        "repeats": 3,
+        "median": 346918,
+        "min": 345722,
+        "max": 350859,
+        "sampled_shots": 1200000,
+        "discarded": 1027595,
+        "accepted": 172405,
+        "logical_errors": 0
+      },
+      "d5_after": {
+        "repeats": 3,
+        "median": 360407,
+        "min": 350149,
+        "max": 360536,
+        "sampled_shots": 1200000,
+        "discarded": 1027595,
+        "accepted": 172405,
+        "logical_errors": 0,
+        "speedup_vs_legacy": 2.9705179348542794,
+        "speedup_vs_before": 1.0388823871923625
+      }
+    }
+  },
+  "gpu_d5_smoke_comparison": {
+    "precision": "FP64",
+    "timer": "Sampling-call timer, excluding preparation/JIT; equal 3 x 10M attempted shots per backend",
+    "shots_per_launch": 524288,
+    "stream_start": 261009200,
+    "notes": [
+      "Same main-based binary, default GPU-presampled path versus opt-in packed/scalar/symbolic JIT.",
+      "CLI reports a mean sampling time over three streams, not independent per-run timing ranges.",
+      "JIT cache was warm; this is not a cold-start or long-run stability measurement.",
+      "Aggregate discard counts differ by one out of 30M shots; cross-backend seeded trajectories are not claimed bitwise identical.",
+      "Zero observed logical errors in this short test is not an estimate of zero true error probability."
+    ],
+    "baseline": {
+      "cuda_prepare_s": "0.221632",
+      "stream_id": "261009200",
+      "precision": "FP64",
+      "sampler": "cuda",
+      "file": "benchmark/circuit/msc_d5_inject_cultivate_p1e-3.stim",
+      "shots": "10000000",
+      "sampled_shots": "30000000",
+      "detector_postselection": "enabled",
+      "max_k": "10",
+      "shots_per_launch": "524288",
+      "threads_per_block": "128",
+      "exogenous_sampling": "gpu_presampled_expressions",
+      "repeats": "3",
+      "sample_s_avg": "4.27946",
+      "sample_shots_per_s": "2.33674e+06",
+      "parse_s": "0.00206485",
+      "plan_s": "0.0278416",
+      "presample_s_avg": "7.25333e-07",
+      "execute_s_avg": "4.27945",
+      "kernel_s_avg": "4.2525",
+      "discarded": "25679956",
+      "accepted": "4320044",
+      "logical_errors": "0",
+      "discard_rate": "0.855999",
+      "logical_error_rate": "0"
+    },
+    "optimized": {
+      "cuda_prepare_s": "0.231276",
+      "stream_id": "261009200",
+      "precision": "FP64",
+      "sampler": "cuda",
+      "file": "benchmark/circuit/msc_d5_inject_cultivate_p1e-3.stim",
+      "shots": "10000000",
+      "sampled_shots": "30000000",
+      "detector_postselection": "enabled",
+      "max_k": "10",
+      "shots_per_launch": "524288",
+      "threads_per_block": "128",
+      "exogenous_sampling": "gpu_presampled_expressions",
+      "repeats": "3",
+      "sample_s_avg": "0.405311",
+      "sample_shots_per_s": "2.46724e+07",
+      "parse_s": "0.00211132",
+      "plan_s": "0.0284653",
+      "presample_s_avg": "4.18667e-07",
+      "execute_s_avg": "0.405309",
+      "kernel_s_avg": "0.404953",
+      "discarded": "25679957",
+      "accepted": "4320043",
+      "logical_errors": "0",
+      "discard_rate": "0.855999",
+      "logical_error_rate": "0"
+    },
+    "speedup": 10.55847034757825,
+    "executable_sha256": "9385fab2198c70de3eddc6883db6d1e8bf0c72ecdf068d979efdf6c04ccca2fc"
+  },
+  "measured_source_sha256": {
+    "cpp/src/circuit/circuit_lowering.cpp": "85b525da5d103271a3e943aaf2b9b26d4f707161d69fa68042b03cec9fee4c02",
+    "cpp/src/core/common.cpp": "5ab2ab43ddc9b58dd5f7629588fa596e0e1e6c4ad69b08a2ef52a2b64d7c023f",
+    "cpp/src/core/frames.cpp": "491bcd399c4969410d75d926d075693fb8d3092a8da50217c287614fdd4f7e3c",
+    "cpp/src/core/pauli.cpp": "72ed2de1ebce080c3339746b11c75ec59194a348efce962135a1c598d8f72640",
+    "cpp/src/core/symbolic.cpp": "c08bf45eaec3a4dba64728e7a9d5026b670a12aa909f841b1b62ced496b882d6",
+    "cpp/src/core/tableau.cpp": "627f4f255b6585290193f98dd237d31abb53b185f22ead410c5dabb81724439a",
+    "cpp/src/cuda/cuda_jit.cpp": "d035912d1d82db761aff59819a900eb3e836e8c868d31c7ae6ad49cb19cd6727",
+    "cpp/src/cuda/cuda_program.cpp": "a9f32bf7d3d3b00e89708d71deadaf9e0e7e672215859f0921431ba59753f616",
+    "cpp/src/cuda/cuda_sampler.cpp": "c9588d09002121308c59c89846507a5f0c9630c2d4129a2f656e327f4244667e",
+    "cpp/src/factored/factored_planner.cpp": "f550e3b942dc6b2227f36da2d1b2b930fb4841e79677e8ba4a504d7ed619b729",
+    "cpp/src/factored/factored_state.cpp": "c8a8513ccedbf46454934a26984407c98796b5a79bb7453bb822b2c859aeba21",
+    "cpp/src/factored/pending_optimizer.cpp": "9965de1a22349dd691a4a46ed5239276ed1f63eab5721e2e6f5b1f0c344143fa",
+    "cpp/src/factored/pullback.cpp": "f9bcf2bc6b94dba9685b8c967ad3fa9bf9266080cd615702ce66e4555eb4c775",
+    "cpp/src/frontend/stim_parser.cpp": "c2318a6720e893857c2d530850222bccd3caac608af9b68a1ec6d7e64d47c06f",
+    "cpp/src/frontend/stim_sampling.cpp": "97ed41edec0eb53bbc37644c4bd5523486e4adc92da2ec3a422d6b08b0441f85",
+    "cpp/src/sampler/active_state.cpp": "61d29c7e37de25c75c8c8a21fd7ff15ea2c3bbe7c0e70babc9e94cf956636d58",
+    "cpp/src/sampler/batch_active.cpp": "e4cef356a427a4f988257b911519082bd04e3530d8230bda7373bb08285f616e",
+    "cpp/src/sampler/batch_runtime.cpp": "7edf6912e82d655f3e5e5839c5c7a196f414f45f2bf1e1f1f2453753f6c6752a",
+    "cpp/src/sampler/batch_symbols.cpp": "04d78209249ed4a291af4c34edc082ea9f170fc064af0e191742e5661f9b047e",
+    "cpp/src/sampler/component_plan.cpp": "3671b72fe1c4c550fd5f03eba553793cb0b19b53ffcc011bac81a1679cbaf8d7",
+    "cpp/src/sampler/contiguous_active.cpp": "ea3c84dbf6d6306eea7ccb1723a9d1ee09c4670b600d15bb3ccac8cf8bf93f65",
+    "cpp/src/sampler/cpu_sampling_plan.cpp": "4c093278f50ce111eb70f0f5476d9af9a82b85770b93931df292a50679ed76d9",
+    "cpp/src/sampler/exogenous_presample.cpp": "eb711f19b245b351daca7059ba74f59eb254cfe1957684842ae43a310b2c525d",
+    "cpp/src/sampler/prepared_sampler.cpp": "6ddfc44a907eff0c15c74d843034488459ebac0b7f4c9694b9ccac815c93009b",
+    "cpp/src/sampler/presampled_expression.cpp": "fa7785b373bfaa09e7b78e62fecd18a1f40a25b13de198a99821759dba04b563",
+    "cpp/src/sampler/real_active.cpp": "0a64aa76fea4b02c8d6b742c1d50effffc0d53d80a44f916e6b9c701115da461",
+    "cpp/src/sampler/single_shot_sampler.cpp": "ff26e3621e390982be7c21aafbc88c7aded9af82fe698f229b1fd3c495d591e7",
+    "cpp/src/simd/batch_interleaved.cpp": "ae3b112d1b1edf5620937138d254e1a96029e786442457f1347db2a85cb10421",
+    "cpp/src/simd/simd_avx2.cpp": "df6569b88dca6efb98365c4334dfeb43ef87564d9788f1a91dc7b1c617de35a5",
+    "cpp/src/simd/simd_avx512.cpp": "36324db8815523576f597aae175ada23d6d1c2c9e0f1fc30f13deea00078604f",
+    "cpp/src/simd/simd_dispatch.cpp": "a4c90e324de47f1a7bc712964c8883c611e2bf8edeeb8912cbc1119da21c1bd6",
+    "cpp/src/simd/simd_scalar.cpp": "110065a7544ab8c1c68288cf22704001dd72b56e5e96995a9ee8517870f3ae92",
+    "cpp/src/circuit/circuit.hpp": "f5f9f186edae633f5e3372fda3628fb22f44c0a232741ced4509fca9fc9d576a",
+    "cpp/src/core/common.hpp": "2c7590ffd85d2715c5985f5697fca96999aadf02710587d73090c5a38158dda4",
+    "cpp/src/core/frames.hpp": "fd0d962bc5a6b36b80b3487f475f378cb6ca762374dc303396009a0ec14be183",
+    "cpp/src/core/internal.hpp": "1886ab8462d9a14f25469139fc66e5249afb517b8734cfea60be0dd4556dda80",
+    "cpp/src/core/pauli.hpp": "d9486cbe4bc6e175b63e40dd56cd701d5d3e3f3de9e567800a2cb1a346c0f2de",
+    "cpp/src/core/symbolic.hpp": "bb057413a67d0da55e2acab3fda4704e2c220e53234e69cb2a2c922960be180d",
+    "cpp/src/core/tableau.hpp": "0da78f415e4edd0312447555c8a9b2faafba34acd799a14c1f07db59408e1248",
+    "cpp/src/cuda/cuda_jit.hpp": "da73079f0d1c17fee71219f855ee4731f3d59693cc89df6b00baddbe4979f400",
+    "cpp/src/cuda/cuda_program.hpp": "84ae15349fe257c944e6de35a5604d3bab75c3687c73987ddba1f0d92fee5bb0",
+    "cpp/src/cuda/cuda_runtime.hpp": "fa299d00c07ca7900adc70cb9779843caf8281fdb388c7aea208d00de8a99cfe",
+    "cpp/src/cuda/cuda_sampler.hpp": "99b2bf674981dac0fe6a4a633beff63d05205afbf902eaebabf4cfeec1757c19",
+    "cpp/src/factored/factored.hpp": "e37d9b87992126fad34d63da02bda1772065f918025f0d1f712c89b92daa34d3",
+    "cpp/src/factored/factored_internal.hpp": "615a0b714baeb3a0de6b9ab38ef96891dbda012474026a20f254ca74e8a739d4",
+    "cpp/src/factored/pullback.hpp": "b44585cc5c2c060af1497f1fb426c36a5141baedf42e5d8ce936cd958b950d58",
+    "cpp/src/frontend/stim.hpp": "88174ebf8b94b6d9e99f9d53e32258dc1c3de75c5d84a0506441f026f38315f7",
+    "cpp/src/frontend/stim_prepared_sampler.hpp": "554aa6107bcc29736c2fd1dc202d5fa21e4b8e3de9dc67e57366fa111e06af12",
+    "cpp/src/sampler/active.hpp": "8d6109fe25531a40f408824bc8cfaaa4b27b881e95f47e91bb1fbc7b94a617bd",
+    "cpp/src/sampler/active_internal.hpp": "f552e90bbb909fd51490e93e7b919f4d590ae6b6caa19a355276c12f427849f9",
+    "cpp/src/sampler/active_kernels.hpp": "31435d3e99c2c6038ce26f8a5becaaeae7f57bf6856f3a0d8a0f36c457b6c28a",
+    "cpp/src/sampler/batch_internal.hpp": "b1368c887cfe5e66487bf1da37a24701fa1690185a7017666395f5bd6d607928",
+    "cpp/src/sampler/batch_sampler.hpp": "4c03ded6c26ca56b38316ad128e2e4cb997a0893e29503999010b6355ccf8cda",
+    "cpp/src/sampler/component_plan.hpp": "9944957924cf040413902c141d5209a5b1b4b9d6bf2c4c6efd29d79d0d7fdfd1",
+    "cpp/src/sampler/contiguous_active.hpp": "4f07c3b707079f262adb58142efa8eee23eeefe82fea2061035999cbf7069e11",
+    "cpp/src/sampler/cpu_profile.hpp": "8b014911616486b20adf627c5f462b2578a92a43d716d75e12c95b434e17312b",
+    "cpp/src/sampler/cpu_sampling_plan.hpp": "bef2ff22c019da0b157d718eed92a06c8ff57d927bb7c95b4537252f8a1e2ecc",
+    "cpp/src/sampler/exogenous.hpp": "3f2d3094b05041729e6fa45338bdea483bff132d136bc1e94b9fbbe399c35f75",
+    "cpp/src/sampler/jthread_compat.hpp": "9a05d0a25ae05a4f4db2f6a8eb3cdd2e244264876c53710801d6ad9fba9de8b6",
+    "cpp/src/sampler/prepared_sampler.hpp": "5a1681dc43407462c8b91d8906739e75e78b16f819cb570d476c3fbd4a5ade84",
+    "cpp/src/sampler/presampled_expression.hpp": "bc7508fc6d6917c962d3ca150d809397c0c6606600e97886571c31d97126af4b",
+    "cpp/src/sampler/random.hpp": "4a5cb9263f026375935819cbd1d0637066b19f89d5489e7be8c0dd32b76341da",
+    "cpp/src/sampler/real_active.hpp": "60e0a5a37bd1b9a9314c3b119098bf379ea5a4ffb658419902dc82073309b9a2",
+    "cpp/src/sampler/single_shot.hpp": "6d285e86141120f64355f6eca52bd73f65d3b06f3313eeb36c5097352b38cbf9",
+    "cpp/src/simd/batch_interleaved.hpp": "b4f14ffdcf371bdc7ffba80ea316ae371df214c0b82a9eb325c4ba7dacc164f5",
+    "cpp/src/simd/simd.hpp": "b5fc7119025d9245ad9c9591dfc42874e6fb8cc519261da28cfc354e7487b073",
+    "cpp/src/cuda/cuda_runtime.cu": "d4b135380f7ec514d17818c294a4df4b6d94d611d158c33fc8f32d43fd0735ab",
+    "cpp/tests/symft_cuda_tests.cpp": "ce6be6a3d2fc17668f18a94ce6ad756ba07cb0701ba54d9f8aa8477cc707a274",
+    "python/src/symft/_native.cpp": "5de847ebb77490ed9a3d8b8920f8ea6b30179dd7004542c4fdea449f5a2e8118",
+    "python/tests/test_main_integration.py": "9a3e021d8c868676ab3f8d8dd214c15d695020454de7826d7ba6fd525100e958"
+  },
+  "packaging": {
+    "sdist_sha256": "cbe77e19fc3654907bcea8d38f5f0060125834cb9f84003e4a70961384bfce0c",
+    "wheel_sha256": "14c986058099498b616d80219c5ac2cdf3ec3413e63a64f4c3182493bbfebc0c",
+    "wheel_tag": "cp312-cp312-linux_x86_64",
+    "native": false,
+    "cuda": false
+  },
+  "not_claimed": [
+    "new 50B validation",
+    "macOS/Windows/ARM verification",
+    "all GPU architectures",
+    "remote CI success",
+    "published package/tag/PR"
+  ]
+}
