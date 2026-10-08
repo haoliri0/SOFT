@@ -185,6 +185,23 @@ symft::CircuitSamplingOptions make_options(
     return options;
 }
 
+bool configure_cpu_backend(symft::CircuitSamplingOptions& options, const char* backend,
+                           int use_batch, int use_cuda, int real_gauge, int hoist) {
+    const std::string mode(backend);
+    if (mode != "legacy" && mode != "compiled") {
+        PyErr_SetString(PyExc_ValueError, "cpu_backend must be 'legacy' or 'compiled'");
+        return false;
+    }
+    if (mode == "compiled" && (!use_batch || use_cuda)) {
+        PyErr_SetString(PyExc_ValueError, "cpu_backend='compiled' requires batch=True, cuda=False");
+        return false;
+    }
+    options.cpu_compiled = mode == "compiled";
+    options.cpu_real_gauge = real_gauge != 0;
+    options.cpu_hoist_detectors = hoist != 0;
+    return true;
+}
+
 std::string normalized_cuda_mode(std::string mode) {
     std::string out;
     out.reserve(mode.size());
@@ -415,6 +432,11 @@ PyObject* info_to_dict(const symft::CircuitSamplingInfo& info) {
         !dict_set_owned(dict, "batch_size", PyLong_FromLong(info.batch_size)) ||
         !dict_set_owned(dict, "sample_chunk_shots", PyLong_FromLong(info.sample_chunk_shots)) ||
         !dict_set_owned(dict, "threads", PyLong_FromLong(info.threads)) ||
+        !dict_set_owned(dict, "cpu_compiled", PyBool_FromLong(info.cpu_compiled)) ||
+        !dict_set_owned(dict, "cpu_real_gauge", PyBool_FromLong(info.cpu_real_gauge)) ||
+        !dict_set_owned(dict, "cpu_noise_only_detectors", PyLong_FromLong(info.cpu_noise_only_detectors)) ||
+        !dict_set_owned(dict, "cpu_initial_checks", PyLong_FromLong(info.cpu_initial_checks)) ||
+        !dict_set_owned(dict, "cpu_fallback_reason", PyUnicode_FromString(info.cpu_fallback_reason.c_str())) ||
         !dict_set_owned(dict, "active_components", PyBool_FromLong(info.active_components)) ||
         !dict_set_owned(dict, "detector_postselection", PyBool_FromLong(info.detector_postselection)) ||
         !dict_set_owned(
@@ -625,6 +647,8 @@ PyObject* Circuit_compile_counts_sampler(PyCircuit* self, PyObject* args, PyObje
     PyObject* cuda_mode_object = Py_None;
     long long shots_per_launch_value = 0;
     long long threads_per_block_value = 0;
+    const char* cpu_backend = "legacy";
+    int cpu_real_gauge = 1, cpu_hoist_detectors = 1;
     static const char* kwlist[] = {
         "batch",
         "observable",
@@ -637,11 +661,14 @@ PyObject* Circuit_compile_counts_sampler(PyCircuit* self, PyObject* args, PyObje
         "cuda_mode",
         "shots_per_launch",
         "threads_per_block",
+        "cpu_backend",
+        "cpu_real_gauge",
+        "cpu_hoist_detectors",
         nullptr};
     if (!PyArg_ParseTupleAndKeywords(
             args,
             kwargs,
-            "|pLpLLLLpOLL:compile_counts_sampler",
+            "|pLpLLLLpOLLspp:compile_counts_sampler",
             const_cast<char**>(kwlist),
             &use_batch,
             &observable_value,
@@ -653,7 +680,10 @@ PyObject* Circuit_compile_counts_sampler(PyCircuit* self, PyObject* args, PyObje
             &use_cuda,
             &cuda_mode_object,
             &shots_per_launch_value,
-            &threads_per_block_value)) {
+            &threads_per_block_value,
+            &cpu_backend,
+            &cpu_real_gauge,
+            &cpu_hoist_detectors)) {
         return nullptr;
     }
 
@@ -684,13 +714,16 @@ PyObject* Circuit_compile_counts_sampler(PyCircuit* self, PyObject* args, PyObje
         return nullptr;
     }
 
-    const auto options = make_options(
+    auto options = make_options(
         observable,
         postselect_detectors,
         sample_chunk_shots,
         batch_size,
         threshold,
         threads);
+    if (!configure_cpu_backend(options, cpu_backend, use_batch, use_cuda, cpu_real_gauge, cpu_hoist_detectors)) {
+        return nullptr;
+    }
     return create_counts_sampler(*self->circuit, use_batch, use_cuda, options, cuda_options);
 }
 
@@ -765,6 +798,8 @@ PyObject* Circuit_sample_counts(PyCircuit* self, PyObject* args, PyObject* kwarg
     PyObject* cuda_mode_object = Py_None;
     long long shots_per_launch_value = 0;
     long long threads_per_block_value = 0;
+    const char* cpu_backend = "legacy";
+    int cpu_real_gauge = 1, cpu_hoist_detectors = 1;
     static const char* kwlist[] = {
         "shots",
         "seed",
@@ -779,11 +814,14 @@ PyObject* Circuit_sample_counts(PyCircuit* self, PyObject* args, PyObject* kwarg
         "cuda_mode",
         "shots_per_launch",
         "threads_per_block",
+        "cpu_backend",
+        "cpu_real_gauge",
+        "cpu_hoist_detectors",
         nullptr};
     if (!PyArg_ParseTupleAndKeywords(
             args,
             kwargs,
-            "|LKpLpLLLLpOLL:sample_counts",
+            "|LKpLpLLLLpOLLspp:sample_counts",
             const_cast<char**>(kwlist),
             &shots_value,
             &seed,
@@ -797,7 +835,10 @@ PyObject* Circuit_sample_counts(PyCircuit* self, PyObject* args, PyObject* kwarg
             &use_cuda,
             &cuda_mode_object,
             &shots_per_launch_value,
-            &threads_per_block_value)) {
+            &threads_per_block_value,
+            &cpu_backend,
+            &cpu_real_gauge,
+            &cpu_hoist_detectors)) {
         return nullptr;
     }
 
@@ -830,13 +871,16 @@ PyObject* Circuit_sample_counts(PyCircuit* self, PyObject* args, PyObject* kwarg
         return nullptr;
     }
 
-    const auto options = make_options(
+    auto options = make_options(
         observable,
         postselect_detectors,
         sample_chunk_shots,
         batch_size,
         threshold,
         threads);
+    if (!configure_cpu_backend(options, cpu_backend, use_batch, use_cuda, cpu_real_gauge, cpu_hoist_detectors)) {
+        return nullptr;
+    }
     PyObject* sampler_object = create_counts_sampler(*self->circuit, use_batch, use_cuda, options, cuda_options);
     if (sampler_object == nullptr) {
         return nullptr;
@@ -1266,7 +1310,8 @@ PyMethodDef Circuit_methods[] = {
         "compile_counts_sampler($self, /, batch=True, observable=0, "
         "postselect_detectors=False, batch_size=0, sample_chunk_shots=0, "
         "threads=1, batch_mask_threshold_denominator=2, cuda=False, "
-        "cuda_mode='gpu', shots_per_launch=0, threads_per_block=0)\n"
+        "cuda_mode='gpu', shots_per_launch=0, threads_per_block=0, "
+        "cpu_backend='legacy', cpu_real_gauge=True, cpu_hoist_detectors=True)\n"
         "--\n\n"
         "Compile a reusable detector/logical-error counts sampler.\n\n"
         "Set cuda=True to use the CUDA counts backend when this extension was "
@@ -1291,7 +1336,8 @@ PyMethodDef Circuit_methods[] = {
         "sample_counts($self, /, shots=1, seed=1, batch=True, observable=0, "
         "postselect_detectors=False, batch_size=0, sample_chunk_shots=0, "
         "threads=1, batch_mask_threshold_denominator=2, cuda=False, "
-        "cuda_mode='gpu', shots_per_launch=0, threads_per_block=0)\n"
+        "cuda_mode='gpu', shots_per_launch=0, threads_per_block=0, "
+        "cpu_backend='legacy', cpu_real_gauge=True, cpu_hoist_detectors=True)\n"
         "--\n\n"
         "Sample detector and logical-observable summary counts.\n\n"
         "Set cuda=True to use the CUDA counts backend when available. Returns "

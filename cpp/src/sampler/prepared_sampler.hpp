@@ -12,6 +12,8 @@
 
 namespace symft {
 
+struct CpuSamplingPlan;
+
 struct CircuitSamplingCounts {
     std::uint64_t shots = 0;
     std::uint64_t discarded = 0;
@@ -35,6 +37,11 @@ struct CircuitSamplingOptions {
     int batch_size = 0;
     int batch_mask_threshold_denominator = 2;
     int threads = 1;
+    // Explicit opt-in counts backend with the versioned cpu-shot-v1 RNG.
+    // Unsupported modes keep the original sampler and seed behavior.
+    bool cpu_compiled = false;
+    bool cpu_real_gauge = true;
+    bool cpu_hoist_detectors = true;
 };
 
 struct CircuitSamplingInfo {
@@ -50,6 +57,11 @@ struct CircuitSamplingInfo {
     bool active_components = false;
     bool detector_postselection = false;
     int batch_mask_threshold_denominator = 0;
+    bool cpu_compiled = false;
+    bool cpu_real_gauge = false;
+    int cpu_noise_only_detectors = 0;
+    int cpu_initial_checks = 0;
+    std::string cpu_fallback_reason;
 };
 
 struct CircuitSamplingRunResult {
@@ -135,6 +147,7 @@ class PreparedCircuitBatchSampler {
     CircuitSamplingTiming preprocessing_timing_;
     PresampledExpressionPlan expression_plan_;
     BatchDetectorPostselectionOptions postselection_options_;
+    std::unique_ptr<CpuSamplingPlan> cpu_plan_;
     std::vector<std::unique_ptr<WorkerContext>> workers_;
     std::uint64_t next_stream_id_ = 0;
 };

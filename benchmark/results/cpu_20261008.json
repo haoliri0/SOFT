@@ -1,0 +1,1799 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-08",
+  "release": "symft_26_10_08",
+  "legacy_commit": "e86c6a92525650744ce0dc2a65126e1ab951882d",
+  "cpu": 5,
+  "smt_siblings": "5,45",
+  "platform": "Linux-7.0.0-31-generic-x86_64-with-glibc2.39",
+  "summary": {
+    "d3_legacy": {
+      "repeats": 7,
+      "median": 1787010.0,
+      "min": 1769120.0,
+      "max": 1805840.0,
+      "sampled_shots": 84000000,
+      "discarded": 26317452,
+      "accepted": 57682548,
+      "logical_errors": 56
+    },
+    "d3_before": {
+      "repeats": 7,
+      "median": 2089110.0,
+      "min": 2056860.0,
+      "max": 2116760.0,
+      "sampled_shots": 84000000,
+      "discarded": 26309550,
+      "accepted": 57690450,
+      "logical_errors": 43
+    },
+    "d3_after": {
+      "repeats": 7,
+      "median": 2130850.0,
+      "min": 2074960.0,
+      "max": 2142330.0,
+      "sampled_shots": 84000000,
+      "discarded": 26309550,
+      "accepted": 57690450,
+      "logical_errors": 43,
+      "speedup_vs_legacy": 1.1924107867331464,
+      "speedup_vs_before": 1.019979800010531
+    },
+    "d5_legacy": {
+      "repeats": 7,
+      "median": 114864.0,
+      "min": 112760.0,
+      "max": 115547.0,
+      "sampled_shots": 10500000,
+      "discarded": 8989988,
+      "accepted": 1510012,
+      "logical_errors": 0
+    },
+    "d5_before": {
+      "repeats": 7,
+      "median": 270647.0,
+      "min": 262030.0,
+      "max": 274955.0,
+      "sampled_shots": 10500000,
+      "discarded": 8986747,
+      "accepted": 1513253,
+      "logical_errors": 0
+    },
+    "d5_after": {
+      "repeats": 7,
+      "median": 348896.0,
+      "min": 344450.0,
+      "max": 351959.0,
+      "sampled_shots": 10500000,
+      "discarded": 8986747,
+      "accepted": 1513253,
+      "logical_errors": 0,
+      "speedup_vs_legacy": 3.0374703997771277,
+      "speedup_vs_before": 1.2891182980044116
+    }
+  },
+  "timer": "native sampling-call timer; preparation excluded; attempted shots/s",
+  "precision": "FP64",
+  "repeats": 7,
+  "legacy_rng_note": "Unmodified old CLI has no stream-id flag and replays stream 0. Timing repeats are not independent statistics.",
+  "source_sha256": {
+    "cpp/src/circuit/circuit_lowering.cpp": "309b0cb4d3131aa76fbc15fd9b00fa65c9415233039c3c849caa10fd39604118",
+    "cpp/src/core/common.cpp": "5ab2ab43ddc9b58dd5f7629588fa596e0e1e6c4ad69b08a2ef52a2b64d7c023f",
+    "cpp/src/core/frames.cpp": "c0369d1c85117fd981cf22c2148ef5ce6a2247bedad5b8e9fa794f1a6bde41b5",
+    "cpp/src/core/pauli.cpp": "e3c12a6d627bf94f800265ed25c2e225681bff16fcbd106c4cdc0ac748bf1ddb",
+    "cpp/src/core/symbolic.cpp": "b6f65a4dea25bd29055c41e3cca8cf80d10d19a809200161f0116063fbd2fa62",
+    "cpp/src/cuda/cuda_jit.cpp": "0e87c3fce17cd3643265500b2afa6de570b06a38a89cd46707c6cc75fcd2bd08",
+    "cpp/src/cuda/cuda_program.cpp": "7a4f68c185a113667708497bac36e5ab8a1b3519e02152469fae5bc218238d31",
+    "cpp/src/cuda/cuda_sampler.cpp": "11218f6d7e9f66134a0a9b727083066c6b1426332bf81e1bc066e3bfa8c94f4b",
+    "cpp/src/factored/factored_planner.cpp": "255695659683ba103425c166074563012a10eca6534c8b383cdf669f7bc80ce9",
+    "cpp/src/factored/factored_state.cpp": "06028fc3cf719a0cb4877a8feea3d381744d838bec5eb1b31380526a2578682f",
+    "cpp/src/factored/pending_optimizer.cpp": "838a874bfb6bfb406a15d0f3a9c4562b95698532ea66cc13c43aea35c99fd011",
+    "cpp/src/frontend/stim_parser.cpp": "f312bbbe7dd1373adffb279ec12db3fb9a700dd367aef18b5f17517991729a19",
+    "cpp/src/frontend/stim_sampling.cpp": "84bde63319dce86255bb6340bea31be2be18ddf8b369bffb7e30d214f524d590",
+    "cpp/src/sampler/active_state.cpp": "61d29c7e37de25c75c8c8a21fd7ff15ea2c3bbe7c0e70babc9e94cf956636d58",
+    "cpp/src/sampler/batch_active.cpp": "786455ab4f56b00e02200d3100d9f65973f3d41bb037a590be9a008541dd837c",
+    "cpp/src/sampler/batch_runtime.cpp": "4445e55afc0e878e204ee66dfeedec29a3973abe96939f43928c8ee993698b60",
+    "cpp/src/sampler/batch_symbols.cpp": "04d78209249ed4a291af4c34edc082ea9f170fc064af0e191742e5661f9b047e",
+    "cpp/src/sampler/component_plan.cpp": "b1e93ff1758a7f9ce2c8d5a0ef7c48b5f8af83d894a702dec15f0fa9a50d1c8b",
+    "cpp/src/sampler/contiguous_active.cpp": "ea3c84dbf6d6306eea7ccb1723a9d1ee09c4670b600d15bb3ccac8cf8bf93f65",
+    "cpp/src/sampler/cpu_sampling_plan.cpp": "1e81d10826c89760d9979f201986dfe064caf6ce9d60ef7ed5bbabbb5148b15d",
+    "cpp/src/sampler/exogenous_presample.cpp": "eb711f19b245b351daca7059ba74f59eb254cfe1957684842ae43a310b2c525d",
+    "cpp/src/sampler/prepared_sampler.cpp": "137eef22d81e7ac8a579aa2e8cd62f4fc1c2e3e7505d609ae5131435594b3f5f",
+    "cpp/src/sampler/presampled_expression.cpp": "fa7785b373bfaa09e7b78e62fecd18a1f40a25b13de198a99821759dba04b563",
+    "cpp/src/sampler/real_active.cpp": "0a64aa76fea4b02c8d6b742c1d50effffc0d53d80a44f916e6b9c701115da461",
+    "cpp/src/sampler/single_shot_sampler.cpp": "cbd43186427aa78da2345ff0c31b8f1d7df723d49b7f2d9274d3dd3e3d72c15c",
+    "cpp/src/simd/batch_interleaved.cpp": "ae3b112d1b1edf5620937138d254e1a96029e786442457f1347db2a85cb10421",
+    "cpp/src/simd/simd_avx2.cpp": "d9b46a7905f2ccdde06ed0fa917f8fee00d26c6eb3aac85687d9f8e2f5eafb9b",
+    "cpp/src/simd/simd_avx512.cpp": "0c5f2960f0aba0fad91069c6a7f36c9d615131cfd65d19ba8fbd2f0e53bda4df",
+    "cpp/src/simd/simd_dispatch.cpp": "a4c90e324de47f1a7bc712964c8883c611e2bf8edeeb8912cbc1119da21c1bd6",
+    "cpp/src/simd/simd_scalar.cpp": "fe3095f1164658d5fd15c3f017a3980699715bd75f0c115b477f09856ca96ce1",
+    "cpp/src/circuit/circuit.hpp": "b6799d8bf3eaa9c3e6cdc855d266ab15ac55e382d681780678f8d8c5ce06620b",
+    "cpp/src/core/common.hpp": "2c7590ffd85d2715c5985f5697fca96999aadf02710587d73090c5a38158dda4",
+    "cpp/src/core/frames.hpp": "333a0c00f3f55972df623ce3e601f2c819613170ae9f631c083c95c5ac580f7b",
+    "cpp/src/core/internal.hpp": "394e787bb31a01d6a579deb349799b74c585dc0e4fea3a5435b4dd4614948053",
+    "cpp/src/core/pauli.hpp": "d9486cbe4bc6e175b63e40dd56cd701d5d3e3f3de9e567800a2cb1a346c0f2de",
+    "cpp/src/core/symbolic.hpp": "a7a8cde241fc0ce54ae9b383555fc8270523bc32cf95618a104db5868f2c0c23",
+    "cpp/src/cuda/cuda_jit.hpp": "da73079f0d1c17fee71219f855ee4731f3d59693cc89df6b00baddbe4979f400",
+    "cpp/src/cuda/cuda_program.hpp": "be643346d0dfe8bcbf6ad5328611fdec1e628bf60de1cc6b5c49884d171d573c",
+    "cpp/src/cuda/cuda_runtime.hpp": "1ca6fe23baeb51c52d5a251bd8f017e3825f2728a0094e05b7fb7a9873a54199",
+    "cpp/src/cuda/cuda_sampler.hpp": "ee03495d8ffda04eea5b49a9008d8564faa793b2cac23a85eac7a9a4e7a20b5a",
+    "cpp/src/factored/factored.hpp": "5bb1d71c39784088fd5800016ed8bf1892522f39ad834dce2f9c118e08b96874",
+    "cpp/src/factored/factored_internal.hpp": "5bf94d16cbb52ab99796802ec0dd0a9c0aa6feb3001da6c819ff3cb13308dbbd",
+    "cpp/src/frontend/stim.hpp": "88174ebf8b94b6d9e99f9d53e32258dc1c3de75c5d84a0506441f026f38315f7",
+    "cpp/src/frontend/stim_prepared_sampler.hpp": "554aa6107bcc29736c2fd1dc202d5fa21e4b8e3de9dc67e57366fa111e06af12",
+    "cpp/src/sampler/active.hpp": "8d6109fe25531a40f408824bc8cfaaa4b27b881e95f47e91bb1fbc7b94a617bd",
+    "cpp/src/sampler/active_internal.hpp": "f552e90bbb909fd51490e93e7b919f4d590ae6b6caa19a355276c12f427849f9",
+    "cpp/src/sampler/active_kernels.hpp": "3d2bcef8ec0c9e5a8b8574d3434c8bada41b4ff761fb6566550e5c83e13e54d2",
+    "cpp/src/sampler/batch_internal.hpp": "454a48e5efbfc51a56be820e8b99aa78adc1ac6bb2e7f6b5a8de1e38321f76e1",
+    "cpp/src/sampler/batch_sampler.hpp": "53f7ead38c76efe637f6557ad4a8801ae0b911491234825c0c22e2b505fb640a",
+    "cpp/src/sampler/component_plan.hpp": "9944957924cf040413902c141d5209a5b1b4b9d6bf2c4c6efd29d79d0d7fdfd1",
+    "cpp/src/sampler/contiguous_active.hpp": "4f07c3b707079f262adb58142efa8eee23eeefe82fea2061035999cbf7069e11",
+    "cpp/src/sampler/cpu_profile.hpp": "8b014911616486b20adf627c5f462b2578a92a43d716d75e12c95b434e17312b",
+    "cpp/src/sampler/cpu_sampling_plan.hpp": "6c5e8c1912e707902c492c7e0dcc6f81262a8860c7f42c6a45838d264b8308cb",
+    "cpp/src/sampler/exogenous.hpp": "3f2d3094b05041729e6fa45338bdea483bff132d136bc1e94b9fbbe399c35f75",
+    "cpp/src/sampler/prepared_sampler.hpp": "69fca7105319d8242ca9d0659e48f38358419cf9b00da86ff7b05f6e7617be14",
+    "cpp/src/sampler/presampled_expression.hpp": "bc7508fc6d6917c962d3ca150d809397c0c6606600e97886571c31d97126af4b",
+    "cpp/src/sampler/random.hpp": "4a5cb9263f026375935819cbd1d0637066b19f89d5489e7be8c0dd32b76341da",
+    "cpp/src/sampler/real_active.hpp": "60e0a5a37bd1b9a9314c3b119098bf379ea5a4ffb658419902dc82073309b9a2",
+    "cpp/src/sampler/single_shot.hpp": "1ef1750e33a1810e569d88fa9bbfbfc6c934ce4d26f17e94e922ce9dc496573b",
+    "cpp/src/simd/batch_interleaved.hpp": "b4f14ffdcf371bdc7ffba80ea316ae371df214c0b82a9eb325c4ba7dacc164f5",
+    "cpp/src/simd/simd.hpp": "477174b314fc5fd3644f24d2c4e69cb853fc3901bfc272d49364a2e45a6eaa5e"
+  },
+  "binaries": {
+    "legacy": {
+      "sha256": "7bf3fa67b6a4671f6973b76c27186afc671606ce22dc8db54154e767bb98c40b",
+      "file": "legacy.frozen"
+    },
+    "before": {
+      "sha256": "12d19ac67cfbec3099700a7a8d8c9c4628f95a4dd9a9ea81072683363e1da5c4",
+      "file": "before.frozen"
+    },
+    "after": {
+      "sha256": "7461a5581b6b5152535cffd5619d856280fab646d02d9fdf66648a6b36da6de4",
+      "file": "after.frozen"
+    }
+  },
+  "raw_results_sha256": "6a7806db0fc49b9ed0c3bb197461cf47f5912e7d683d22db329e6381af26acdb",
+  "archive_note": "Raw stdout, command lines, build binaries and telemetry remain in the local experiment archive; not bundled.",
+  "build": "CMake Release, native, LTO; diagnostics off. Compiler and hardware recorded in the raw archive.",
+  "runs": [
+    {
+      "distance": 3,
+      "variant": "legacy",
+      "repeat": 0,
+      "stream_id": 0,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          674,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          10,
+          0,
+          0,
+          662,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3759636,
+      "accepted": 8240364,
+      "logical_errors": 8,
+      "sample_s": 6.70966,
+      "attempted_shots_per_s": 1788470.0
+    },
+    {
+      "distance": 3,
+      "variant": "before",
+      "repeat": 0,
+      "stream_id": 261008100,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          573,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          6,
+          0,
+          1,
+          567,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3759896,
+      "accepted": 8240104,
+      "logical_errors": 7,
+      "sample_s": 5.70393,
+      "attempted_shots_per_s": 2103810.0
+    },
+    {
+      "distance": 3,
+      "variant": "after",
+      "repeat": 0,
+      "stream_id": 261008100,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          566,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          3,
+          0,
+          0,
+          562,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3759896,
+      "accepted": 8240104,
+      "logical_errors": 7,
+      "sample_s": 5.63155,
+      "attempted_shots_per_s": 2130850.0
+    },
+    {
+      "distance": 5,
+      "variant": "legacy",
+      "repeat": 0,
+      "stream_id": 0,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          1390,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          10,
+          0,
+          3,
+          1377,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284284,
+      "accepted": 215716,
+      "logical_errors": 0,
+      "sample_s": 13.001,
+      "attempted_shots_per_s": 115376.0
+    },
+    {
+      "distance": 5,
+      "variant": "before",
+      "repeat": 0,
+      "stream_id": 261008100,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          637,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          8,
+          0,
+          0,
+          629,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284042,
+      "accepted": 215958,
+      "logical_errors": 0,
+      "sample_s": 5.50038,
+      "attempted_shots_per_s": 272709.0
+    },
+    {
+      "distance": 5,
+      "variant": "after",
+      "repeat": 0,
+      "stream_id": 261008100,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          521,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          5,
+          0,
+          1,
+          516,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284042,
+      "accepted": 215958,
+      "logical_errors": 0,
+      "sample_s": 4.29928,
+      "attempted_shots_per_s": 348896.0
+    },
+    {
+      "distance": 3,
+      "variant": "before",
+      "repeat": 1,
+      "stream_id": 261008101,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          574,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          4,
+          0,
+          0,
+          571,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3756117,
+      "accepted": 8243883,
+      "logical_errors": 3,
+      "sample_s": 5.7138,
+      "attempted_shots_per_s": 2100180.0
+    },
+    {
+      "distance": 3,
+      "variant": "after",
+      "repeat": 1,
+      "stream_id": 261008101,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          563,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          5,
+          0,
+          0,
+          559,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3756117,
+      "accepted": 8243883,
+      "logical_errors": 3,
+      "sample_s": 5.60138,
+      "attempted_shots_per_s": 2142330.0
+    },
+    {
+      "distance": 3,
+      "variant": "legacy",
+      "repeat": 1,
+      "stream_id": 0,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          674,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          4,
+          0,
+          0,
+          670,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3759636,
+      "accepted": 8240364,
+      "logical_errors": 8,
+      "sample_s": 6.71512,
+      "attempted_shots_per_s": 1787010.0
+    },
+    {
+      "distance": 5,
+      "variant": "before",
+      "repeat": 1,
+      "stream_id": 261008101,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          636,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          2,
+          0,
+          0,
+          634,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284165,
+      "accepted": 215835,
+      "logical_errors": 0,
+      "sample_s": 5.48549,
+      "attempted_shots_per_s": 273449.0
+    },
+    {
+      "distance": 5,
+      "variant": "after",
+      "repeat": 1,
+      "stream_id": 261008101,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          518,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          4,
+          0,
+          1,
+          514,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284165,
+      "accepted": 215835,
+      "logical_errors": 0,
+      "sample_s": 4.28863,
+      "attempted_shots_per_s": 349762.0
+    },
+    {
+      "distance": 5,
+      "variant": "legacy",
+      "repeat": 1,
+      "stream_id": 0,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          1389,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          11,
+          0,
+          1,
+          1377,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284284,
+      "accepted": 215716,
+      "logical_errors": 0,
+      "sample_s": 12.9932,
+      "attempted_shots_per_s": 115445.0
+    },
+    {
+      "distance": 3,
+      "variant": "after",
+      "repeat": 2,
+      "stream_id": 261008102,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          564,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          2,
+          0,
+          0,
+          562,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3755392,
+      "accepted": 8244608,
+      "logical_errors": 3,
+      "sample_s": 5.60708,
+      "attempted_shots_per_s": 2140150.0
+    },
+    {
+      "distance": 3,
+      "variant": "legacy",
+      "repeat": 2,
+      "stream_id": 0,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          667,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          7,
+          0,
+          0,
+          661,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3759636,
+      "accepted": 8240364,
+      "logical_errors": 8,
+      "sample_s": 6.64512,
+      "attempted_shots_per_s": 1805840.0
+    },
+    {
+      "distance": 3,
+      "variant": "before",
+      "repeat": 2,
+      "stream_id": 261008102,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          569,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          5,
+          0,
+          0,
+          564,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3755392,
+      "accepted": 8244608,
+      "logical_errors": 3,
+      "sample_s": 5.66903,
+      "attempted_shots_per_s": 2116760.0
+    },
+    {
+      "distance": 5,
+      "variant": "after",
+      "repeat": 2,
+      "stream_id": 261008102,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          520,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          6,
+          0,
+          1,
+          513,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1283441,
+      "accepted": 216559,
+      "logical_errors": 0,
+      "sample_s": 4.30326,
+      "attempted_shots_per_s": 348573.0
+    },
+    {
+      "distance": 5,
+      "variant": "legacy",
+      "repeat": 2,
+      "stream_id": 0,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          1389,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          5,
+          0,
+          0,
+          1381,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284284,
+      "accepted": 215716,
+      "logical_errors": 0,
+      "sample_s": 12.9817,
+      "attempted_shots_per_s": 115547.0
+    },
+    {
+      "distance": 5,
+      "variant": "before",
+      "repeat": 2,
+      "stream_id": 261008102,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          660,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          5,
+          0,
+          1,
+          655,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1283441,
+      "accepted": 216559,
+      "logical_errors": 0,
+      "sample_s": 5.72454,
+      "attempted_shots_per_s": 262030.0
+    },
+    {
+      "distance": 3,
+      "variant": "legacy",
+      "repeat": 3,
+      "stream_id": 0,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          675,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          7,
+          0,
+          1,
+          667,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3759636,
+      "accepted": 8240364,
+      "logical_errors": 8,
+      "sample_s": 6.72176,
+      "attempted_shots_per_s": 1785250.0
+    },
+    {
+      "distance": 3,
+      "variant": "before",
+      "repeat": 3,
+      "stream_id": 261008103,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          577,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          7,
+          0,
+          0,
+          570,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3761042,
+      "accepted": 8238958,
+      "logical_errors": 6,
+      "sample_s": 5.74407,
+      "attempted_shots_per_s": 2089110.0
+    },
+    {
+      "distance": 3,
+      "variant": "after",
+      "repeat": 3,
+      "stream_id": 261008103,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          565,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          3,
+          0,
+          0,
+          561,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3761042,
+      "accepted": 8238958,
+      "logical_errors": 6,
+      "sample_s": 5.62196,
+      "attempted_shots_per_s": 2134490.0
+    },
+    {
+      "distance": 5,
+      "variant": "legacy",
+      "repeat": 3,
+      "stream_id": 0,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          1396,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          11,
+          0,
+          1,
+          1383,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284284,
+      "accepted": 215716,
+      "logical_errors": 0,
+      "sample_s": 13.0589,
+      "attempted_shots_per_s": 114864.0
+    },
+    {
+      "distance": 5,
+      "variant": "before",
+      "repeat": 3,
+      "stream_id": 261008103,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          632,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          4,
+          0,
+          1,
+          629,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284297,
+      "accepted": 215703,
+      "logical_errors": 0,
+      "sample_s": 5.45544,
+      "attempted_shots_per_s": 274955.0
+    },
+    {
+      "distance": 5,
+      "variant": "after",
+      "repeat": 3,
+      "stream_id": 261008103,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          516,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          3,
+          0,
+          0,
+          513,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284297,
+      "accepted": 215703,
+      "logical_errors": 0,
+      "sample_s": 4.26186,
+      "attempted_shots_per_s": 351959.0
+    },
+    {
+      "distance": 3,
+      "variant": "before",
+      "repeat": 4,
+      "stream_id": 261008104,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          580,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          3,
+          0,
+          0,
+          577,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3757345,
+      "accepted": 8242655,
+      "logical_errors": 8,
+      "sample_s": 5.77653,
+      "attempted_shots_per_s": 2077370.0
+    },
+    {
+      "distance": 3,
+      "variant": "after",
+      "repeat": 4,
+      "stream_id": 261008104,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          567,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          5,
+          0,
+          1,
+          562,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3757345,
+      "accepted": 8242655,
+      "logical_errors": 8,
+      "sample_s": 5.63945,
+      "attempted_shots_per_s": 2127870.0
+    },
+    {
+      "distance": 3,
+      "variant": "legacy",
+      "repeat": 4,
+      "stream_id": 0,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          672,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          3,
+          0,
+          0,
+          668,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3759636,
+      "accepted": 8240364,
+      "logical_errors": 8,
+      "sample_s": 6.69078,
+      "attempted_shots_per_s": 1793510.0
+    },
+    {
+      "distance": 5,
+      "variant": "before",
+      "repeat": 4,
+      "stream_id": 261008104,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          640,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          4,
+          0,
+          1,
+          635,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1283153,
+      "accepted": 216847,
+      "logical_errors": 0,
+      "sample_s": 5.54227,
+      "attempted_shots_per_s": 270647.0
+    },
+    {
+      "distance": 5,
+      "variant": "after",
+      "repeat": 4,
+      "stream_id": 261008104,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          523,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          4,
+          0,
+          0,
+          520,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1283153,
+      "accepted": 216847,
+      "logical_errors": 0,
+      "sample_s": 4.3252,
+      "attempted_shots_per_s": 346805.0
+    },
+    {
+      "distance": 5,
+      "variant": "legacy",
+      "repeat": 4,
+      "stream_id": 0,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          1405,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          17,
+          0,
+          2,
+          1386,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284284,
+      "accepted": 215716,
+      "logical_errors": 0,
+      "sample_s": 13.1498,
+      "attempted_shots_per_s": 114070.0
+    },
+    {
+      "distance": 3,
+      "variant": "after",
+      "repeat": 5,
+      "stream_id": 261008105,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          567,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          6,
+          0,
+          0,
+          561,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3759504,
+      "accepted": 8240496,
+      "logical_errors": 10,
+      "sample_s": 5.64908,
+      "attempted_shots_per_s": 2124240.0
+    },
+    {
+      "distance": 3,
+      "variant": "legacy",
+      "repeat": 5,
+      "stream_id": 0,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          677,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          4,
+          0,
+          0,
+          670,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3759636,
+      "accepted": 8240364,
+      "logical_errors": 8,
+      "sample_s": 6.73787,
+      "attempted_shots_per_s": 1780980.0
+    },
+    {
+      "distance": 3,
+      "variant": "before",
+      "repeat": 5,
+      "stream_id": 261008105,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          579,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          3,
+          0,
+          0,
+          576,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3759504,
+      "accepted": 8240496,
+      "logical_errors": 10,
+      "sample_s": 5.76607,
+      "attempted_shots_per_s": 2081140.0
+    },
+    {
+      "distance": 5,
+      "variant": "after",
+      "repeat": 5,
+      "stream_id": 261008105,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          525,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          3,
+          0,
+          1,
+          521,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1283729,
+      "accepted": 216271,
+      "logical_errors": 0,
+      "sample_s": 4.35477,
+      "attempted_shots_per_s": 344450.0
+    },
+    {
+      "distance": 5,
+      "variant": "legacy",
+      "repeat": 5,
+      "stream_id": 0,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          1423,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          18,
+          0,
+          2,
+          1402,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284284,
+      "accepted": 215716,
+      "logical_errors": 0,
+      "sample_s": 13.2995,
+      "attempted_shots_per_s": 112786.0
+    },
+    {
+      "distance": 5,
+      "variant": "before",
+      "repeat": 5,
+      "stream_id": 261008105,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          642,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          7,
+          0,
+          1,
+          633,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1283729,
+      "accepted": 216271,
+      "logical_errors": 0,
+      "sample_s": 5.5471,
+      "attempted_shots_per_s": 270411.0
+    },
+    {
+      "distance": 3,
+      "variant": "legacy",
+      "repeat": 6,
+      "stream_id": 0,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          681,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          8,
+          0,
+          2,
+          670,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3759636,
+      "accepted": 8240364,
+      "logical_errors": 8,
+      "sample_s": 6.78304,
+      "attempted_shots_per_s": 1769120.0
+    },
+    {
+      "distance": 3,
+      "variant": "before",
+      "repeat": 6,
+      "stream_id": 261008106,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          586,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          6,
+          0,
+          1,
+          580,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3760254,
+      "accepted": 8239746,
+      "logical_errors": 6,
+      "sample_s": 5.83413,
+      "attempted_shots_per_s": 2056860.0
+    },
+    {
+      "distance": 3,
+      "variant": "after",
+      "repeat": 6,
+      "stream_id": 261008106,
+      "circuit_sha256": "90a7d841e003e5ee38137cd9a3eb6529bb552e49c424bc6b0932a27d97cdb41f",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          581,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          4,
+          0,
+          0,
+          578,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 12000000,
+      "discarded": 3760254,
+      "accepted": 8239746,
+      "logical_errors": 6,
+      "sample_s": 5.78325,
+      "attempted_shots_per_s": 2074960.0
+    },
+    {
+      "distance": 5,
+      "variant": "legacy",
+      "repeat": 6,
+      "stream_id": 0,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          1421,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          12,
+          0,
+          3,
+          1407,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1284284,
+      "accepted": 215716,
+      "logical_errors": 0,
+      "sample_s": 13.3026,
+      "attempted_shots_per_s": 112760.0
+    },
+    {
+      "distance": 5,
+      "variant": "before",
+      "repeat": 6,
+      "stream_id": 261008106,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          642,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          5,
+          0,
+          1,
+          636,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1283920,
+      "accepted": 216080,
+      "logical_errors": 0,
+      "sample_s": 5.55196,
+      "attempted_shots_per_s": 270175.0
+    },
+    {
+      "distance": 5,
+      "variant": "after",
+      "repeat": 6,
+      "stream_id": 261008106,
+      "circuit_sha256": "c2b4566917bd9bf27a5705284dac02700ef0dcc7c03c91066670db376d633a6d",
+      "cpu_ticks_delta": {
+        "cpu5": [
+          521,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cpu45": [
+          7,
+          0,
+          2,
+          512,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "sampled_shots": 1500000,
+      "discarded": 1283920,
+      "accepted": 216080,
+      "logical_errors": 0,
+      "sample_s": 4.28305,
+      "attempted_shots_per_s": 350217.0
+    }
+  ]
+}

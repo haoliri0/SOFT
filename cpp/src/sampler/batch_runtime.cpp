@@ -1,4 +1,5 @@
 #include "batch_internal.hpp"
+#include "sampler/cpu_profile.hpp"
 #include "sampler/component_plan.hpp"
 #include "simd/simd.hpp"
 
@@ -1506,6 +1507,8 @@ std::size_t execute_shot_major_rotation_run(
     if (run_len <= 1 || runtime.active_shots == 0) {
         return 0;
     }
+    ScopedCpuTimer cpu_timer(CpuPhase::Rotation, runtime.k,
+        (runtime.active_shots - (postselection_scratch ? postselection_scratch->dead_count : 0)) * run_len);
 
     const std::size_t active_words = runtime_batch_word_count(runtime);
     const std::size_t total_words = run_len * active_words;
@@ -1951,6 +1954,7 @@ BatchDetectorPostselectionResult execute_batch_postselected_with_expressions(
             break;
         }
         if (should_compact_dead_before_instruction(runtime, scratch, options, program.instructions[idx])) {
+            ScopedCpuTimer cpu_timer(CpuPhase::Compaction);
             materialize_expression_workspace();
             compact_dead_shots_if_needed(
                 runtime,
@@ -1979,6 +1983,8 @@ BatchDetectorPostselectionResult execute_batch_postselected_with_expressions(
             }
         }
         const auto& instruction = program.instructions[idx];
+        ScopedCpuTimer cpu_timer(cpu_instruction_phase(instruction.index()), runtime.k,
+                                 runtime.active_shots - scratch.dead_count);
         if (const auto* detector = std::get_if<RecordDetector>(&instruction)) {
             discarded += execute_batch_instruction_postselected(
                 runtime,
@@ -2012,6 +2018,7 @@ BatchDetectorPostselectionResult execute_batch_postselected_with_expressions(
                 instruction);
         }
     }
+    ScopedCpuTimer final_compaction_timer(CpuPhase::Compaction);
     compact_dead_shots_if_needed(
         runtime,
         scratch,

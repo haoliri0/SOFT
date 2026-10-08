@@ -14,6 +14,7 @@ from ._native import (
 )
 
 __version__: str
+__release__: str
 
 def read_stim_file(
     path: Union[str, bytes, PathLike[str], PathLike[bytes]],

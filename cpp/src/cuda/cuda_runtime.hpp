@@ -25,7 +25,7 @@ struct CudaLaunchOptions {
 
 class CudaRuntimeProgram {
   public:
-    explicit CudaRuntimeProgram(const CudaProgramData& program);
+    explicit CudaRuntimeProgram(const CudaProgramData& program, bool allow_jit = true);
     ~CudaRuntimeProgram();
 
     CudaRuntimeProgram(const CudaRuntimeProgram&) = delete;

@@ -1,4 +1,6 @@
 #include "sampler/prepared_sampler.hpp"
+#include "sampler/cpu_profile.hpp"
+#include "sampler/cpu_sampling_plan.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -484,6 +486,7 @@ struct PreparedCircuitBatchSampler::WorkerContext : PreparedWorkerBuffers {
     std::vector<std::uint64_t> logical_bits;
     std::vector<std::uint64_t> scratch;
     BatchDetectorPostselectionScratch postselection_scratch;
+    std::unique_ptr<CpuSamplingWorkspace> cpu_workspace;
 
     WorkerContext(
         const FactoredInstructionProgram& program,
@@ -534,14 +537,32 @@ PreparedCircuitBatchSampler::PreparedCircuitBatchSampler(
         options_.threads);
 
     prepare_expression_plan(expression_plan_, program_);
+    if (options_.cpu_compiled) {
+        if (!options_.postselect_detectors) info_.cpu_fallback_reason = "postselection_disabled";
+        else if (options_.threads != 1) info_.cpu_fallback_reason = "single_worker_only";
+        else if (program_.max_k > 10) info_.cpu_fallback_reason = "max_k_exceeds_10";
+        else if (program_.use_active_components) info_.cpu_fallback_reason = "active_components_enabled";
+        else {
+            const auto start = Clock::now();
+            cpu_plan_ = std::make_unique<CpuSamplingPlan>(program_, expression_plan_, logical_records_,
+                options_.cpu_real_gauge, options_.cpu_hoist_detectors);
+            preprocessing_timing_.plan_s += seconds_between(start, Clock::now());
+            info_.cpu_compiled = true;
+            info_.cpu_real_gauge = cpu_plan_->real_gauge;
+            info_.cpu_noise_only_detectors = cpu_plan_->noise_only_detectors;
+            info_.cpu_initial_checks = static_cast<int>(cpu_plan_->initial_checks.size());
+            info_.batch_size = 1; // Quantum execution is one trajectory at a time.
+        }
+    }
     workers_.reserve(static_cast<std::size_t>(options_.threads));
     for (int worker_id = 0; worker_id < options_.threads; ++worker_id) {
         auto context = std::make_unique<WorkerContext>(
             program_,
-            options_.batch_size);
+            cpu_plan_ ? 1 : options_.batch_size);
         context->runtime.store_detector_records = false;
         context->runtime.dense_shot_major_active = true;
-        if (options_.postselect_detectors) {
+        if (cpu_plan_) context->cpu_workspace = std::make_unique<CpuSamplingWorkspace>(*cpu_plan_);
+        if (options_.postselect_detectors && !cpu_plan_) {
             prepare_batch_detector_postselection_scratch(
                 context->postselection_scratch,
                 context->runtime,
@@ -567,6 +588,7 @@ PreparedCircuitBatchSampler::PreparedCircuitBatchSampler(
       preprocessing_timing_(std::move(other.preprocessing_timing_)),
       expression_plan_(std::move(other.expression_plan_)),
       postselection_options_(std::move(other.postselection_options_)),
+      cpu_plan_(std::move(other.cpu_plan_)),
       workers_(std::move(other.workers_)),
       next_stream_id_(other.next_stream_id_) {
     rebind_after_move();
@@ -584,6 +606,7 @@ PreparedCircuitBatchSampler& PreparedCircuitBatchSampler::operator=(
     preprocessing_timing_ = std::move(other.preprocessing_timing_);
     expression_plan_ = std::move(other.expression_plan_);
     postselection_options_ = std::move(other.postselection_options_);
+    cpu_plan_ = std::move(other.cpu_plan_);
     workers_ = std::move(other.workers_);
     next_stream_id_ = other.next_stream_id_;
     rebind_after_move();
@@ -626,30 +649,49 @@ CircuitSamplingRunResult PreparedCircuitBatchSampler::sample(
                 shots - chunk_offset));
 
             const auto presample_start = Clock::now();
-            resample_prepared_exogenous_packed_in_place(
-                context.samples,
-                program_,
-                chunk_shots,
-                block_seed(0x7eed0000ULL, stream_id, chunk_index));
-            evaluate_presampled_expression_block(
-                context.expression_block,
-                expression_plan_,
-                context.samples);
+            {
+                ScopedCpuTimer cpu_timer(CpuPhase::Noise);
+                resample_prepared_exogenous_packed_in_place(
+                    context.samples,
+                    program_,
+                    chunk_shots,
+                    block_seed(0x7eed0000ULL, stream_id, chunk_index));
+            }
+            {
+                ScopedCpuTimer cpu_timer(CpuPhase::Expression);
+                evaluate_presampled_expression_block(
+                    context.expression_block,
+                    expression_plan_,
+                    context.samples);
+            }
             const auto presample_stop = Clock::now();
             context.timing.presample_s += seconds_between(presample_start, presample_stop);
 
             const auto execute_start = Clock::now();
+            if (cpu_plan_) {
+                const auto counts = execute_cpu_chunk(*cpu_plan_, *context.cpu_workspace,
+                    context.expression_block, stream_id, chunk_offset);
+                context.counts.shots += counts.shots;
+                context.counts.discarded += counts.discarded;
+                context.counts.accepted += counts.accepted;
+                context.counts.logical_errors += counts.logical_errors;
+                context.timing.execute_s += seconds_between(execute_start, Clock::now());
+                continue;
+            }
             for (int chunk_local_offset = 0, local_block_index = 0;
                  chunk_local_offset < chunk_shots;
                  chunk_local_offset += options_.batch_size, ++local_block_index) {
                 const int block = std::min(options_.batch_size, chunk_shots - chunk_local_offset);
                 const std::uint64_t block_index =
                     chunk_index * blocks_per_chunk + static_cast<std::uint64_t>(local_block_index);
-                reset_batch_executor(
-                    context.runtime,
-                    program_,
-                    block,
-                    !options_.postselect_detectors);
+                {
+                    ScopedCpuTimer cpu_timer(CpuPhase::Reset);
+                    reset_batch_executor(
+                        context.runtime,
+                        program_,
+                        block,
+                        !options_.postselect_detectors);
+                }
                 context.runtime.rng_state = block_seed(0x5eed1234ULL, stream_id, block_index);
                 if (options_.postselect_detectors) {
                     const auto postselection_result = execute_batch_postselected_in_place(
@@ -671,6 +713,7 @@ CircuitSamplingRunResult PreparedCircuitBatchSampler::sample(
                         chunk_local_offset);
                 }
                 if (options_.postselect_detectors) {
+                    ScopedCpuTimer cpu_timer(CpuPhase::Count);
                     accumulate_logical_counts_for_survivors(
                         context.counts,
                         context.runtime,

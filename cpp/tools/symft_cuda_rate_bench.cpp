@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -28,6 +29,7 @@ struct Options {
     bool lazy_exogenous_on_device = false;
     bool gpu_on_demand_expressions = false;
     bool print_program_stats = false;
+    std::uint64_t stream_id=0;
 };
 
 std::uint64_t parse_u64(const char* raw, const char* name) {
@@ -81,6 +83,7 @@ void print_usage(const char* argv0) {
            " --shots-per-launch 262144\n"
         << "  --repeats N\n"
         << "  --observable N\n";
+    std::cerr << "  --stream-id N (default 0)\n";
 }
 
 Options parse_options(int argc, char** argv) {
@@ -114,6 +117,9 @@ Options parse_options(int argc, char** argv) {
 
         if (name == "--circuit" || name == "--file") {
             options.path = require_value(name, value, idx, argc, argv);
+        } else if (name == "--stream-id") {
+            const auto raw=require_value(name,value,idx,argc,argv);
+            options.stream_id=parse_u64(raw.c_str(),"stream_id");
         } else if (name == "--shots") {
             const std::string raw = require_value(name, value, idx, argc, argv);
             options.shots = parse_u64(raw.c_str(), "shots");
@@ -359,11 +365,19 @@ int main(int argc, char** argv) {
         cuda_options.gpu_on_demand_expressions = options.gpu_on_demand_expressions;
         cuda_options.shots_per_launch = options.shots_per_launch;
         cuda_options.threads_per_block = options.threads_per_block;
+        const auto prepare_start=std::chrono::steady_clock::now();
         symft::cuda::PreparedCircuitCudaSampler sampler(input, cuda_options);
+        std::cout << "cuda_prepare_s " << std::chrono::duration<double>(std::chrono::steady_clock::now()-prepare_start).count() << "\n";
+        std::cout << "stream_id " << options.stream_id << "\n";
+#ifdef SYMFT_CUDA_REAL_DOUBLE
+        std::cout << "precision FP64\n";
+#else
+        std::cout << "precision FP32\n";
+#endif
 
         symft::CircuitSamplingRunResult total;
         for (int repeat = 0; repeat < options.repeats; ++repeat) {
-            const auto run = sampler.sample(options.shots, static_cast<std::uint64_t>(repeat));
+            const auto run = sampler.sample(options.shots, options.stream_id+static_cast<std::uint64_t>(repeat));
             total.counts.shots += run.counts.shots;
             total.counts.discarded += run.counts.discarded;
             total.counts.accepted += run.counts.accepted;

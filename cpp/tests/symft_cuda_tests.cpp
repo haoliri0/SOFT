@@ -155,11 +155,30 @@ void test_fixture_discard_rates() {
     }
 }
 
+void test_aggregate_boundaries() {
+    const auto logical_path=write_temp_stim("symft_cuda_logical_one.stim",
+        "X 0\nM 0\nOBSERVABLE_INCLUDE(0) rec[-1]\n");
+    const auto reject_path=write_temp_stim("symft_cuda_all_rejected.stim",
+        "X 0\nM 0\nDETECTOR rec[-1]\nOBSERVABLE_INCLUDE(0) rec[-1]\n");
+    for(std::uint64_t shots:{0ULL,1ULL,31ULL,32ULL,33ULL,63ULL,64ULL,65ULL,257ULL}) {
+        auto a=run_cuda_file(logical_path,shots,true,CudaMode::GpuPresampleExpressions);
+        require(a.counts.shots==shots && a.counts.accepted==shots &&
+                a.counts.logical_errors==shots && a.counts.discarded==0,
+                "CUDA aggregate nonzero logical counts and partial blocks");
+        auto b=run_cuda_file(reject_path,shots,true,CudaMode::GpuPresampleExpressions);
+        require(b.counts.shots==shots && b.counts.discarded==shots &&
+                b.counts.accepted==0 && b.counts.logical_errors==0,
+                "CUDA aggregate all rejected and partial blocks");
+    }
+    std::remove(logical_path.c_str());std::remove(reject_path.c_str());
+}
+
 } // namespace
 
 int main() {
     test_deterministic_postselection();
     test_fixture_discard_rates();
+    test_aggregate_boundaries();
     std::cout << "symft_cuda_tests passed\n";
     return 0;
 }

@@ -1,7 +1,21 @@
 # Build and packaging artifacts
 build/
+build-*/
 dist/
 *.egg-info/
+wheelhouse/
+*.o
+*.a
+*.obj
+*.lib
+*.exe
+*.cubin
+*.ptx
+jit-cache/
+.jit-cache/
+# Raw experiment output stays local; curated evidence lives in benchmark/results.
+/results/
+/review-artifacts/
 
 # Python bytecode and tool caches
 __pycache__/

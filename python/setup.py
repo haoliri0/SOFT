@@ -1,4 +1,5 @@
 from pathlib import Path
+import ast
 import os
 import platform
 import re
@@ -15,6 +16,13 @@ from setuptools._distutils.errors import CompileError, DistutilsExecError
 PACKAGE_ROOT = Path(__file__).resolve().parent
 REPOSITORY_CPP_SRC = PACKAGE_ROOT.parent / "cpp" / "src"
 CPP_SRC = REPOSITORY_CPP_SRC if REPOSITORY_CPP_SRC.exists() else PACKAGE_ROOT / "cpp" / "src"
+VERSION_SOURCE = ast.parse((PACKAGE_ROOT / "src" / "symft" / "_version.py").read_text())
+PACKAGE_VERSION = next(
+    ast.literal_eval(node.value) for node in VERSION_SOURCE.body
+    if isinstance(node, ast.Assign) and any(
+        isinstance(target, ast.Name) and target.id == "__version__" for target in node.targets
+    )
+)
 
 
 def env_flag(name, default=False):
@@ -305,6 +313,8 @@ sources = [
     cpp_source("circuit/circuit_lowering.cpp"),
     cpp_source("sampler/active_state.cpp"),
     cpp_source("sampler/contiguous_active.cpp"),
+    cpp_source("sampler/real_active.cpp"),
+    cpp_source("sampler/cpu_sampling_plan.cpp"),
     cpp_source("sampler/component_plan.cpp"),
     cpp_source("factored/factored_state.cpp"),
     cpp_source("factored/factored_planner.cpp"),
@@ -328,6 +338,7 @@ if ENABLE_CUDA:
         [
             cpp_source("cuda/cuda_program.cpp"),
             cpp_source("cuda/cuda_sampler.cpp"),
+            cpp_source("cuda/cuda_jit.cpp"),
             cpp_source("cuda/cuda_runtime.cu"),
         ]
     )
@@ -351,7 +362,7 @@ if ENABLE_CUDA:
     define_macros.append(("SYMFT_CPP_ENABLE_CUDA", "1"))
     if CUDA_REAL_DOUBLE:
         define_macros.append(("SYMFT_CUDA_REAL_DOUBLE", "1"))
-    libraries.append("cudart")
+    libraries.extend(["cudart", "nvrtc", "cuda"])
     if CUDA_HOME is not None:
         include_dirs.append(str(CUDA_HOME / "include"))
         library_dirs.extend(cuda_library_dirs(CUDA_HOME))
@@ -375,8 +386,8 @@ extensions = [
 
 setup(
     name="symft",
-    version="0.1.0",
-    description="Python bindings for the SymFT Clifford+T simulator",
+    version=PACKAGE_VERSION,
+    description="SOFT v2 Python interface, powered by the SymFT sampling architecture",
     license="Apache-2.0",
     license_files=["LICENSE"],
     classifiers=["License :: OSI Approved :: Apache Software License"],

@@ -108,7 +108,7 @@ struct PreparedCircuitCudaSampler::Impl {
             prepare_presampled_expression_plan(expression_plan, program, samples);
             cuda_program = build_cuda_program_data(program, expression_plan, logical_records);
         }
-        runtime = std::make_unique<CudaRuntimeProgram>(cuda_program);
+        runtime = std::make_unique<CudaRuntimeProgram>(cuda_program, options.gpu_presample_expressions);
         info = make_cuda_info(program, input, options);
     }
 };

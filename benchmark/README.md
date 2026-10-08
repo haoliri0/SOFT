@@ -1,4 +1,15 @@
-# SymFT benchmarks
+# SOFT v2 benchmarks (SymFT architecture)
+
+SOFT is the project name; SymFT is the sampling architecture and the existing
+Python/harness identifier. References to the original implementation use
+**SOFT v1**. The `symft` keys and command names below are unchanged.
+
+The historical cross-tool harness below does not automatically enable the new
+compiled CPU backend or CUDA JIT. For `symft_26_10_08` and historical settings,
+counts, and limitations, see [performance](../docs/PERFORMANCE.md),
+[CPU optimization](../docs/optimization/CPU.md),
+[CUDA optimization](../docs/optimization/CUDA.md), and the
+[long-run validation tools](validation/README.md).
 
 This directory contains the circuit inputs and compact Python benchmark
 harnesses used for the paper's near-Clifford and pure-Clifford results.
@@ -148,7 +159,7 @@ configured `report` path, which is `performance.md` by default.
 
 ## GPU benchmark
 
-[`GPU_benchmark.py`](GPU_benchmark.py) benchmarks Tsim and SymFT only; SOFT is
+[`GPU_benchmark.py`](GPU_benchmark.py) benchmarks Tsim and SOFT v2 (SymFT) only; SOFT v1 is
 intentionally not included. Each case runs in a fresh child process so its GPU
 memory is released before the next case. The selected physical device is
 exposed through `CUDA_VISIBLE_DEVICES`.

@@ -1,8 +1,9 @@
-"""Python bindings for the SymFT Clifford+T simulator."""
+"""SOFT v2 Python interface, powered by the SymFT sampling architecture."""
 
 from os import PathLike
 from typing import Union
 
+from ._version import __release__, __version__
 from ._native import (
     Circuit,
     CompiledCountsSampler,
@@ -12,9 +13,6 @@ from ._native import (
     cuda_enabled,
     simd_backend,
 )
-
-__version__ = "0.1.0"
-
 
 def read_stim_file(path: Union[str, bytes, PathLike]) -> Circuit:
     """Parse a Stim circuit file into a :class:`Circuit`.
@@ -52,6 +50,7 @@ __all__ = [
     "CompiledCountsSampler",
     "CompiledMeasurementSampler",
     "SymFTError",
+    "__release__",
     "__version__",
     "active_cuda_backend",
     "cuda_enabled",
