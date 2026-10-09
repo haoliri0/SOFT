@@ -229,6 +229,45 @@ class CountsSamplingTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cuda_mode"):
             circuit.compile_counts_sampler(cuda_mode="unknown")
 
+    def test_cpu_compiled_backend_and_ablations(self):
+        circuit = symft.Circuit(
+            "H 0\nT 0\nX_ERROR(0.1) 0\nH 0\nM 0\n"
+            "DETECTOR rec[-1]\nOBSERVABLE_INCLUDE(0) rec[-1]\n"
+        )
+        variants = ({}, {"cpu_real_gauge": False}, {"cpu_hoist_detectors": False})
+        counts = []
+        for variant in variants:
+            sampler = circuit.compile_counts_sampler(
+                cpu_backend="compiled", postselect_detectors=True, **variant
+            )
+            self.assertTrue(sampler.info["cpu_compiled"])
+            result = sampler.sample(4097, stream_id=93)
+            self.assertEqual(result["shots"], result["discarded"] + result["accepted"])
+            self.assertEqual(result["logical_errors"], 0)
+            counts.append((result["discarded"], result["accepted"]))
+            direct = circuit.sample_counts(
+                4097, seed=93, cpu_backend="compiled", postselect_detectors=True, **variant
+            )
+            self.assertEqual(direct["discarded"], result["discarded"])
+        self.assertEqual(counts[0], counts[1])
+        self.assertEqual(counts[0], counts[2])
+
+    def test_cpu_default_and_fallback(self):
+        circuit = symft.Circuit("X 0\nM 0\nDETECTOR rec[-1]\n")
+        self.assertFalse(circuit.compile_counts_sampler().info["cpu_compiled"])
+        fallback = circuit.compile_counts_sampler(cpu_backend="compiled")
+        self.assertFalse(fallback.info["cpu_compiled"])
+        self.assertEqual(fallback.info["cpu_fallback_reason"], "postselection_disabled")
+        self.assertEqual(fallback.sample(17)["discarded"], 17)
+        compiled = circuit.compile_counts_sampler(cpu_backend="compiled", postselect_detectors=True)
+        self.assertEqual(compiled.sample(0)["shots"], 0)
+        self.assertEqual(compiled.sample(65)["discarded"], 65)
+        for method in (circuit.compile_counts_sampler, circuit.sample_counts):
+            for options in ({"cpu_backend": "bad"}, {"cpu_backend": "compiled", "batch": False},
+                            {"cpu_backend": "compiled", "cuda": True}):
+                with self.assertRaisesRegex(ValueError, "cpu_backend"):
+                    method(**options)
+
 
 
 if __name__ == "__main__":

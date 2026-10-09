@@ -55,6 +55,11 @@ class CountsSamplerInfo(TypedDict):
     batch_size: int
     sample_chunk_shots: int
     threads: int
+    cpu_compiled: bool
+    cpu_real_gauge: bool
+    cpu_noise_only_detectors: int
+    cpu_initial_checks: int
+    cpu_fallback_reason: str
     active_components: bool
     detector_postselection: bool
     reference_normalized: bool
@@ -113,6 +118,9 @@ class Circuit:
         cuda_mode: str = ...,
         shots_per_launch: int = ...,
         threads_per_block: int = ...,
+        cpu_backend: str = ...,
+        cpu_real_gauge: bool = ...,
+        cpu_hoist_detectors: bool = ...,
     ) -> CompiledCountsSampler: ...
     def sample(
         self,
@@ -152,6 +160,9 @@ class Circuit:
         cuda_mode: str = ...,
         shots_per_launch: int = ...,
         threads_per_block: int = ...,
+        cpu_backend: str = ...,
+        cpu_real_gauge: bool = ...,
+        cpu_hoist_detectors: bool = ...,
     ) -> CountsResult: ...
     def sample_detectors(
         self,

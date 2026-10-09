@@ -1,0 +1,148 @@
+{
+  "date": "2026-09-30",
+  "scope": "Prepared uncommitted symft working tree; local Linux checks only. Historical 50B runs were not repeated.",
+  "branch": "symft",
+  "base_commit": "e86c6a92525650744ce0dc2a65126e1ab951882d",
+  "remote": {
+    "url": "https://github.com/haoliri0/SOFT.git",
+    "target_branch": "symft",
+    "fresh_fetch_verified": false,
+    "reason": "HTTPS TLS handshake failures and SSH connection closure; local origin/symft snapshot used."
+  },
+  "checks": [
+    {
+      "name": "native_lto_cpu",
+      "status": "passed",
+      "command": "ctest --test-dir build-review-cpu --output-on-failure",
+      "tests_passed": 2
+    },
+    {
+      "name": "scalar_non_native_cpu",
+      "status": "passed",
+      "command": "ctest --test-dir build-review-portable --output-on-failure",
+      "tests_passed": 2
+    },
+    {
+      "name": "cuda_fp64_existing_and_jit_layouts",
+      "status": "passed",
+      "command": "ctest --test-dir build-review-cuda --output-on-failure",
+      "tests_passed": 5,
+      "note": "Original five registered tests; symbolic variant added and run separately below."
+    },
+    {
+      "name": "cuda_fp64_symbolic_jit",
+      "status": "passed",
+      "command": "ctest --test-dir build-review-cuda -R symft_cuda_jit_symbolic_tests --output-on-failure",
+      "tests_passed": 1
+    },
+    {
+      "name": "python_cpu_portable_build",
+      "status": "passed",
+      "command": "PYTHONPATH=build-review-python-cpu/lib.linux-x86_64-cpython-312 python -m unittest discover -s python/tests -v",
+      "tests_passed": 49,
+      "note": "Extension built with SYMFT_PY_NATIVE=0."
+    },
+    {
+      "name": "python_cuda_fp64_build",
+      "status": "passed",
+      "command": "PYTHONPATH=build-review-python-cuda/lib.linux-x86_64-cpython-312 python -m unittest discover -s python/tests -v",
+      "tests_passed": 49,
+      "note": "Same general API suite, using a CUDA-linked FP64 extension; actual CUDA sample checks are separate."
+    },
+    {
+      "name": "persistent_cpu_worker",
+      "status": "passed",
+      "command": "SYMFT_TEST_WORKER=build-review-cpu/cpp/symft_cpu_stream_worker python3 -m unittest discover -s benchmark/validation -p 'test_*.py' -v",
+      "tests_passed": 9,
+      "note": "100257 attempted shots with tail segment, same-stream reference, completed resume, exclusive lock, and identity rejection."
+    },
+    {
+      "name": "cuda_bitwise_noise_and_tail",
+      "status": "passed",
+      "attempted_shots": 100003,
+      "stream_id": 9000000,
+      "shots_per_launch": 65536,
+      "counts": {
+        "discarded": 85647,
+        "accepted": 14356,
+        "logical_errors": 0
+      },
+      "note": "SYMFT_VALIDATE_NOISE=1 with JIT, packed/scalar noise, symbolic and row reduction. Exact matches for 65536-shot and 34467-shot launches. Diagnostic throughput is not benchmark evidence."
+    },
+    {
+      "name": "archived_evidence",
+      "status": "passed",
+      "command": "python3 benchmark/validation/check_results.py --experiment-root /path/to/SymFT_CUDA_Astra",
+      "note": "Recomputed exported arithmetic/intervals and checked actual journal/source hashes, stream uniqueness, 50B sums, sampling spans, 42 CPU repeat records, and d3 raw counters."
+    },
+    {
+      "name": "sdist_creation",
+      "status": "passed",
+      "command": "python setup.py sdist --dist-dir ../build-review-packaging"
+    },
+    {
+      "name": "wheel_from_sdist",
+      "status": "passed",
+      "command": "SYMFT_PY_NATIVE=0 python -m pip wheel build-review-packaging/symft-0.1.0.tar.gz --no-index --no-deps --no-build-isolation --no-cache-dir -w build-review-packaging/wheels",
+      "wheel_sha256": "ec6da43a708572d03cd1d859113e7b3372faaafee324a62524dfe7185d80da01",
+      "sdist_sha256": "41914430586d11855f01d93576910c6ea1a2e799f0829879b1260ca556463ccc",
+      "note": "Installed into an isolated local target; package import path verified and all 49 Python tests passed."
+    },
+    {
+      "name": "python_cuda_actual_sampling",
+      "status": "passed",
+      "attempted_shots_per_call": 100003,
+      "stream_id": 9000000,
+      "calls": 2,
+      "counts": {
+        "discarded": 85647,
+        "accepted": 14356,
+        "logical_errors": 0
+      },
+      "note": "Fresh CUDA-linked extension imported from this checkout, all optimization flags enabled; same-stream replay and count conservation verified. Replay is not fresh statistical evidence."
+    },
+    {
+      "name": "documentation_and_hygiene",
+      "status": "passed",
+      "command": "python3 tools/check_documentation.py",
+      "markdown_files": 15,
+      "local_links_and_anchors": 113,
+      "note": "Source-level local links and fences, public identifiers, evidence arithmetic, and candidate-file artifact exclusions checked; not a rendered or external-URL audit."
+    },
+    {
+      "name": "independent_statistics_formulas",
+      "status": "passed",
+      "command": "python3 -m unittest discover -s benchmark/validation -p 'test_sampling_statistics.py' -v",
+      "tests_passed": 3,
+      "note": "Direct log-combination binomial sums check all three archived confidence-interval endpoints; exact integer combinations independently check the large-sample Fisher p-value. No SciPy dependency."
+    },
+    {
+      "name": "source_preservation",
+      "status": "passed",
+      "note": "Original optimization worktree's Git status and full tracked diff unchanged. Core C++ files and Python native binding match the migrated source; integration changes add documentation, metadata, tests/build targets, and validation helpers. Original staged/unstaged state preserved."
+    },
+    {
+      "name": "git_patch_whitespace",
+      "status": "passed",
+      "command": "git diff --check"
+    },
+    {
+      "name": "portable_scalar_worker_and_statistics",
+      "status": "passed",
+      "command": "SYMFT_TEST_WORKER=build-review-portable/cpp/symft_cpu_stream_worker python3 -m unittest discover -s benchmark/validation -p 'test_*.py' -v",
+      "tests_passed": 12,
+      "note": "Same actual-worker checks on the non-native, AVX2/AVX512-disabled C++ build, plus independent interval and Fisher formula checks."
+    }
+  ],
+  "not_claimed": [
+    "Fresh remote branch verification",
+    "New 50B production runs",
+    "macOS/Windows/ARM execution",
+    "Other CUDA architectures",
+    "Fresh sanitizer runs during this integration",
+    "Published-wheel or GitHub Actions execution",
+    "An exhaustive rendered GitHub or external-link audit"
+  ],
+  "commit_created": false,
+  "push_performed": false
+}

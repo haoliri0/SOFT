@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-08",
+  "release": "symft_26_10_08",
+  "python_package_version": "2026.10.8",
+  "branch": "symft",
+  "base_commit": "e86c6a92525650744ce0dc2a65126e1ab951882d",
+  "scope": "Local uncommitted release review. No commit, push, tag, package upload, or new 50B experiment.",
+  "host": "Linux x86_64; Intel Xeon Gold 5218R; GCC 13.3; RTX 4090; CUDA 13.0.88",
+  "checks": [
+    {
+      "name": "native_avx512_lto_cpu",
+      "status": "passed",
+      "command": "ctest --test-dir build-261008-cpu --output-on-failure",
+      "tests_passed": 2
+    },
+    {
+      "name": "avx2_real_kernels",
+      "status": "passed",
+      "command": "ctest --test-dir build-261008-avx2 --output-on-failure",
+      "configuration": "SYMFT_CPP_NATIVE=OFF, SYMFT_CPP_ENABLE_AVX512=OFF, CMAKE_CXX_FLAGS=-mavx2 -mfma",
+      "tests_passed": 2
+    },
+    {
+      "name": "fully_scalar_cpu",
+      "status": "passed",
+      "command": "ctest --test-dir build-261008-scalar --output-on-failure",
+      "configuration": "Native, AVX2 and AVX512 options OFF",
+      "tests_passed": 2
+    },
+    {
+      "name": "native_address_and_undefined_sanitizers",
+      "status": "passed",
+      "command": "ASAN_OPTIONS=detect_leaks=1 ctest --test-dir build-261008-sanitize --output-on-failure",
+      "configuration": "RelWithDebInfo; native; -fsanitize=address,undefined -fno-omit-frame-pointer; no LTO",
+      "tests_passed": 2,
+      "note": "Native ISA macros activate the new real AVX-512 kernels, independent of the separately dispatched complex-kernel build option."
+    },
+    {
+      "name": "cuda_fp64_cpu_and_actual_device",
+      "status": "passed",
+      "command": "ctest --test-dir build-261008-cuda --output-on-failure",
+      "tests_passed": 6,
+      "note": "Fresh CMake CUDA FP64/arch89 build; CPU, existing CUDA, JIT, packed JIT and symbolic JIT. Existing JIT caches may be reused; not cold-JIT timing evidence."
+    },
+    {
+      "name": "native_python_cpu",
+      "status": "passed",
+      "command": "PYTHONPATH=build-261008-python-native/lib.linux-x86_64-cpython-312 python -m unittest discover -s python/tests -v",
+      "tests_passed": 49
+    },
+    {
+      "name": "portable_wheel_from_new_sdist",
+      "status": "passed",
+      "configuration": "SYMFT_PY_NATIVE=0; wheel built offline from sdist, installed into isolated target; import path checked",
+      "command": "PYTHONPATH=build-261008-packaging/installed python -m unittest discover -s python/tests -v",
+      "tests_passed": 49,
+      "sdist_sha256": "b574d9d8183e810d46800d3b7723a08dbd587f61d29e551e2234800a071f55b2",
+      "wheel_sha256": "90fe86cc95b78c0fa2ffa3ee210f926a464722468af995ac062ffa62fbc85f6d",
+      "note": "importlib.metadata version and symft.__version__ both 2026.10.8; symft.__release__ is symft_26_10_08. Local Linux wheel, not published."
+    },
+    {
+      "name": "worker_journal_and_evidence_unit_tests",
+      "status": "passed",
+      "command": "SYMFT_TEST_WORKER=build-261008-cpu/cpp/symft_cpu_stream_worker python3 -m unittest discover -s benchmark/validation -p 'test_*.py' -v",
+      "tests_passed": 16
+    },
+    {
+      "name": "three_way_cpu_benchmark",
+      "status": "passed",
+      "command": "python3 benchmark/validation/check_cpu_comparison.py --check-current-sources",
+      "evidence": "benchmark/results/cpu_20261008.json",
+      "timed_runs": 42,
+      "all_compiled_before_after_counters_match": true,
+      "note": "Seven repeats per variant and distance; warmups and same-stream replays are not independent rare-event evidence. Raw local archive: review-artifacts/cpu-261008-final."
+    },
+    {
+      "name": "archived_50B_source_and_journals",
+      "status": "passed",
+      "command": "python3 benchmark/validation/check_results.py --experiment-root /path/to/SymFT_CUDA_Astra",
+      "note": "Original source/journal hashes, stream identities, raw totals and timings still match. Archives were not modified."
+    },
+    {
+      "name": "documentation_and_git_hygiene",
+      "status": "passed",
+      "command": "python3 tools/check_documentation.py; git diff --check; git diff --cached --check",
+      "markdown_files": 15,
+      "local_links_and_anchors": 128,
+      "note": "Local links/fences, release identity, API names, benchmark arithmetic and build-artifact exclusions. External links and rendered GitHub layout are not checked."
+    }
+  ],
+  "independent_cpu_reference": {
+    "promotion_cases": 2556,
+    "gauge_kernel_cases": 8364,
+    "trajectories": 3702,
+    "intermediate_states": 101922,
+    "native_max_state_error": 6.67928e-15,
+    "native_max_probability_error": 1.11022e-14
+  },
+  "nonzero_error_replays": {
+    "worker_sha256": "effb3dc0a002e2b788960fd5aa4324c3cafe57dfd7ca25f3398ce4e57b6c03ae",
+    "cpu": 20,
+    "sample_chunk_shots": 2048,
+    "cpu_real_gauge": true,
+    "cpu_hoist_detectors": true,
+    "added_to_production_counts": false,
+    "matches_original_archive": true,
+    "runs": [
+      {"index": 683, "stream_id": 50000683, "shots": 5000000, "discarded": 4279804, "accepted": 720196, "logical_errors": 1},
+      {"index": 1377, "stream_id": 50001377, "shots": 5000000, "discarded": 4279348, "accepted": 720652, "logical_errors": 1}
+    ]
+  },
+  "not_claimed": [
+    "A new 50B test or updated socket/GPU throughput measurement",
+    "Other CPU/GPU architectures or operating systems",
+    "A newly published wheel, Git tag, or GitHub release",
+    "Successful remote fetch or authenticated push"
+  ],
+  "remote_check": {
+    "date": "2026-10-08",
+    "freshness_verified": false,
+    "command": "git ls-remote --heads origin refs/heads/symft",
+    "result": "gnutls_handshake() failed: The TLS connection was non-properly terminated."
+  }
+}

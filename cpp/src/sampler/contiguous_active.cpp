@@ -1,4 +1,5 @@
 #include "sampler/contiguous_active.hpp"
+#include "sampler/cpu_profile.hpp"
 
 #include "sampler/active_kernels.hpp"
 #include "simd/simd.hpp"
@@ -98,6 +99,7 @@ double diagonal_probability_contiguous(
     const double* im,
     const PrecomputedActivePauliMeasurementKernel& kernel,
     bool branch) {
+    ScopedCpuTimer cpu_timer(CpuPhase::Probability);
     double probability = 0.0;
     SYMFT_SINGLE_SIMD_LOOP
     for (std::size_t idx = 0; idx < kernel.out_dim; ++idx) {
@@ -113,6 +115,7 @@ double nondiagonal_probability_contiguous(
     const double* im,
     const PrecomputedActivePauliMeasurementKernel& kernel,
     bool branch) {
+    ScopedCpuTimer cpu_timer(CpuPhase::Probability);
     const double probability =
         simd::dispatch_table().measure_nondiagonal_probability_soa(
             re,
@@ -132,6 +135,7 @@ void project_diagonal_contiguous(
     const PrecomputedActivePauliMeasurementKernel& kernel,
     bool branch,
     double invnorm) {
+    ScopedCpuTimer cpu_timer(CpuPhase::Projection);
     SYMFT_SINGLE_SIMD_LOOP
     for (std::size_t idx = 0; idx < kernel.out_dim; ++idx) {
         const std::size_t source =
@@ -149,6 +153,7 @@ void project_nondiagonal_contiguous(
     const PrecomputedActivePauliMeasurementKernel& kernel,
     bool branch,
     double invnorm) {
+    ScopedCpuTimer cpu_timer(CpuPhase::Projection);
     const std::size_t out_dim = kernel.out_dim;
     simd::dispatch_table().project_nondiagonal_soa(
         re,

@@ -1,7 +1,9 @@
-# SymFT Python Interface
+# SOFT v2 Python Interface (`symft`)
 
-The SymFT Python interface exposes the C++ implementation of the exact
-simulator described in the [project overview](../README.md).
+The `symft` package is SOFT v2's Python interface to the SymFT sampling
+architecture described in the [project overview](../README.md). SOFT is the
+project brand; package/import names, `SymFTError`, and C++ identifiers remain
+unchanged. See [naming and compatibility](../docs/PROJECT.md).
 It compiles noisy adaptive Clifford-plus-Pauli-rotation circuits into the
 paper's planned sampling instruction stream and reuses that plan across shots.
 It supports:
@@ -15,8 +17,9 @@ It supports:
 - optionally using the C++ CUDA counts sampler when built with CUDA support;
 - returning either regular boolean NumPy arrays or bit-packed arrays.
 
-Package version `0.1.1` requires Python 3.9+, NumPy 1.20+, and a C++20-capable
-compiler.
+Release **`symft_26_10_08`**, package version **`2026.10.8`**, requires Python
+3.9+, NumPy 1.20+, and a C++20-capable compiler. This main-based integration
+preserves reference normalization and non-destructive `EXP_VAL` APIs.
 
 ## Contents
 
@@ -27,6 +30,8 @@ compiler.
 - [Measurement Record Sampling](#measurement-record-sampling)
 - [Detector Sampling](#detector-sampling)
 - [Logical Error Statistics](#logical-error-statistics)
+- [Opt-in Compiled CPU Backend](#opt-in-single-core-compiled-cpu-backend)
+- [CUDA Counts Backend](#cuda-counts-backend)
 - [Compiling and Reusing Samplers](#compiling-and-reusing-samplers)
 - [Randomness and Reproducibility](#randomness-and-reproducibility)
 - [Batching and Performance Parameters](#batching-and-performance-parameters)
@@ -61,7 +66,8 @@ Build and test in the source directory without installing:
 
 ```bash
 python setup.py build_ext --inplace
-PYTHONPATH=src python -m unittest discover -s tests -v
+python -m pip install pytest
+PYTHONPATH=src python -m pytest tests -q
 ```
 
 CPU source builds match the CMake default by enabling host-native optimization
@@ -92,6 +98,7 @@ Check the installation and backends:
 import symft
 
 print(symft.__version__)
+print(symft.__release__)  # symft_26_10_08
 print(symft.simd_backend())
 print(symft.cuda_enabled())
 print(symft.active_cuda_backend())
@@ -315,6 +322,9 @@ circuit.sample_counts(
     cuda_mode="gpu",
     shots_per_launch=0,
     threads_per_block=0,
+    cpu_backend="legacy",
+    cpu_real_gauge=True,
+    cpu_hoist_detectors=True,
 )
 ```
 
@@ -389,6 +399,42 @@ during postselection. The default value, 2, allows compaction when dead shots
 reach roughly `1/2`. It only applies when
 `batch=True, postselect_detectors=True`; the default is usually appropriate.
 
+### Opt-in Single-Core Compiled CPU Backend
+
+```python
+sampler = circuit.compile_counts_sampler(
+    cpu_backend="compiled", postselect_detectors=True, threads=1
+)
+print(sampler.info["cpu_compiled"], sampler.info["cpu_real_gauge"])
+result = sampler.sample(shots=1_000_000, stream_id=42)
+```
+
+The default `cpu_backend="legacy"` is unchanged. The compiled backend expands
+classical dependencies, hoists ready detector checks and uses an exact real
+FP64 gauge when supported. It requires `batch=True, cuda=False`; unsupported
+sampling modes (no postselection, multiple workers, active components or
+`max_k > 10`) fall back to legacy. Inspect `cpu_fallback_reason` in sampler info.
+
+Reference normalization (`reference_sample`, `expected_detectors`, and
+`expected_observables`) works with the compiled CPU backend, including nonzero
+expected bits. Circuits containing `EXP_VAL` use the existing CPU executor and
+report `expectation_values_present`. CUDA reference-normalized counts remain
+unsupported, as on main; this integration does not silently reinterpret them.
+
+CUDA JIT is counts-only. Full measurement/expectation outputs and circuits with
+expectation probes retain the original CUDA runtime even when JIT/packed flags
+are enabled. See [main integration](../docs/MAIN_INTEGRATION.md).
+An incompatible real gauge uses compiled complex arithmetic instead.
+
+This opt-in backend uses the versioned **cpu-shot-v1** measurement RNG contract;
+the same seed is not expected to produce legacy-identical counts. Fixed stream,
+circuit and chunk configuration is reproducible. External noise is still
+chunk-seeded, so changing `sample_chunk_shots` may change individual shots.
+`cpu_real_gauge=False` and `cpu_hoist_detectors=False` are ablation switches.
+These options also apply to `Circuit.sample_counts`. Full measurement/detector
+array APIs and CUDA sampling are unchanged. Rebuild this extension to use the
+new keywords; an older installed module does not expose them.
+
 ## Compiling and Reusing Samplers
 
 ### `CompiledMeasurementSampler`
@@ -442,12 +488,18 @@ normalized configuration:
 - `active_components`, indicating whether the cost-gated product-component
   active-state backend was selected;
 - `detector_postselection` and `batch_mask_threshold_denominator`;
-- `backend`, one of `"single"`, `"batch"`, or `"cuda"`.
+- `backend`, one of `"single"`, `"batch"`, or `"cuda"`;
+- `cpu_compiled`, `cpu_real_gauge`, `cpu_noise_only_detectors`,
+  `cpu_initial_checks`, and `cpu_fallback_reason`, describing actual compiled
+  CPU selection (a request is not a guarantee that it was selected).
 
 The same `CompiledCountsSampler` can be called from multiple Python threads.
 The wrapper serializes these calls to protect mutable internal runtime state.
 For truly parallel independent jobs, create a separate sampler per calling
-thread or use a single sampler's `threads` parameter.
+thread or use a single sampler's `threads` parameter on the existing CPU
+backend. The compiled CPU path currently supports only `threads=1`; the
+40-logical-CPU benchmark uses independent pinned processes, not a 40-thread
+compiled sampler.
 
 ## Randomness and Reproducibility
 
@@ -506,7 +558,9 @@ contain enough chunks; otherwise `active_threads` may be smaller than requested.
 Only the batch counts path uses this parameter. `threads=1` is the default, and
 `threads=0` is normalized to 1. The C++ execution releases the Python GIL. Use
 `sampler.info` and result `active_threads` to confirm the final configuration
-and actual parallelism.
+and actual parallelism. Requesting multiple workers with
+`cpu_backend="compiled"` currently selects the existing backend and sets
+`cpu_fallback_reason="single_worker_only"`.
 
 ### Choosing an API
 
@@ -554,6 +608,7 @@ parameter by pi to obtain radians; this applies to every parameter of `U` and
 
 ```python
 symft.__version__ -> str
+symft.__release__ -> str
 symft.read_stim_file(path) -> Circuit
 symft.sample(circuit, shots=1, **kwargs) -> numpy.ndarray
 symft.simd_backend() -> str
@@ -585,6 +640,9 @@ Circuit.compile_counts_sampler(
     cuda_mode="gpu",
     shots_per_launch=0,
     threads_per_block=0,
+    cpu_backend="legacy",
+    cpu_real_gauge=True,
+    cpu_hoist_detectors=True,
 ) -> CompiledCountsSampler
 
 Circuit.sample(
@@ -613,6 +671,9 @@ Circuit.sample_counts(
     cuda_mode="gpu",
     shots_per_launch=0,
     threads_per_block=0,
+    cpu_backend="legacy",
+    cpu_real_gauge=True,
+    cpu_hoist_detectors=True,
 ) -> dict
 
 Circuit.sample_detectors(
@@ -681,7 +742,8 @@ Run the full test suite:
 
 ```bash
 python setup.py build_ext --inplace
-PYTHONPATH=src python -m unittest discover -s tests -v
+python -m pip install pytest
+PYTHONPATH=src python -m pytest tests -q
 ```
 
 Run examples:
