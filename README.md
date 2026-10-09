@@ -1,97 +1,78 @@
 # SOFT
 
-**A high-performance simulator for fault-tolerant quantum circuits.**
+SOFT is an exact Python/C++ simulator for noisy, adaptive quantum circuits dominated
+by Clifford operations. It supports non-Clifford Pauli rotations, stochastic
+noise, mid-circuit measurements, feedback, detectors, and postselection.
 
-## symft_26_10_08: faster CPU and CUDA sampling
+The current implementation, SymFT, is the second generation of SOFT. It builds
+a shared symbolic Clifford–Pauli frame and a sampling plan once, then reuses
+them across shots. CPU sampling supports single-threaded and multithreaded
+execution, with an optional CUDA backend. The Python package is called `symft`;
+the original implementation is kept in [legacy/softv1](legacy/softv1/).
 
-**MSC d=5: 3.04x single-core CPU throughput and approximately 9.44x CUDA
-throughput versus old SymFT.** The CPU backend gains a further **28.9%** over
-our September optimized implementation in the fresh October comparison.
+**The `symft_26_10_08` update makes d=5 magic-state cultivation sampling about
+3× faster on one CPU core and 10× faster on an RTX 4090. The single-core
+magic-state distillation benchmark is 3.3× faster.** The new compiled CPU and CUDA JIT paths
+are opt-in. See [performance](#performance) for the comparison and
+[quick start](#quick-start) for how to use them.
 
-| FP64 workload | Old SymFT | Optimized SymFT | Speedup | Evidence |
-| --- | ---: | ---: | ---: | --- |
-| MSC d=5, one CPU core | 114,864 shots/s | **348,896 shots/s** | **3.04x** | Fresh 2026-10-08, seven-run medians |
-| MSC d=3, one CPU core | 1.787 M shots/s | **2.131 M shots/s** | **1.19x** | Fresh 2026-10-08, seven-run medians |
-| MSC d=5, RTX 4090 | 2.619 M shots/s | **24.735 M shots/s** | **9.44x** | Archived September GPU measurements |
+- [Python interface guide](python/README.md)
+- [Benchmark circuits and methodology](benchmark/README.md)
+- [Documentation](docs/README.md) and [changelog](CHANGELOG.md)
 
-CPU: Xeon Gold 5218R, one pinned worker, Release/native+LTO. The old CPU
-baseline is unmodified SymFT commit `e86c6a9`, rebuilt with the same settings.
-All rows use canonical MSC injection+cultivation, `p=0.001`, FP64, all-detector
-postselection, and **attempted** shots/s; preparation is excluded. GPU compares
-three old 50M timing replays with the optimized 50B run, not equal-duration
-paired repeats. These are workload-specific gains, **not a comparison to SOFT v1**.
-[Full measurements, ranges, provenance, and limitations](docs/PERFORMANCE.md).
+## From SOFT to SymFT
 
-To obtain these accelerated paths, explicitly enable
-[`cpu_backend="compiled"`](docs/optimization/CPU.md) or
-[CUDA JIT with FP64](docs/optimization/CUDA.md). Existing defaults are preserved.
-This release adds AVX-512 real-state CPU kernels, retaining AVX2/scalar fallbacks.
-Release name: **`symft_26_10_08`**; Python package version: **`2026.10.8`**.
-Prepared for review; no GitHub/PyPI publication is implied.
+The original SOFT evolves a separate generalized-stabilizer state for each
+shot. SymFT shares the Clifford part of that work across all shots:
 
-This checkout ports the optimizations onto `main` commit `c89b985` on branch
-**`symft-26-10-08`**, ready for a normal PR to `main` after review and commit.
-The table above describes the original optimization experiments against old
-SymFT `e86c6a9`, not a fresh speed comparison against current `main`.
-See [main integration and fresh checks](docs/MAIN_INTEGRATION.md).
+- A symbolic Clifford–Pauli frame carries the Clifford evolution, Pauli noise,
+  and measurement feedback.
+- A dense coefficient vector stores the active non-stabilizer degrees of
+  freedom. Basis changes are planned once rather than repeated for every shot.
+- Sampling evaluates the symbolic signs, updates the active coefficients,
+  and produces measurement, detector, and observable results.
 
-## About SOFT and SymFT
-
-SOFT is the project and software family. **SOFT v2 is powered by SymFT**, its
-second-generation symbolic/compiled sampling architecture. SymFT names the
-method and implementation architecture; it does not restrict SOFT to a single
-future algorithm. The repository remains `haoliri0/SOFT`, and the Python
-package and import remain `symft`.
-
-SOFT v2 provides exact, finite-precision Python/C++ simulation of noisy,
-adaptive Clifford-dominated circuits: stochastic Pauli noise, non-Clifford
-Pauli rotations, mid-circuit measurements, record-controlled feedback,
-detectors, observables, and postselection. It offers CPU sampling and an
-optional CUDA counts backend. Exact here means no state truncation or
-sampling-model approximation, not infinite-precision arithmetic.
-
-The integration retains main's reference-normalized CPU counts, non-destructive
-`EXP_VAL` sampling on CPU/CUDA, tableau/frame factorization, CUDA global-workspace
-fallback, the [SOFT v1 archive](legacy/softv1/), and wheel release workflow.
-Compiled CPU counts normalize detector/observable references before optimization;
-expectation probes use the original executor. CUDA record/expectation requests
-also retain the original executor even when JIT is enabled.
-
-- [Documentation index](docs/README.md)
-- [Python interface and installation](python/README.md)
-- [CPU optimization](docs/optimization/CPU.md) and [CUDA optimization](docs/optimization/CUDA.md)
-- [Measured performance and statistical validation](docs/PERFORMANCE.md)
-- [Benchmark inputs and methodology](benchmark/README.md)
-- [SOFT v1, naming, and compatibility](docs/PROJECT.md)
-- [Release changes](CHANGELOG.md) and [maintainer review checklist](docs/RELEASE_CHECKLIST.md)
+The new CPU and GPU paths also move detector checks earlier, so rejected shots
+can stop before doing unnecessary state evolution. When the circuit permits
+it, they use real amplitudes instead of complex ones. These changes do not
+truncate the state or approximate the noise model.
 
 ## Installation
 
-To use the changes in this branch, build **this checkout**. An already installed
-PyPI wheel does not necessarily contain these unreleased optimizations.
-Python 3.9+, NumPy 1.20+, and a C++20 compiler are required.
+Install the published Python package with:
 
 ```bash
-python3 -m venv .venv
+python -m pip install symft
+```
+
+To use the CPU and CUDA updates described here, build from this repository.
+A Python source build requires Python 3.9+, NumPy 1.20+, and a C++20 compiler;
+CMake is not required.
+
+```bash
+git clone https://github.com/haoliri0/SOFT.git
+cd SOFT
+python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install ./python
 ```
 
-For a portable CPU build, set `SYMFT_PY_NATIVE=0`. The default source build
-enables host-native optimization and is not a portable wheel configuration.
+Source builds use host-native CPU optimizations by default. Set
+`SYMFT_PY_NATIVE=0` if you need a portable build.
 
-CUDA is optional. For the FP64 configuration used in the validation results:
+### CUDA
+
+With a CUDA toolkit, NVRTC, and a compatible NVIDIA driver installed:
 
 ```bash
 SYMFT_PY_ENABLE_CUDA=1 SYMFT_PY_CUDA_REAL_DOUBLE=1 \
   python -m pip install ./python
 ```
 
-This requires a CUDA toolkit including NVCC and NVRTC, the CUDA driver library,
-and a compatible NVIDIA driver/device. The CUDA precision default is otherwise
-FP32; enabling JIT does not automatically select FP64. See the
-[build options](python/README.md#installation-and-build).
+This selects FP64, as used in the benchmarks below. CUDA builds otherwise
+default to FP32. Architecture and build options are described in the
+[Python interface guide](python/README.md#cuda-counts-backend).
 
 ## Quick start
 
@@ -104,98 +85,124 @@ T 0
 M 0
 OBSERVABLE_INCLUDE(0) rec[-1]
 """)
+
 sampler = circuit.compile_counts_sampler(batch=True, observable=0)
 result = sampler.sample(shots=100_000, stream_id=42)
-print(result["discard_rate"])
+
 print(result["logical_error_rate"])
+print(result["timing"])
 ```
 
-`discard_rate = discarded / attempted`; `logical_error_rate = logical_errors /
-accepted`. A zero denominator produces `nan`. Counts partition attempted
-shots into accepted and discarded even when early detector rejection is
-disabled. `postselect_detectors=True` enables that early rejection.
+Use `Circuit.sample` for full measurement records, `Circuit.sample_detectors`
+for detector records, and `Circuit.sample_counts` or a prepared counts sampler
+for aggregate statistics. Reference-normalized counts and non-destructive
+`EXP_VAL` probes are also available; see the [API guide](python/README.md).
 
-For a compatible counts-only CPU workload, explicitly select the new backend:
+`discard_rate` is the fraction of attempted shots rejected by the detectors.
+`logical_error_rate` is the fraction of accepted shots whose selected
+observable differs from its reference value (zero by default). A rate with a
+zero denominator is reported as `nan`.
+
+### Faster postselected CPU sampling
+
+From the repository root:
 
 ```python
+circuit = symft.read_stim_file(
+    "benchmark/circuit/msc_d5_inject_cultivate_p1e-3.stim"
+)
 sampler = circuit.compile_counts_sampler(
     cpu_backend="compiled",
     postselect_detectors=True,
     threads=1,
 )
-print(sampler.info["cpu_compiled"], sampler.info["cpu_fallback_reason"])
-result = sampler.sample(shots=100_000, stream_id=42)
+result = sampler.sample(shots=1_000_000, stream_id=42)
+print(result["discard_rate"], result["logical_error_rate"])
 ```
 
-The existing CPU backend remains the default. Compiled CPU sampling currently
-requires one worker, dense state, detector postselection, and `max_k <= 10`;
-unsupported configurations fall back to the existing backend. Its measurement
-RNG contract is `cpu-shot-v1`, not seed-identical to the existing CPU path.
-[CPU details and limitations](docs/optimization/CPU.md).
+The compiled CPU path currently handles single-worker, dense-state counts
+sampling with detector postselection and at most 10 active qubits. Other
+configurations, including `EXP_VAL` circuits, use the existing CPU executor.
+Check `sampler.info["cpu_compiled"]` and `sampler.info["cpu_fallback_reason"]`
+to see which path was selected. Different backends need not produce identical
+shots from the same seed.
 
-CUDA JIT is also opt-in and currently specializes compatible
-`gpu_presample_expressions` counts workloads with `max_k <= 10`.
-[CUDA activation and tuning](docs/optimization/CUDA.md).
+CUDA JIT has its own activation flags. See the
+[CPU guide](docs/optimization/CPU.md) and [CUDA guide](docs/optimization/CUDA.md)
+for configuration and implementation details.
 
-## Archived large-shot validation
+## Performance
 
-These are **archived measurements of the optimized source**, not new long runs
-performed while preparing this branch. All entries below use FP64, the
-canonical MSC injection+cultivation fixtures at `p=0.001`, observable 0,
-all-detector postselection, and attempted shots/s. No escape stage is included.
+### symft_26_10_08
 
-| Workload and configuration | Measured throughput | Measurement |
-| --- | ---: | --- |
-| MSC d=5, one CPU socket, 40 processes | 2.959 M/s | 50 billion shots; 20 physical cores / 40 logical CPUs |
-| MSC d=3, RTX 4090, CUDA JIT | 147.224 M/s | One 1-billion-shot run, approximately 6.79 s; not a long stability test |
-| MSC d=5, RTX 4090, CUDA JIT | 24.735 M/s | 50 billion shots; approximately 33.69 minutes of sampling |
+The measurements below use an Intel Xeon Gold 5218R for single-core CPU
+sampling and an RTX 4090 for GPU sampling. All use FP64 and postselection on
+all detectors. MSC uses physical noise `p=0.001` and includes injection and
+cultivation, but not the later escape stage. Distillation uses the unchanged
+85-qubit [Z-basis benchmark circuit](benchmark/circuit/distillation.stim),
+with its own noise settings.
 
-CPU: Intel Xeon Gold 5218R. Single-core rates exclude preparation; the socket
-rate uses wall-clock sampling duration across persistent processes, excluding
-their initial preparation/warmup. The GPU d=5 rate uses summed sampling-call
-times, including noise, evolution, reduction, synchronization, and count
-transfer, but excluding one-time preparation/JIT. These are distinct timing
-contracts, not interchangeable end-to-end timings.
-The CPU socket run predates the October AVX-512 update and is not a new 50B
-validation of this release; its speed must not be scaled by the single-core gain.
+| Workload | Previous path | Optimized path | Speedup |
+| --- | ---: | ---: | ---: |
+| MSC d=3, one CPU core | 1.800 M shots/s | 2.019 M shots/s | 1.12× |
+| MSC d=5, one CPU core | 121.3 k shots/s | 360.4 k shots/s | 2.97× |
+| Distillation, 85 qubits, one CPU core | 1.149 M shots/s | 3.791 M shots/s | 3.30× |
+| MSC d=5, RTX 4090 | 2.337 M shots/s | 24.672 M shots/s | 10.56× |
 
-The 40-process result is **not** native `cpu_backend="compiled", threads=40`
-support. Do not multiply the single-core rate by logical CPU count to predict
-socket throughput.
+CPU rows compare pre-update main (`c89b985`) with the compiled backend, using
+matching Release/native/LTO build settings. Cultivation rates are medians of
+three runs; distillation rates are medians of seven runs, each with 8 million
+attempted shots.
 
-See [performance, exact counts, uncertainty, and provenance](docs/PERFORMANCE.md).
-Older comparisons against SOFT v1, Stim, Clifft, and Tsim are retained separately
-as a [historical snapshot](docs/HISTORICAL_BENCHMARKS.md).
+The GPU row compares the existing CUDA path with JIT in the same FP64 build,
+each over three 10-million-shot runs, using the average sampling time.
+Rates count attempted shots and exclude preparation and JIT compilation.
 
-## Architecture
+These results are from the October 9 measurements. Speedups depend on the
+circuit and hardware. See the [cultivation measurements](docs/MAIN_INTEGRATION.md)
+for run sizes, timing ranges, and correctness checks, and the
+[distillation measurements](benchmark/results/distillation_cpu_20261009.json)
+for per-run timings and build settings. Earlier comparisons and
+the separate 50-billion-shot CPU/GPU runs are in
+[performance details](docs/PERFORMANCE.md).
 
-SOFT v1 evolves an independent generalized-stabilizer state for each shot.
-The SymFT architecture used by SOFT v2 instead:
+### Earlier cross-simulator benchmarks
 
-1. Factors out a shared symbolic Clifford-Pauli frame.
-2. Plans adaptive stabilizer-coordinate operations once per circuit.
-3. Reuses that sampling plan across shots.
+For context, the original SymFT CPU benchmarks compared against Stim for
+pure-Clifford circuits and Clifft for magic-state cultivation:
 
-The opt-in CPU/GPU optimizations further resolve classical dependencies over
-GF(2), schedule detector checks when their inputs become known, and use a
-structurally proven real gauge where possible. Neither real-gauge FP64 nor
-early rejection changes the intended circuit/noise/postselection model.
-[Implementation details](docs/optimization/README.md).
+| Circuit | Baseline | SymFT before this update | Speedup |
+| --- | ---: | ---: | ---: |
+| Pure-Clifford surface code, d=7, r=7 | Stim: 816.93 k/s | 2.06 M/s | 2.52× |
+| Pure-Clifford surface code, d=9, r=9 | Stim: 350.34 k/s | 899.20 k/s | 2.56× |
+| MSC d=3 | Clifft: 502.3 k/s | 1.762 M/s | 3.51× |
+| MSC d=5 | Clifft: 42.67 k/s | 107.35 k/s | 2.52× |
 
-## Circuit model
+These are the results from the previous README, not new measurements with the
+compiled CPU backend. They use one pinned Xeon Gold 5218R core, complex FP64,
+and the mean of two approximately 60-second sampling runs. Only the MSC cases
+use postselection. The [original comparison](docs/HISTORICAL_BENCHMARKS.md)
+also includes GPU results against SOFT v1 and Tsim, with their precision and
+output-format differences.
 
-The frontend accepts a substantial Stim-style subset extended with non-Clifford
-operations. It is not a drop-in parser for every Stim instruction. Supported
-families include Clifford gates, Pauli-product operations, `T`/`T_DAG`,
-Pauli rotations, `U`/`U3`, stochastic Pauli channels, correlated errors,
-measurements, resets, record feedback, repeats, detectors, and observables.
+## Supported circuit model
 
-Angles follow the half-turn convention: `R_Z(0.02)` means `0.02 * pi` radians.
-See the [complete interface guide](python/README.md#supported-stim-operations).
-The [d=7 proxy fixture](benchmark/README.md#why-the-distance-7-file-is-a-proxy)
-is an unvalidated workload, not evidence of d=7 logical-error correctness.
+The frontend accepts a Stim-style format with non-Clifford extensions:
 
-## C++ build and tests
+- Clifford gates and Pauli-product operations;
+- `T`, `T_DAG`, arbitrary-axis Pauli rotations, and `U`/`U3`;
+- stochastic Pauli channels and correlated errors;
+- Pauli measurements, resets, and measurement-record-controlled feedback;
+- repeat blocks, detectors, observables, and postselection.
+
+Not every Stim instruction is supported. Rotation angles are specified in
+half-turns: `R_Z(0.02)` means `0.02 * pi` radians. See the
+[operation reference](python/README.md#supported-stim-operations) for the full
+list.
+
+## C++ build
+
+CMake 3.20+ and a C++20 compiler are required:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSYMFT_CPP_BUILD_TESTS=ON
@@ -203,24 +210,54 @@ cmake --build build -j 8
 ctest --test-dir build --output-on-failure
 ```
 
-For a portable scalar reference build, add `-DSYMFT_CPP_NATIVE=OFF`,
-`-DSYMFT_CPP_ENABLE_AVX2=OFF`, and `-DSYMFT_CPP_ENABLE_AVX512=OFF`.
+Run the single-core compiled counts benchmark:
 
-For CUDA FP64, use a separate directory:
+```bash
+./build/cpp/symft_rate_bench \
+  --circuit benchmark/circuit/msc_d3_inject_cultivate_p1e-3.stim \
+  --shots 1000000 --sampler batch --threads 1 \
+  --postselect-detectors --cpu-backend compiled
+```
+
+The library target is `symft_cpp`, with headers under `cpp/src`. A prepared
+sampler can also be used directly:
+
+```cpp
+#include "frontend/stim_prepared_sampler.hpp"
+
+#include <cstdint>
+#include <iostream>
+
+int main() {
+    symft::CircuitSamplingOptions options;
+    options.threads = 1;
+    options.postselect_detectors = true;
+    options.cpu_compiled = true;
+
+    auto sampler = symft::prepare_batch_sampler_from_stim_file(
+        "benchmark/circuit/msc_d3_inject_cultivate_p1e-3.stim", options);
+    auto run = sampler.sample(1'000'000, std::uint64_t{42});
+
+    std::cout << run.counts.discarded << '\n';
+    std::cout << run.counts.logical_errors << '\n';
+}
+```
+
+For CUDA FP64 on an RTX 4090:
 
 ```bash
 cmake -S . -B build-cuda -DCMAKE_BUILD_TYPE=Release \
   -DSYMFT_CPP_ENABLE_CUDA=ON -DSYMFT_CPP_CUDA_REAL_DOUBLE=ON \
   -DSYMFT_CPP_CUDA_ARCH=89
 cmake --build build-cuda -j 8
-ctest --test-dir build-cuda --output-on-failure
 ```
 
-Architecture 89 is the tested RTX 4090; select the architecture of your own GPU.
-The C++ target and namespace remain `symft_cpp` and `symft`. No API/ABI rename
-is implied by the SOFT project branding.
+Choose the architecture for your own GPU instead of `89` when needed. Further
+options are in the [CUDA guide](docs/optimization/CUDA.md).
 
 ## Development
+
+Run the C++ tests with CTest as above. For the Python tests:
 
 ```bash
 cd python
@@ -229,21 +266,23 @@ python -m pip install pytest
 PYTHONPATH=src python -m pytest tests -q
 ```
 
+The implementation is organized under `cpp/src`: `core` contains Pauli algebra
+and symbolic frames; `factored` contains the stabilizer-coordinate planner;
+`sampler`, `simd`, and `cuda` contain the execution backends. Python bindings
+live in `python/src/symft`, and benchmark inputs live in `benchmark/circuit`.
+
 Run `python3 tools/check_documentation.py` from the repository root to check
-local documentation links, tracked artifact hygiene, and archived measurement
-arithmetic. See [validation scope](docs/VALIDATION.md) and the
-[review checklist](docs/RELEASE_CHECKLIST.md) before committing.
+documentation links and benchmark records.
 
 ## AI acknowledgement
 
-The project authors used ChatGPT Pro (GPT-5.5/5.6) and OpenAI Codex for
-implementation, exploratory coding, preliminary literature searches, and
-documentation editing. The project authors reviewed and verified the resulting
-code, tests, benchmark results, and documentation, and take full responsibility
-for the contents of this repository.
+The authors used ChatGPT and OpenAI Codex for implementation, exploratory
+coding, preliminary literature searches, and documentation editing. The authors
+reviewed the resulting code, tests, benchmarks, and documentation, and take
+responsibility for the contents of this repository.
 
 ## License
 
-SOFT v2, including its SymFT implementation, is licensed under
-[Apache License 2.0](LICENSE). The Clifft-derived benchmark inputs retain their
-original attribution and [separate license copy](benchmark/LICENSE-Clifft-paper).
+SOFT v2 and its SymFT implementation are licensed under the
+[Apache License 2.0](LICENSE). The Clifft-derived benchmark inputs retain
+their original attribution and [separate license](benchmark/LICENSE-Clifft-paper).
