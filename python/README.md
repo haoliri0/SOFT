@@ -17,7 +17,8 @@ It supports:
 - optionally using the C++ CUDA counts sampler when built with CUDA support;
 - returning either regular boolean NumPy arrays or bit-packed arrays.
 
-Release **`symft_26_10_08`**, package version **`2026.10.8`**, requires Python
+GitHub Release **`v0.1.0`** contains update **`symft_26_10_08`**, Python package
+version **`2026.10.8`**. It requires Python
 3.9+, NumPy 1.20+, and a C++20-capable compiler. This main-based integration
 preserves reference normalization and non-destructive `EXP_VAL` APIs.
 
@@ -41,6 +42,11 @@ preserves reference normalization and non-destructive `EXP_VAL` APIs.
 - [Development and Testing](#development-and-testing)
 
 ## Installation and Build
+
+Install the portable CPU release with `python -m pip install symft==2026.10.8`.
+Wheels cover CPython 3.9–3.13 on Linux x86_64/aarch64, macOS arm64, and Windows
+amd64. CUDA requires a source build. Use Git tag `v0.1.0` for the source matching
+this package; Python packages `0.1.0` and `0.1.1` are older releases.
 
 The Python extension compiles the C++ sources in this repository directly.
 macOS and Linux need a C++20 compiler; Windows needs a suitable version of MSVC

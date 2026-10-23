@@ -1,80 +1,56 @@
-# Maintainer review and manual commit/push
+# Release checklist
 
-## Prepared scope
+## Version and source identity
 
-Local branch: **`symft-26-10-08`**. PR target: **`main`**.
-Remote: `https://github.com/haoliri0/SOFT.git`.
-Release name: **`symft_26_10_08`**; Python version: **`2026.10.8`**.
+GitHub **`v0.1.0`** maps to Python **`2026.10.8`** and update
+**`symft_26_10_08`**. [release.json](../release.json) is the publishing mapping;
+[the release notes](releases/v0.1.0.md) explain why these versions differ.
+Python `0.1.0` and `0.1.1` already identify older published packages.
 
-The branch starts at main commit `c89b98514a919240b8afa53a271e08d926d3c987`.
-Optimizations are ported from `symft` commit
-`89c00eff971847f6aa8cbbbaf15592a724f5bd3d`; the unrelated symft history is
-not merged. Main's archive, factorization code, reference/expectation APIs and
-wheel release workflow are preserved. See [integration notes](MAIN_INTEGRATION.md).
+The baseline is main `3f718e9`, including PR #19's integration of the October 8
+update. Use an isolated release branch/worktree. Later local development, such
+as measurement-major output, must not enter this release accidentally.
+Historical SOFT v1 tags and `legacy/softv1/` are preserved.
 
-Preparation does not create a commit, push, PR, tag, release, or PyPI upload.
-Changes are left in the working tree for manual inspection and staging.
-Fresh fetch/read-only remote checks succeeded on 2026-10-09; fetch again before
-publication because a collaborator may subsequently update main or the branch.
+## Before tagging
 
-## Review
+- Commit every input referenced by documentation, including the October 9
+  distillation benchmark JSON; check from a clean checkout.
+- Keep the Python source version, package metadata, release mapping and notes
+  consistent. Run `python tools/check_release.py` and
+  `python tools/check_documentation.py`.
+- Test portable SIMD and scalar C++ configurations, Python APIs and the
+  persistent-worker/statistics helpers. Run CUDA FP32/FP64 and JIT tests on a
+  real device and record the toolchain and source identity separately.
+- Build and install the sdist in isolation. Test all supported wheel targets;
+  public wheels use `SYMFT_PY_NATIVE=0` and `SYMFT_PY_ENABLE_CUDA=0`.
+- Release-branch PRs and manual release-workflow runs build the full 20-wheel
+  CPython 3.9–3.13 matrix without publishing. Other PRs build CPython 3.13.
+- Check source/package licenses and the final notes. Keep historical benchmark
+  claims separate from fresh validation; a new 50B run is not required.
+- Merge the verified release preparation and confirm the exact final SHA.
 
-```bash
-git branch --show-current
-git remote -v
-git status --short
-git diff --check
-git diff --stat
-git diff
-git ls-files --others --exclude-standard
-python3 tools/check_documentation.py
-```
+## Publication
 
-The branch name must be `symft-26-10-08`, not `main` or `symft`.
-Inspect new files as well: unstaged diff does not include untracked content.
-Local build directories, Python environments, native extensions, JIT caches,
-and raw measurement logs are ignored. Main's already tracked SOFT v1 archive
-is retained unchanged, including four historical object files verified by hash.
+Pushing the tag recorded in `release.json` invokes the release workflow:
 
-Read [validation scope](VALIDATION.md) and [performance limitations](PERFORMANCE.md).
-Historical 50B runs and the October 8 performance table are not new 50B
-measurements of this main-based source.
+1. Validate the tag/package mapping and run the reusable CPU/docs CI.
+2. Build and test wheels and the sdist, validate the full artifact matrix,
+   metadata and embedded versions, and generate the manifest and checksums.
+3. Create a GitHub draft and attach the verified assets.
+4. Upload the same distribution files to PyPI through the existing trusted
+   publisher (`release.yml`, environment `pypi`).
+5. Publish the GitHub draft as the latest release after the PyPI job succeeds.
 
-## Check the current remote
+Manual workflow runs never upload to PyPI or create a GitHub release. Tag
+publication is intentionally separate from a build-only rehearsal. Do not
+retarget an existing release tag or overwrite published distribution files.
+If publication partially fails, inspect which files are already public before
+resuming; do not rebuild different bytes under the same version.
 
-```bash
-git fetch origin
-git merge-base --is-ancestor origin/main HEAD
-git ls-remote --heads origin main symft-26-10-08
-```
+## After publication
 
-Before the first commit, HEAD is the main base above. After committing, HEAD
-will be its descendant. The ancestry check should exit successfully while
-remote main stays at the checked base. If main moves, review its new changes;
-do not reset this work or force-push. A common ancestor solves the previous
-unrelated-history problem, but cannot promise zero conflicts with future edits.
-
-## Manual commit and push
-
-After checking the files and test results:
-
-```bash
-git add README.md CHANGELOG.md .gitignore .github docs tools benchmark cpp python
-git diff --cached --check
-git diff --cached --stat
-git diff --cached
-git commit -m "Port symft_26_10_08 CPU/CUDA optimizations onto main"
-git push -u origin HEAD:refs/heads/symft-26-10-08
-```
-
-No force push is needed. If a remote branch with that name has advanced, a
-normal push rejects the update: fetch and reconcile instead of overwriting it.
-
-On GitHub, choose **Pull requests → New pull request**, with **base: main** and
-**compare: symft-26-10-08**. Review the diff and CI results before merging.
-Publishing packages or creating a release tag is a separate maintainer action.
-
-The CPU CI includes pytest so main's function-style expectation tests are
-actually discovered, in addition to the original unittest suites. Main's
-multi-platform wheel workflow is retained; local Linux/CUDA success does not
-certify Windows, macOS, ARM, or every GPU architecture.
+Verify the public tag SHA, all GitHub assets and their hashes, PyPI filenames
+and hashes, and a fresh `pip install symft==2026.10.8` outside the source tree.
+Check installed package metadata against `symft.__version__` and
+`symft.__release__`, then execute a counts-sampling smoke test.

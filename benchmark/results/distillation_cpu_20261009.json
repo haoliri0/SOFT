@@ -1,0 +1,134 @@
+{
+  "date": "2026-10-09",
+  "release": "symft_26_10_08",
+  "baseline_commit": "c89b98514a919240b8afa53a271e08d926d3c987",
+  "optimized_commit": "ec36cb722b17f452f47882d513d44b37bb9f28a4",
+  "circuit": {
+    "file": "benchmark/circuit/distillation.stim",
+    "sha256": "188bd53c48dbc21f840fb297df6f41c61f5bad6a856bba621f00ff42078921c1",
+    "num_qubits": 85,
+    "description": "[17,1,5] color-code magic-state distillation; Z-basis performance fixture, unchanged noise settings."
+  },
+  "hardware": {
+    "cpu": "Intel Xeon Gold 5218R",
+    "pinned_logical_cpu": 5,
+    "smt_sibling": 45,
+    "threads": 1,
+    "exclusive_cpu_reservation": false
+  },
+  "build": "GCC 13.3.0, Release/native/LTO, diagnostics OFF, CUDA OFF",
+  "precision": "FP64",
+  "timing": "Attempted shots per second, measured inside the native sampling call. Includes noise generation, symbolic expressions, state evolution, detector postselection and counting; excludes parsing and preparation.",
+  "protocol": {
+    "shots_per_run": 8000000,
+    "measured_runs_per_variant": 7,
+    "excluded_warmup_shots_per_variant": 200000,
+    "summary_statistic": "Median of per-run sample_shots_per_s",
+    "outlier_trimming": false,
+    "ordering": "Circuit order rotates in the multi-circuit run; distillation backend order is current_legacy, current_compiled, main.",
+    "postselect_detectors": "all",
+    "observable": 0,
+    "reference_normalization": false,
+    "sampler": "batch",
+    "state": "dense",
+    "sample_chunk_shots": 2048,
+    "batch_size": {
+      "main": 1024,
+      "current_legacy": 1024,
+      "current_compiled": 1
+    },
+    "common_cli_args": [
+      "--circuit",
+      "benchmark/circuit/distillation.stim",
+      "--shots",
+      "8000000",
+      "--sampler",
+      "batch",
+      "--threads",
+      "1",
+      "--postselect-detectors"
+    ],
+    "variant_cli_args": {
+      "main": [],
+      "current_legacy": [
+        "--cpu-backend",
+        "legacy",
+        "--stream-id",
+        "0"
+      ],
+      "current_compiled": [
+        "--cpu-backend",
+        "compiled",
+        "--stream-id",
+        "<stream_id from run>"
+      ]
+    }
+  },
+  "binaries": {
+    "main": {
+      "source": "build-main-reference/cpp/symft_rate_bench",
+      "sha256": "f0d996e60b621815832b982d42c5f489c2a4a03d76e25765ab884d793efb4617"
+    },
+    "current": {
+      "source": "build-main-integration-cpu/cpp/symft_rate_bench",
+      "sha256": "c21db736b565f01ff7edadbb213738dcab55da4b8e88f6e46aede95caad2267d"
+    }
+  },
+  "provenance": {
+    "description": "Distillation rows extracted from the October 9 multi-circuit CPU comparison; timings and counters retain the precision printed by symft_rate_bench.",
+    "source_log_sha256": "f02b68c5c1e9e7d5e3fd08128ebd29884213fceb3a640a3755dd82acaeba36e3"
+  },
+  "notes": [
+    "main and current_legacy use stream 0 on every repeat. Their seven timing repeats are not seven independent statistical samples.",
+    "current_compiled uses distinct stream IDs 261009600 through 261009606 and the cpu-shot-v1 measurement RNG; it is not seed-identical to main.",
+    "logical_errors is the observable-one count after postselection for this Z-basis performance fixture, not a certified distillation infidelity.",
+    "Min/max are observed run-to-run timing ranges on a shared host, not confidence intervals.",
+    "The current_legacy control matches all main counters. The README compares current_compiled with main, not with another simulator."
+  ],
+  "summary": {
+    "main": {
+      "runs": 7,
+      "median_shots_per_s": 1148950,
+      "min_shots_per_s": 1072630,
+      "max_shots_per_s": 1171280,
+      "speedup_vs_main": 1
+    },
+    "current_legacy": {
+      "runs": 7,
+      "median_shots_per_s": 1145090,
+      "min_shots_per_s": 1042120,
+      "max_shots_per_s": 1177950,
+      "speedup_vs_main": 0.9966404108098699
+    },
+    "current_compiled": {
+      "runs": 7,
+      "median_shots_per_s": 3791000,
+      "min_shots_per_s": 3709180,
+      "max_shots_per_s": 3816670,
+      "speedup_vs_main": 3.2995343574568086
+    }
+  },
+  "runs": [
+    {"variant":"current_legacy","repeat":0,"stream_id":0,"sample_s":7.05575,"shots_per_s":1133830,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_compiled","repeat":0,"stream_id":261009600,"sample_s":2.11026,"shots_per_s":3791000,"discarded":7362655,"accepted":637345,"logical_errors":269042},
+    {"variant":"main","repeat":0,"stream_id":0,"sample_s":6.83012,"shots_per_s":1171280,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_legacy","repeat":1,"stream_id":0,"sample_s":6.98637,"shots_per_s":1145090,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_compiled","repeat":1,"stream_id":261009601,"sample_s":2.15681,"shots_per_s":3709180,"discarded":7362494,"accepted":637506,"logical_errors":268328},
+    {"variant":"main","repeat":1,"stream_id":0,"sample_s":7.01788,"shots_per_s":1139940,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_legacy","repeat":2,"stream_id":0,"sample_s":6.96634,"shots_per_s":1148380,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_compiled","repeat":2,"stream_id":261009602,"sample_s":2.11673,"shots_per_s":3779410,"discarded":7361679,"accepted":638321,"logical_errors":269257},
+    {"variant":"main","repeat":2,"stream_id":0,"sample_s":6.96287,"shots_per_s":1148950,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_legacy","repeat":3,"stream_id":0,"sample_s":7.67667,"shots_per_s":1042120,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_compiled","repeat":3,"stream_id":261009603,"sample_s":2.10154,"shots_per_s":3806730,"discarded":7362001,"accepted":637999,"logical_errors":268805},
+    {"variant":"main","repeat":3,"stream_id":0,"sample_s":6.88288,"shots_per_s":1162300,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_legacy","repeat":4,"stream_id":0,"sample_s":6.79144,"shots_per_s":1177950,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_compiled","repeat":4,"stream_id":261009604,"sample_s":2.1061,"shots_per_s":3798490,"discarded":7362748,"accepted":637252,"logical_errors":268995},
+    {"variant":"main","repeat":4,"stream_id":0,"sample_s":6.85953,"shots_per_s":1166260,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_legacy","repeat":5,"stream_id":0,"sample_s":6.81334,"shots_per_s":1174170,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_compiled","repeat":5,"stream_id":261009605,"sample_s":2.11424,"shots_per_s":3783860,"discarded":7361976,"accepted":638024,"logical_errors":268757},
+    {"variant":"main","repeat":5,"stream_id":0,"sample_s":7.45833,"shots_per_s":1072630,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_legacy","repeat":6,"stream_id":0,"sample_s":7.10765,"shots_per_s":1125550,"discarded":7362888,"accepted":637112,"logical_errors":268649},
+    {"variant":"current_compiled","repeat":6,"stream_id":261009606,"sample_s":2.09607,"shots_per_s":3816670,"discarded":7362424,"accepted":637576,"logical_errors":269474},
+    {"variant":"main","repeat":6,"stream_id":0,"sample_s":7.34872,"shots_per_s":1088620,"discarded":7362888,"accepted":637112,"logical_errors":268649}
+  ]
+}
