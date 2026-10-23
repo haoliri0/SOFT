@@ -1,18 +1,50 @@
 name: release
 
 on:
+  # Manual runs build and test only; publication requires a matching tag.
   workflow_dispatch:
   pull_request:
     paths:
-      - ".github/workflows/release.yml"
+      - ".github/workflows/**"
+      - "release.json"
+      - "tools/check_release.py"
       - "python/**"
       - "cpp/src/**"
   push:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  identity:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.identity.outputs.tag }}
+      version: ${{ steps.identity.outputs.version }}
+      notes: ${{ steps.identity.outputs.notes }}
+      wheel-count: ${{ steps.identity.outputs.wheel-count }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: identity
+        env:
+          RELEASE_REF: ${{ github.ref }}
+          FULL_MATRIX: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'release/') }}
+        run: python tools/check_release.py
+
   build-wheels:
+    needs: identity
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -34,15 +66,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pypa/cibuildwheel@v3.1.2
         env:
-          CIBW_BUILD: "${{ github.event_name == 'pull_request' && 'cp313-*' || 'cp39-* cp310-* cp311-* cp312-* cp313-*' }}"
+          CIBW_BUILD: "${{ needs.identity.outputs.wheel-count == '20' && 'cp39-* cp310-* cp311-* cp312-* cp313-*' || 'cp313-*' }}"
           CIBW_ARCHS: "${{ matrix.arch }}"
           CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_* pp*"
-          CIBW_ENVIRONMENT: "SYMFT_PY_ENABLE_CUDA=0"
+          CIBW_ENVIRONMENT: "SYMFT_PY_ENABLE_CUDA=0 SYMFT_PY_NATIVE=0"
+          CIBW_TEST_REQUIRES: "pytest"
           CIBW_TEST_COMMAND: >-
-            python -c "import symft;
-            assert symft.simd_backend();
-            assert not symft.cuda_enabled();
-            print(symft.simd_backend())"
+            python -c "import symft; assert not symft.cuda_enabled(); print(symft.__version__, symft.simd_backend())" &&
+            python -m pytest "{package}/tests" -q
         with:
           package-dir: python
           output-dir: wheelhouse
@@ -50,25 +81,91 @@ jobs:
         with:
           name: wheels-${{ matrix.name }}
           path: wheelhouse/*.whl
+          if-no-files-found: error
 
   build-sdist:
+    needs: identity
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
-      - run: python -m pip install -U build
-      - run: python -m build --sdist
-        working-directory: python
+          python-version: "3.12"
+      - run: python -m pip install build twine pytest
+      - run: python -m build --sdist --outdir dist python
+      - name: Install and test the source distribution
+        env:
+          SYMFT_PY_NATIVE: "0"
+          SYMFT_PY_ENABLE_CUDA: "0"
+        run: |
+          python -m pip install dist/*.tar.gz
+          python -m pytest python/tests -q
+          python -m twine check --strict dist/*
       - uses: actions/upload-artifact@v4
         with:
           name: sdist
-          path: python/dist/*.tar.gz
+          path: dist/*.tar.gz
+          if-no-files-found: error
 
-  publish:
-    if: github.event_name != 'pull_request'
-    needs: [build-wheels, build-sdist]
+  assemble:
+    needs: [checks, identity, build-wheels, build-sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+      - run: python -m pip install twine
+      - run: python -m twine check --strict dist/*
+      - name: Check distribution identities, matrix and hashes
+        env:
+          RELEASE_REF: ${{ github.ref }}
+          EXPECTED_WHEELS: ${{ needs.identity.outputs.wheel-count }}
+        run: python tools/check_release.py --dist dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: dist/*
+          if-no-files-found: error
+
+  draft-release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: [identity, assemble]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: dist
+      - name: Attach verified assets to a draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.identity.outputs.tag }}
+          RELEASE_NOTES: ${{ needs.identity.outputs.notes }}
+        run: |
+          if gh release view "$RELEASE_TAG" --json isDraft > existing-release.json 2>/dev/null; then
+            python -c "import json; assert json.load(open('existing-release.json'))['isDraft'], 'Refusing to replace a published release'"
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft \
+              --title "SOFT $RELEASE_TAG — SymFT 2026-10-08" --notes-file "$RELEASE_NOTES"
+          fi
+          gh release upload "$RELEASE_TAG" dist/* --clobber
+
+  publish-pypi:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: [assemble, draft-release]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -76,8 +173,28 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          path: dist
-          merge-multiple: true
+          name: release-assets
+          path: release-assets
+      - name: Select verified Python distributions
+        run: |
+          cd release-assets
+          sha256sum --check SHA256SUMS
+          mkdir ../dist
+          cp *.whl *.tar.gz ../dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist
+
+  publish-github:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: [identity, publish-pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the completed GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.identity.outputs.tag }}
+        run: gh release edit "$RELEASE_TAG" --draft=false --latest

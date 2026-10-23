@@ -1,9 +1,24 @@
 # Changelog
 
-## symft_26_10_08 — 2026-10-08 (prepared, not yet published)
+## v0.1.0 — 2026-10-24
+
+First GitHub Release, containing the `symft_26_10_08` update.
 
 Python package version: `2026.10.8`. Release identifier: `symft_26_10_08`.
 SOFT remains the project name and `import symft` remains unchanged.
+
+### Release packaging
+
+- Publish portable CPU wheels for CPython 3.9–3.13 on Linux x86_64/aarch64,
+  macOS arm64, and Windows amd64, plus a source distribution for CPU/CUDA builds.
+- Disable host-native optimization in distributable wheels and test each wheel
+  with the Python API suite; test installation from the source distribution.
+- Gate publication on CPU tests, documentation checks, package identities and
+  the complete wheel matrix. Manual workflow runs build without publishing.
+- Attach distribution files, a source/asset manifest and SHA256 checksums.
+- Include the previously omitted October 9 distillation benchmark evidence.
+- Make the CUDA expectation regression valid for both FP32 and FP64 builds,
+  with an explicit absolute roundoff bound and exact measurement-record checks.
 
 ### Main-based integration — 2026-10-09
 
@@ -57,7 +72,6 @@ SOFT remains the project name and `import symft` remains unchanged.
 - The 40-process benchmark is not native compiled `threads=40` support.
 - CUDA JIT is opt-in for GPU-presampled-expression counts with `max_k <= 10`.
   CUDA FP64 must be selected at build time; its default remains FP32.
-- This is a main-based port of the optimization release, targeting
-  `symft-26-10-08` for a normal PR to `main`.
-  Package metadata is updated, but no Git tag, commit, push, or publication
-  is performed as part of preparing this review tree.
+- This release uses the main-based integration merged in PR #19.
+  GitHub `v0.1.0` maps to Python `2026.10.8`; older Python `0.1.x` files and
+  historical SOFT v1 tags retain their original identities.

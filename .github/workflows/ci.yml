@@ -5,6 +5,7 @@ on:
     branches: [main, symft, symft-26-10-08]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

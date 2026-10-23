@@ -390,6 +390,22 @@ setup(
     name="symft",
     version=PACKAGE_VERSION,
     description="SOFT v2 Python interface, powered by the SymFT sampling architecture",
+    long_description=(
+        "# SymFT / SOFT\n\n"
+        "An exact Python/C++ simulator for noisy adaptive Clifford-plus-Pauli-rotation circuits. "
+        "Supports measurement records, detectors, postselection, expectation values and compiled counts sampling.\n\n"
+        "Python package **2026.10.8** corresponds to GitHub Release **v0.1.0** and the "
+        "**symft_26_10_08** update. These version identifiers are intentionally distinct.\n\n"
+        "Install the portable CPU package with `python -m pip install symft==2026.10.8`. "
+        "CUDA support requires a source build.\n\n"
+        "[Installation and examples](https://github.com/haoliri0/SOFT/blob/v0.1.0/README.md) | "
+        "[Python API](https://github.com/haoliri0/SOFT/blob/v0.1.0/python/README.md) | "
+        "[Release notes](https://github.com/haoliri0/SOFT/releases/tag/v0.1.0)\n"
+    ),
+    long_description_content_type="text/markdown",
+    url="https://github.com/haoliri0/SOFT",
+    project_urls={"Source": "https://github.com/haoliri0/SOFT",
+                  "Issues": "https://github.com/haoliri0/SOFT/issues"},
     license="Apache-2.0",
     license_files=["LICENSE"],
     classifiers=["License :: OSI Approved :: Apache Software License"],

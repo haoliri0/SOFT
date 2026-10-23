@@ -1,5 +1,14 @@
 # Correctness evidence and review validation
 
+## GitHub v0.1.0 publication checks
+
+The [release workflow](../.github/workflows/release.yml) gates publication on
+portable SIMD/scalar CPU checks, documentation validation, a source-distribution
+install, and Python API tests for all 20 supported wheels. CUDA device checks
+on the final candidate are recorded in the
+[release validation attachment](https://github.com/haoliri0/SOFT/releases/download/v0.1.0/local-validation.json).
+The dated records below remain historical evidence with their original scope.
+
 Two kinds of evidence are kept separate: archived optimization experiments and
 checks rerun on the main-based `symft-26-10-08` working tree. Neither means every circuit,
 platform, compiler, or device has been exhaustively verified.

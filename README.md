@@ -39,18 +39,24 @@ truncate the state or approximate the noise model.
 
 ## Installation
 
+GitHub Release **`v0.1.0`** packages the **`symft_26_10_08`** update as Python
+distribution **`symft==2026.10.8`**. The repository release number, implementation
+generation, and Python package version are separate identifiers. See the
+[release notes](docs/releases/v0.1.0.md).
+
 Install the published Python package with:
 
 ```bash
-python -m pip install symft
+python -m pip install symft==2026.10.8
 ```
 
-To use the CPU and CUDA updates described here, build from this repository.
+The published wheels contain the CPU updates. For CUDA or a local source build,
+use the tagged source below.
 A Python source build requires Python 3.9+, NumPy 1.20+, and a C++20 compiler;
 CMake is not required.
 
 ```bash
-git clone https://github.com/haoliri0/SOFT.git
+git clone --branch v0.1.0 --depth 1 https://github.com/haoliri0/SOFT.git
 cd SOFT
 python -m venv .venv
 source .venv/bin/activate

@@ -1,17 +1,16 @@
 # SOFT documentation
 
 SOFT is the project; SymFT is the second-generation sampling architecture.
-The Python package is still `symft`. This documentation describes the source
-on the main-based `symft-26-10-08` branch, not an assertion that a published wheel already includes
-the changes. The dated performance release is **`symft_26_10_08`** (Python
-package `2026.10.8`), with fresh old/new CPU comparisons on the project homepage.
+The Python package is still `symft`. GitHub Release **`v0.1.0`** contains the
+main-based **`symft_26_10_08`** update as Python package **`2026.10.8`**. See the
+[release notes](releases/v0.1.0.md) for installation, platforms and limitations.
 
 ## Start here
 
 - [Project overview, install, and quick start](../README.md)
 - [Python API](../python/README.md)
 - [Project naming, SOFT v1, and compatibility](PROJECT.md)
-- [Changes awaiting release](../CHANGELOG.md)
+- [Changelog](../CHANGELOG.md)
 
 ## Implementation and measurement
 
@@ -31,7 +30,7 @@ package `2026.10.8`), with fresh old/new CPU comparisons on the project homepage
 
 ## Maintainers
 
-- [Review and manual commit/push checklist](RELEASE_CHECKLIST.md)
+- [Release checklist](RELEASE_CHECKLIST.md)
 - [Documentation/evidence checks](../tools/check_documentation.py)
 
 The original experiment workspace, frozen binaries, journals, failed attempts,
