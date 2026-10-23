@@ -95,7 +95,10 @@ def test_cuda_jit_options_preserve_records_and_expectations(monkeypatch, symboli
         assert records.shape == (257, 2)
         assert np.array_equal(records, np.tile([False, True], (257, 1)))
         if with_probes:
-            assert np.allclose(values, [2**-0.5, 2**-0.5, 0.0, 0.0, -1.0], atol=1e-12)
+            # CUDA supports FP32 and FP64 builds. Near-zero expectations need
+            # an absolute roundoff allowance even when the records are exact.
+            assert np.allclose(values, [2**-0.5, 2**-0.5, 0.0, 0.0, -1.0],
+                               rtol=0, atol=4 * np.finfo(np.float32).eps)
         else:
             assert values.shape == (257, 0)
     # Counts with probes must also retain non-destructive semantics.

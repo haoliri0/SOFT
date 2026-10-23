@@ -17,6 +17,8 @@ SOFT remains the project name and `import symft` remains unchanged.
   the complete wheel matrix. Manual workflow runs build without publishing.
 - Attach distribution files, a source/asset manifest and SHA256 checksums.
 - Include the previously omitted October 9 distillation benchmark evidence.
+- Make the CUDA expectation regression valid for both FP32 and FP64 builds,
+  with an explicit absolute roundoff bound and exact measurement-record checks.
 
 ### Main-based integration — 2026-10-09
 
